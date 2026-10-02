@@ -2,8 +2,10 @@
 // two FBX files (tools/blender/glb2fbx.py: <id>_lod0.fbx = the HD Tripo mesh, <id>_lod1.fbx = the game mesh, the same
 // skeleton) into Assets/ZU/Art/Heroes/<id>/<id>.prefab: the game rig with a humanoid Avatar, the HD mesh rebound onto the
 // game skeleton as LOD0, URP materials from the baked maps, scaled to the hero's height from the game data.
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Unity.Collections;
 using Unity.Pipeline.Commands;
 using UnityEditor;
 using UnityEngine;
@@ -48,20 +50,38 @@ namespace ZU.EditorTools
     {
         const string Dir = "Assets/ZU/Art/Heroes";
 
+        /// <summary>the height a model is drawn at (m): its def's (heroes, pilots, robots, campaign enemies and bosses), else
+        /// the def that names it as its model (the effigy / susanoo summons), else a model skin's hero; 0 = the model's own
+        /// size (the Koryu spirit dragons: the ult view scales them per ult); null = unknown</summary>
+        static float? HeightFor(ZU.Sim.Data.GameData data, string id)
+        {
+            var def = data.Def(id);
+            if (def != null) return (float)def.height;
+            var summon = new[] { ZU.Sim.Effigy.EFFIGY_DEF, ZU.Sim.Susanoo.SUSANOO_DEF }.FirstOrDefault(s => s.model == id);
+            if (summon != null) return (float)summon.height;
+            if (id == "hibiki_armor") return (float)data.Def("hibiki").height;     // TS skins.ts: Bassline Armor
+            if (id == "vorn") return 1.85f;                                        // TS HeroViewer: Gorgoth's pilot (a bio, no def)
+            if (id == "hayate_dragon" || id == "seiran_dragon") return 0;
+            return null;
+        }
+
         [CliCommand("zu_import_hero", "Build a hero's prefab (avatar, LOD0 HD mesh on the game skeleton, URP materials, true height) from <id>_lod0.fbx / <id>_lod1.fbx")]
         public static string Import([CliArg("id", "hero id, e.g. kaien")] string id)
         {
             var data = ZuData.Get();
             var def = data.Def(id);
-            if (def == null) return "unknown hero " + id;
+            var height = HeightFor(data, id);
+            if (height == null) return "unknown hero " + id;
             string d = $"{Dir}/{id}";
             var lod1 = AssetDatabase.LoadAssetAtPath<GameObject>($"{d}/{id}_lod1.fbx");
             var lod0 = AssetDatabase.LoadAssetAtPath<GameObject>($"{d}/{id}_lod0.fbx");
             if (lod1 == null) return $"missing {d}/{id}_lod1.fbx (run tools/blender/glb2fbx.py first)";
 
-            // ---- the avatar (from the game rig: both LODs share its skeleton)
+            // ---- the avatar (from the game rig: both LODs share its skeleton); a model with no human skeleton (the spirit
+            // dragons' spine chain) or a drone frame gets a plain prefab instead - the TS draws drones (bot_drone, the bomber
+            // and swarmer minions, the phoenix) as rigid bodies, whatever rig Tripo gave their mesh
             var map = HumanRig.MapFor(lod1.transform);
-            if (map == null) return "no known skeleton under " + id + "_lod1";
+            if (map == null || def?.frame == "drone") return ImportPlain(id, d, lod1, def, height.Value);
             var avatar = HumanRig.BuildAvatar(lod1, map, out var report);
             if (avatar == null || !avatar.isValid) return "avatar failed: " + report;
             avatar.name = id + "_avatar";
@@ -70,7 +90,7 @@ namespace ZU.EditorTools
             if (!avatar.isValid || !avatar.isHuman) return "avatar lost validity when saved: " + avPath;
 
             // ---- materials
-            bool mech = def.frame == "mech";
+            bool mech = def != null && def.frame == "mech";
             float metalCap = mech ? 0.7f : 0.25f, selfLight = id == "mirei" ? 0.04f : 0.16f;   // TS CharacterView: BRIGHT_SUITS get less
             var mat1 = MakeMaterial($"{d}/{id}_lod1_tex", $"{d}/{id}_lod1.mat", lod0 != null ? 1024 : 2048, metalCap, selfLight);   // LOD1 is only seen far off when an HD LOD0 exists
             var mat0 = lod0 != null ? MakeMaterial($"{d}/{id}_lod0_tex", $"{d}/{id}_lod0.mat", 2048, metalCap, selfLight) : null;
@@ -103,6 +123,28 @@ namespace ZU.EditorTools
                 }
                 Object.DestroyImmediate(hd);
             }
+            // ---- legs the rigger collapsed into the pelvis (HumanRig.LegCollapsed): the avatar poses them at full length,
+            // so whatever the mesh hangs from them (Qel'Varis: 65% of the robe) moves onto the hips
+            var deadLegs = new HashSet<string>();
+            float hipsY = bones[map["Hips"]].position.y - rig.transform.position.y;
+            foreach (var s in new[] { "Left", "Right" })
+            {
+                Transform T(string part) => map.TryGetValue(s + part, out var n) && bones.TryGetValue(n, out var t) ? t : null;
+                if (T("UpperLeg") != null && T("LowerLeg") != null && T("Foot") != null && HumanRig.LegCollapsed(T("UpperLeg"), T("LowerLeg"), T("Foot"), hipsY))
+                    foreach (var part in new[] { "UpperLeg", "LowerLeg", "Foot", "Toes" }) if (T(part) != null) deadLegs.Add(T(part).name);
+            }
+            int moved = 0;
+            if (deadLegs.Count > 0)
+            {
+                var all = r1.Select((r, i) => (r, $"lod1{(i > 0 ? i.ToString() : "")}")).Concat(r0.Select((r, i) => (r, $"lod0{(i > 0 ? i.ToString() : "")}")));
+                foreach (var (r, tag) in all)
+                {
+                    int hipsIdx = System.Array.FindIndex(r.bones, b => b != null && b.name == map["Hips"]);
+                    if (hipsIdx < 0) continue;
+                    var from = new HashSet<int>(Enumerable.Range(0, r.bones.Length).Where(i => r.bones[i] != null && deadLegs.Contains(r.bones[i].name)));
+                    r.sharedMesh = MoveWeights(r.sharedMesh, from, hipsIdx, $"{d}/{id}_{tag}_hipsrobe.asset", ref moved);
+                }
+            }
             if (r0.Length > 0)
             {
                 var lods = root.AddComponent<LODGroup>();
@@ -112,7 +154,7 @@ namespace ZU.EditorTools
             // ---- true height: the game data says how tall the hero stands (the rig's head top is the reference)
             var b1 = new Bounds(rig.transform.position, Vector3.zero);
             foreach (var r in r1) { r.sharedMesh.RecalculateBounds(); b1.Encapsulate(r.bounds); }
-            float h = b1.size.y, want = (float)def.height;
+            float h = b1.size.y, want = height.Value;
             if (h > 0.01f) rig.transform.localScale *= want / h;
             // hair and cloth: the solver binds to the chains (hair_*, skirt_*, cape_*, sleeve_*) in this bind pose on spawn
             var dyn = root.AddComponent<ZU.Dynamics.ZuDynamics>();
@@ -121,13 +163,88 @@ namespace ZU.EditorTools
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             Object.DestroyImmediate(root);
             AssetDatabase.SaveAssets();
+            Register(id, prefabPath);
             // a byte-identical prefab isn't rewritten, so reload it: the loaded copy must see the avatar as saved now
             AssetDatabase.ImportAsset(prefabPath, ImportAssetOptions.ForceUpdate);
             var check = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath).GetComponentInChildren<Animator>(true);
             if (check == null || check.avatar == null) return prefabPath + ": saved, but its Animator has no avatar";
             int chains = new[] { "hair_B", "hair_L", "hair_R", "hair_T", "skirt_F", "skirt_L", "skirt_B", "skirt_R", "cape_B", "sleeve_L", "sleeve_R" }
                 .Count(pf => bones.ContainsKey(pf + "_1") && bones.ContainsKey(pf + "_2"));
-            return $"{prefabPath}: avatar {report}; LOD0 {(r0.Length > 0 ? $"{r0.Length} renderer(s), {rebound} bones rebound, {unmatched} unmatched" : "none")}; height {h:0.00} -> {want:0.00} m; {chains} dynamic chain(s)";
+            return $"{prefabPath}: avatar {report}; LOD0 {(r0.Length > 0 ? $"{r0.Length} renderer(s), {rebound} bones rebound, {unmatched} unmatched" : "none")}; height {h:0.00} -> {want:0.00} m; {chains} dynamic chain(s)"
+                + (moved > 0 ? $"; {moved} vertices moved off collapsed legs ({string.Join(",", deadLegs)}) onto the hips" : "");
+        }
+
+        /// <summary>a copy of `src`, saved to `path`, with the skin weights of the bones `from` moved onto bone `to` (merged per
+        /// vertex, renormalised, heaviest first); `moved` counts the vertices it touched</summary>
+        static Mesh MoveWeights(Mesh src, HashSet<int> from, int to, string path, ref int moved)
+        {
+            var per = src.GetBonesPerVertex(); var w = src.GetAllBoneWeights();
+            var outPer = new byte[per.Length]; var outW = new List<BoneWeight1>(w.Length); var acc = new Dictionary<int, float>();
+            int k = 0;
+            for (int v = 0; v < per.Length; v++)
+            {
+                acc.Clear(); bool hit = false;
+                for (int j = 0; j < per[v]; j++, k++)
+                {
+                    int b = w[k].boneIndex;
+                    if (from.Contains(b)) { b = to; hit = true; }
+                    acc[b] = (acc.TryGetValue(b, out var x) ? x : 0) + w[k].weight;
+                }
+                if (hit) moved++;
+                float sum = acc.Values.Sum();
+                foreach (var e in acc.OrderByDescending(e => e.Value)) outW.Add(new BoneWeight1 { boneIndex = e.Key, weight = sum > 0 ? e.Value / sum : 0 });
+                outPer[v] = (byte)acc.Count;
+            }
+            var m = Object.Instantiate(src); m.name = src.name + "_hipsrobe";
+            using (var p = new NativeArray<byte>(outPer, Allocator.Temp))
+            using (var ww = new NativeArray<BoneWeight1>(outW.ToArray(), Allocator.Temp))
+                m.SetBoneWeights(p, ww);
+            AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(m, path);
+            return m;
+        }
+
+        /// <summary>a model without a human skeleton: the FBX as it is (a static mesh, or a generic skinned rig with its own
+        /// joint names and bind pose - the spirit dragons' sp00 (head) .. spNN), the URP material, scaled to `want` m tall
+        /// (0 = left at its true size); no Avatar, no Animator, no hair / cloth</summary>
+        static string ImportPlain(string id, string d, GameObject lod1, ZU.Sim.Data.HeroDef def, float want)
+        {
+            bool mech = def != null && def.frame == "mech";
+            var mat = MakeMaterial($"{d}/{id}_lod1_tex", $"{d}/{id}_lod1.mat", 2048, mech ? 0.7f : 0.25f, 0.16f);
+            var root = new GameObject(id);
+            var rig = (GameObject)PrefabUtility.InstantiatePrefab(lod1);
+            rig.transform.SetParent(root.transform, false);
+            PrefabUtility.UnpackPrefabInstance(rig, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+            rig.name = "rig";
+            var anim = rig.GetComponent<Animator>(); if (anim != null) Object.DestroyImmediate(anim);
+            AssetDatabase.DeleteAsset($"{d}/{id}_avatar.asset");      // a humanoid build of it from before, if any
+            var rends = rig.GetComponentsInChildren<Renderer>(true);
+            if (rends.Length == 0) { Object.DestroyImmediate(root); return $"no mesh in {d}/{id}_lod1.fbx"; }
+            int skinned = 0;
+            foreach (var r in rends) { r.sharedMaterial = mat; if (r is SkinnedMeshRenderer s) { s.updateWhenOffscreen = false; skinned++; } }
+            var b = new Bounds(rends[0].bounds.center, Vector3.zero);
+            foreach (var r in rends) b.Encapsulate(r.bounds);
+            float h = b.size.y;
+            if (want > 0 && h > 0.01f) rig.transform.localScale *= want / h;
+            string prefabPath = $"{d}/{id}.prefab";
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+            Object.DestroyImmediate(root);
+            AssetDatabase.SaveAssets();
+            Register(id, prefabPath);
+            int joints = lod1.GetComponentsInChildren<SkinnedMeshRenderer>(true).Sum(s => s.bones.Length);
+            return $"{prefabPath}: plain ({(skinned > 0 ? $"{skinned} skinned renderer(s), {joints} joints" : $"{rends.Length} static renderer(s)")}); "
+                + $"size {b.size.x:0.00} x {b.size.y:0.00} x {b.size.z:0.00} m -> {(want > 0 ? $"{want:0.00} m tall" : "true size")}";
+        }
+
+        /// <summary>the prefab into the runtime library (Resources/ZUHeroLibrary.asset): what ActorViews draws an actor's
+        /// def id with, and where the ult views find a model by id. zu_hero_controller rebuilds the same entries.</summary>
+        static void Register(string id, string prefabPath)
+        {
+            var lib = AssetDatabase.LoadAssetAtPath<HeroLibrary>("Assets/ZU/Resources/ZUHeroLibrary.asset");
+            if (lib == null) return;
+            lib.Set(id, AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath));
+            EditorUtility.SetDirty(lib);
+            AssetDatabase.SaveAssets();
         }
 
         /// <summary>a URP Lit material from a folder of baked maps: base colour, normal, and the glTF metal-roughness map
