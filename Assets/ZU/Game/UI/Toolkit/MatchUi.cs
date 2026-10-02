@@ -40,6 +40,7 @@ namespace ZU.Game.UI.Toolkit
             var ui = UiRoot.Get();
             ui.HudLayer.Clear(); ui.MenuLayer.Clear();
             hud = new HudView(ui.HudLayer);
+            Audio.VoiceLines.OnLine += hud.Subtitle;              // the voice lines' subtitles (VoiceLines: what the player hears)
             hud.Reset(); hud.Show(true);
             hud.OnUltReady = () => Sfx("ult_ready");
             armory = new ArmoryView(ui.MenuLayer);
@@ -89,6 +90,7 @@ namespace ZU.Game.UI.Toolkit
             RecordCareer("none");
             if (Current == this) Current = null;
             EventSink.OnEvent -= OnEvent;
+            if (hud != null) Audio.VoiceLines.OnLine -= hud.Subtitle;
             ZuSettings.Changed -= OnSettings;
             PauseMenu.EscTaken = null;
             hud?.root.RemoveFromHierarchy();
