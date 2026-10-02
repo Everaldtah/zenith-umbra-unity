@@ -1,4 +1,4 @@
-// Hand-held weapons (port of HeldProps.ts + the guns CharacterView / TomoeProps / Hammer place for the other heroes):
+// Hand-held weapons (port of HeldProps.ts + the guns CharacterView.ts / TomoeProps.ts / Hammer.ts place for the other heroes):
 // Raijin's katana, Enra's chain blades and bracers, Hayate's nodachi (with the shuriken in hand while it's sheathed),
 // the archers' bows and nocked arrows, Kaien's talisman, Tomoe's scattergun / Fang / great axe, Tenkai-Oh's hammer,
 // Gantetsu's twin chainguns, Haruto's sidearm. The Tripo props are fitted at import (HeldImport: Resources/ZUProps/
