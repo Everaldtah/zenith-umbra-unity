@@ -110,6 +110,11 @@ namespace ZU.EditorTools
             return existing;
         }
 
+        /// <summary>a leg the rigger collapsed into the pelvis: thigh -> foot shorter than 40% of the hips' height above the
+        /// model's floor (Qel'Varis: no legs found under the robe - a few cm of bones pointing up)</summary>
+        public static bool LegCollapsed(Transform thigh, Transform shin, Transform foot, float hipsY) =>
+            hipsY > 0.1f && Vector3.Distance(thigh.position, shin.position) + Vector3.Distance(shin.position, foot.position) < 0.4f * hipsY;
+
         /// <summary>
         /// A humanoid Avatar for `model` (an instance of the imported rig, in its bind pose). The arms and legs are posed
         /// into a T-pose on a temporary copy first (upper arms horizontal along the body's left/right, forearms and hands
@@ -145,6 +150,22 @@ namespace ZU.EditorTools
                 Aim("RightUpperArm", "RightLowerArm", right); Aim("RightLowerArm", "RightHand", right);
                 Aim("LeftUpperLeg", "LeftLowerLeg", -up); Aim("LeftLowerLeg", "LeftFoot", -up);
                 Aim("RightUpperLeg", "RightLowerLeg", -up); Aim("RightLowerLeg", "RightFoot", -up);
+                // legs the rigger collapsed into the pelvis (LegsCollapsed): the avatar sizes the body by its legs and would
+                // sink it into the ground, so the T-pose gets full-length legs down to the floor. The Animator then poses the
+                // real leg bones to these lengths - so nothing may hang from them (HeroImport moves their skin weights onto
+                // the hips: the robe hangs from the hips and its chains, as the TS's foot solver leaves it on stub legs)
+                float hipsY = B("Hips").position.y - copy.transform.position.y; string legsMade = "";
+                foreach (var s in new[] { "Left", "Right" })
+                {
+                    Transform th = B(s + "UpperLeg"), sh = B(s + "LowerLeg"), ft = B(s + "Foot");
+                    if (LegCollapsed(th, sh, ft, hipsY))
+                    {
+                        float seg = 0.47f * (th.position.y - copy.transform.position.y);
+                        if (sh.localPosition.sqrMagnitude > 1e-10f) sh.localPosition = sh.localPosition.normalized * (seg / th.lossyScale.y);
+                        if (ft.localPosition.sqrMagnitude > 1e-10f) ft.localPosition = ft.localPosition.normalized * (seg / sh.lossyScale.y);
+                        legsMade += s[0];
+                    }
+                }
 
                 var human = new List<HumanBone>();
                 foreach (var hb in HumanTrait.BoneName)
@@ -165,7 +186,7 @@ namespace ZU.EditorTools
                     armStretch = 0.05f, legStretch = 0.05f, feetSpacing = 0, hasTranslationDoF = false,
                 };
                 var avatar = AvatarBuilder.BuildHumanAvatar(copy, desc);
-                report = $"{human.Count} human bones, valid {avatar.isValid}, human {avatar.isHuman}";
+                report = $"{human.Count} human bones, valid {avatar.isValid}, human {avatar.isHuman}" + (legsMade != "" ? $", T-pose legs made ({legsMade})" : "");
                 return avatar;
             }
             finally { UnityEngine.Object.DestroyImmediate(copy); }
