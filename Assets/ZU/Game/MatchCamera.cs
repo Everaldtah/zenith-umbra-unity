@@ -23,8 +23,12 @@ namespace ZU.Game
         public void Sync(MatchRunner r)
         {
             Place(r);
-            // the effects' camera shake (slams, stomps, explosions near you): a small random turn, fading with the budget
-            float k = Fx.MatchFx.Current != null ? Fx.MatchFx.Current.Shake : 0;
+            // Options: the field of view (the TS camera takes 0.75 of it as the vertical angle; a zoomed sight 38), eased in
+            float fov = r.Player != null && r.Player.Sv("zoom") != 0 ? 38 : (float)UI.Toolkit.ZuSettings.Current.fov * 0.75f;
+            cam.fieldOfView += (fov - cam.fieldOfView) * Mathf.Min(1, Time.deltaTime * 12);
+            // the effects' camera shake (slams, stomps, explosions near you): a small random turn, fading with the budget,
+            // times Options > Accessibility > Camera Shake
+            float k = (Fx.MatchFx.Current != null ? Fx.MatchFx.Current.Shake : 0) * (float)UI.Toolkit.ZuSettings.Current.access.cameraShake;
             if (k > 0.002f) transform.rotation *= Quaternion.Euler((Random.value - 0.5f) * k * 6, (Random.value - 0.5f) * k * 6, 0);
         }
 

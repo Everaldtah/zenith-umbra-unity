@@ -36,6 +36,7 @@ namespace ZU.Game.UI
     {
         public static bool Paused { get; private set; }
         static bool recorded;
+        static float overAt = -1;
         /// <summary>the finished match's competitive rank change (null in every other mode) and the role it moved</summary>
         public static Career.RankChange LastChange { get; private set; }
         public static string LastRole { get; private set; }
@@ -46,8 +47,9 @@ namespace ZU.Game.UI
         {
             var kb = Keyboard.current;
             bool over = r.World != null && !string.IsNullOrEmpty(r.World.winner);
-            if (over && !recorded) { recorded = true; Record(r); }
-            if (over && !Paused) Set(true);
+            if (over && !recorded) { recorded = true; Record(r); overAt = Time.unscaledTime; }
+            // the end plays out before the result screen (the TS waits 3.5 s, 2.5 s in the campaign)
+            if (over && !Paused && Time.unscaledTime - overAt >= (r.mode == "campaign" ? 2.5f : 3.5f)) Set(true);
             if (kb != null && kb.escapeKey.wasPressedThisFrame && !over && !(EscTaken?.Invoke() ?? false)) Set(!Paused);
         }
 
@@ -61,7 +63,7 @@ namespace ZU.Game.UI
             Cursor.lockState = p ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = p;
         }
-        public static void Reset() { Paused = false; Time.timeScale = 1; recorded = false; LastChange = null; LastRole = null; }
+        public static void Reset() { Paused = false; Time.timeScale = 1; recorded = false; overAt = -1; LastChange = null; LastRole = null; }
 
         /// <summary>the finished match into the career (TS Menu.queueResults): competitive moves the role's rank, a close
         /// match softening a loss; quick play moves the hidden rating; both join the match history</summary>
