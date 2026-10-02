@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Play-test captures of heroes in a running match (the animation / weapons / effects parity check): builds the match
 # scene, enters play mode, prints the console's errors, then every few seconds finds each listed hero on the field and
-# renders it from 3.2 m in front at chest height. Writes Screenshots/heroes/<hero>_<t>.png and a contact sheet.
+# renders it unoccluded from 1.6 x its height at chest height. Writes Screenshots/heroes/<hero>_<t>.png and a contact sheet.
 # usage: tools/heroshots.sh <map> <player hero> <mode> "<hero ids...>" [rounds=3] [gap seconds=2.5]
 #   e.g. tools/heroshots.sh hanabi tenkai spectate "tenkai hayate tomoe gantetsu" 4
 # (needs an editor open on this project: GUI, or `Unity.exe -batchmode -projectPath <p>` left running)
@@ -23,31 +23,28 @@ for i in $(seq 1 90); do
   [ -n "$t" ] && python -c "import sys; sys.exit(0 if float('$t') > 6 else 1)" && break
 done
 echo "== console errors"; u console -- --level error 2>&1 | grep '"message"' | sort | uniq -c | sort -rn | head -15
-# every actor: id, Unity draw position, yaw (radians), alive
-LOC='var r = UnityEngine.Object.FindFirstObjectByType<ZU.Game.MatchRunner>(); if (r == null || r.World == null) return "none";
-var ci = System.Globalization.CultureInfo.InvariantCulture; var sb = new System.Text.StringBuilder();
-foreach (var a in r.World.actors) { var p = r.DrawPos(a); sb.Append(a.def.id).Append(" ").Append(p.x.ToString("0.00", ci)).Append(" ").Append(p.y.ToString("0.00", ci)).Append(" ").Append(p.z.ToString("0.00", ci)).Append(" ").Append(a.yaw.ToString("0.000", ci)).Append(" ").Append(a.alive ? 1 : 0).Append(" ").Append(a.Height.ToString("0.00", ci)).Append("|"); }
-return sb.ToString();'
+# each round, in ONE eval (so nobody moves between finding a hero and taking its picture): every listed hero on the
+# field is framed from 1.6 x its height away at chest height - straight in front, else 45 deg to either side, else
+# behind - whichever view the level's colliders don't block, and rendered through ZuCapture
 for k in $(seq 1 "$rounds"); do
-  locs=$(u eval --timeout 60 -- --code "$LOC" 2>/dev/null | python -c "import sys,json; print(json.load(sys.stdin).get('result',''))" 2>/dev/null)
-  for h in $heroes; do
-    cam=$(python - "$locs" "$h" <<'EOF'
-import sys, math
-locs, h = sys.argv[1], sys.argv[2]
-for row in locs.split('|'):
-    f = row.split()
-    if len(f) < 7 or f[0] != h or f[5] != '1': continue
-    x, y, z, yaw, H = float(f[1]), float(f[2]), float(f[3]), float(f[4]), float(f[6])
-    fx, fz = -math.sin(yaw), math.cos(yaw)          # Unity forward of the sim yaw (Conv.Yaw)
-    d = 1.8 * H                                      # far enough for the whole body and a hammer's arc
-    print(f"{x + fx * d:.2f},{y + 0.75 * H:.2f},{z + fz * d:.2f}|{x:.2f},{y + 0.55 * H:.2f},{z:.2f}")
-    break
-EOF
-)
-    [ -z "$cam" ] && { echo "$h: not on the field / dead"; continue; }
-    IFS='|' read pos look <<< "$cam"
-    u zu_capture --timeout 120 -- --out "$S/${h}_${k}.png" --width 960 --height 720 --pos "$pos" --look "$look" --fov 55 2>&1 | grep -q '"Screenshots' && echo "$h round $k: $S/${h}_${k}.png"
-  done
+  CODE='var r = UnityEngine.Object.FindFirstObjectByType<ZU.Game.MatchRunner>(); if (r == null || r.World == null) return "no match";
+var ci = System.Globalization.CultureInfo.InvariantCulture; var sb = new System.Text.StringBuilder();
+foreach (var h in "'"$heroes"'".Split(new[]{(char)32}, System.StringSplitOptions.RemoveEmptyEntries)) {
+  var a = r.World.actors.Find(x => x.def.id == h && x.alive); if (a == null) { sb.Append(h).Append(":absent "); continue; }
+  var p = r.DrawPos(a); float H = (float)a.Height, yaw = (float)a.yaw; var chest = p + UnityEngine.Vector3.up * (0.55f * H);
+  UnityEngine.Vector3 cam = UnityEngine.Vector3.zero; bool found = false;
+  foreach (var off in new[] { 0f, 45f, -45f, 90f, -90f, 180f }) {
+    var f = UnityEngine.Quaternion.Euler(0, -yaw * UnityEngine.Mathf.Rad2Deg + off, 0) * UnityEngine.Vector3.forward;
+    var c = p + f * (1.6f * H) + UnityEngine.Vector3.up * (0.7f * H);
+    if (!UnityEngine.Physics.Linecast(c, chest)) { cam = c; found = true; break; } }
+  if (!found) { sb.Append(h).Append(":blocked "); continue; }
+  string F(UnityEngine.Vector3 v) => v.x.ToString("0.00", ci) + "," + v.y.ToString("0.00", ci) + "," + v.z.ToString("0.00", ci);
+  var res = ZU.EditorTools.ZuCapture.Capture("'"$S"'/" + h + "_'"$k"'.png", 960, 720, F(cam), F(chest), 55);
+  sb.Append(h).Append(":").Append(res != null && res.Contains("Screenshots") ? "ok" : res).Append(" "); }
+return sb.ToString();'
+  u eval --timeout 300 -- --code "$CODE" 2>&1 | python -c "import sys,json
+try: print('round $k:', json.load(sys.stdin).get('result'))
+except Exception as e: print('round $k: eval failed', e)"
   sleep "$gap"
 done
 u editor_stop >/dev/null 2>&1
