@@ -94,7 +94,8 @@ namespace ZU.Game.Fx
                     }
                     break;
                 case "lightning": if (to.HasValue) fx.Bolt(p, to.Value, C("#8ad8ff"), now, 0.04f, 0.18f, 0.5f, 7); break;
-                case "twinkoi": case "dragoncut": if (to.HasValue) { fx.Beam(p, to.Value, C("#5ff2e0"), now, 0.4f, 0.4f); fx.Emit(to.Value, N(30), C("#5ff2e0"), FxKit.O(5, 0.6f, 0.4f, spread: 1)); } break;
+                // the koi dragons draw these themselves (AbilityFx SpiritDragon), as Fx.ts hands them to its dragons
+                case "twinkoi": case "dragoncut": case "dragoncoil": break;
                 case "parry": fx.Ring(p, 1.8f, C("#8ad8ff"), now, 0.3f, false); fx.Emit(p, N(16), c, FxKit.O(8, 0.2f, 0.15f)); fx.Light(p, C("#8ad8ff"), 30, now); break;
                 case "deflect": fx.Emit(p, N(14), c, FxKit.O(9, 0.22f, 0.12f, spread: 0.35f, dir: e.n.HasValue ? U(e.n.Value) : (Vector3?)null)); fx.Emit(p, N(6), Color.white, FxKit.O(3, 0.12f, 0.2f)); fx.Light(p, C("#8ad8ff"), 22, now); break;
                 case "decoy": fx.Emit(p, N(40), c, FxKit.O(4, 0.8f, 0.3f)); fx.Ring(p, 2, C(e.color, "#c77dff"), now, 0.5f, false); break;
@@ -238,11 +239,8 @@ namespace ZU.Game.Fx
                 case "rebirth": fx.Ring(p, 2.2f, Color.white, now, 0.4f); fx.Ring(p, 3.2f, C(REBIRTH), now, 0.7f); fx.Beam(Up(p, -1), Up(p, 9), C(REBIRTH), now, 1.4f, 0.5f); fx.Light(p, C(REBIRTH), 50, now, 0.5f); fx.Emit(p, N(40), C(REBIRTH), FxKit.O(2.5f, 1.2f, 0.35f, spread: 1, up: 3)); break;
                 case "rebirthring": fx.Ring(p, 2.4f, C(REBIRTH), now, 0.45f); fx.Emit(p, N(16), Color.white, FxKit.O(4, 0.4f, 0.25f, spread: 0.8f)); break;
                 case "bossbeam": if (to.HasValue) { fx.Beam(p, to.Value, c, now, 0.07f, 0.45f); fx.Beam(p, to.Value, Color.white, now, 0.07f, 0.15f); fx.Emit(to.Value, N(3), c, FxKit.O(4, 0.3f, 0.5f)); } break;
-                // Kaien's seals (the TS SealStorm swarm is a later port): a golden burst for each beat of it
-                case "sealstorm": case "sealshield": case "sealstrike": case "sealburst": case "sealmend":
-                    fx.Emit(p, N(e.kind == "sealstorm" ? 60 : 14), C(e.color, "#ffe28a"), FxKit.O(e.kind == "sealstorm" ? 6 : 3, 0.6f, 0.3f, spread: e.kind == "sealstorm" ? R * 0.6f : 0.6f, up: 1));
-                    if (e.kind == "sealstorm") { fx.Ring(p, R, C("#ffe28a"), now, 0.8f); fx.Light(p, C("#ffe28a"), 40, now, 0.3f); }
-                    break;
+                // Kaien's seals: AbilityFx SealStorm draws its own bursts, rings and lights
+                case "sealstorm": case "sealshield": case "sealstrike": case "sealburst": case "sealmend": break;
                 default: fx.Emit(p, N(10), c, FxKit.O(3, 0.4f, 0.25f)); break;
             }
         }

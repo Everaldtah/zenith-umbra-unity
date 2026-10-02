@@ -33,6 +33,7 @@ namespace ZU.Game
         readonly Dictionary<int, (V3 prev, V3 cur)> poses = new Dictionary<int, (V3, V3)>();
         LevelView level;
         readonly Dictionary<int, IActorView> views = new Dictionary<int, IActorView>();
+        readonly Dictionary<int, string> viewDef = new Dictionary<int, string>();     // the def each view was built for
         ProjectileViews projViews;
         PlayerControls controls;
         MatchCamera cam;
@@ -61,6 +62,7 @@ namespace ZU.Game
             fp = FirstPerson.FirstPersonView.Ensure(this);
             Audio.MatchAudio.Attach(this);
             Fx.MatchFx.Attach(this);
+            Fx.AbilityFx.Register(this);            // (after MatchFx: the seal storm draws its bursts through MatchFx.Current)
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
             else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
@@ -111,7 +113,15 @@ namespace ZU.Game
         {
             foreach (var a in World.actors)
             {
-                if (!views.TryGetValue(a.id, out var v)) views[a.id] = v = ActorViews.Create(a, transform);
+                // the World swaps hero defs (Tenkai-Oh's pilot ejecting / calling the mech back): rebuild that actor's view
+                if (views.TryGetValue(a.id, out var old) && viewDef.TryGetValue(a.id, out var was) && was != a.def.id)
+                {
+                    if (old is Component oc && oc != null) Destroy(oc.gameObject);
+                    views.Remove(a.id);
+                }
+                // model-less summons (Hex's puppets) are drawn as one swarm (AbilityFx PuppetSwarm), not one view each
+                if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;
+                if (!views.TryGetValue(a.id, out var v)) { views[a.id] = v = ActorViews.Create(a, transform); viewDef[a.id] = a.def.id; }
                 v.Sync(this, a);
             }
             projViews.Sync(World, Alpha);
