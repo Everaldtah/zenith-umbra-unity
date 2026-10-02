@@ -33,6 +33,19 @@ namespace ZU.Game.Fx
         }
 
         void Start() { EventSink.OnEvent += OnEvent; }
+
+        int hand = 1;
+        /// <summary>TS Game.muzzleFor: the local player's rounds in first person leave the viewmodel's gun (just right of and below
+        /// the view, the twin guns taking turns); everyone else's from where the sim fired them</summary>
+        Vector3 MuzzleFor(Actor a, Vector3 from)
+        {
+            var c = Camera.main;
+            if (a == null || a != r.Player || r.thirdPerson || c == null) return from;
+            var t = c.transform; var f = t.forward; var rt = Vector3.Cross(Vector3.up, f).normalized; var u = Vector3.Cross(f, rt);
+            if (a.def.dualGuns) hand = -hand;
+            float side = a.def.dualGuns ? hand * 0.42f : 0.24f;
+            return t.position + f * 1.45f + rt * (side * 1.15f) + u * -0.3f;
+        }
         /// <summary>draw an effect the views raise themselves (not a sim event: a heavy footfall's dust, TS Game's onStep)</summary>
         public void Fire(FxEvent e) => OnEvent(r, e);
         void OnDestroy() { EventSink.OnEvent -= OnEvent; if (Current == fx) Current = null; if (Weapons == wfx) Weapons = null; }
@@ -68,6 +81,7 @@ namespace ZU.Game.Fx
                     {
                         // heavy rotary rounds: fat orange-white tracers, big flashes, brass; everything else a lean rail round
                         bool heavy = a != null && a.def.dualGuns;
+                        p = MuzzleFor(a, p);
                         if (heavy) wfx.Tracer(p, to.Value, c, now, speed: 150, w: 0.16f, len: 5.5f); else wfx.Tracer(p, to.Value, c, now, speed: 220, w: 0.08f, len: 3.5f);
                         wfx.Muzzle(p, c, now, heavy ? 0.85f : 0.5f, heavy);
                         if (heavy)

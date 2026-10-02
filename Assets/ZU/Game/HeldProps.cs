@@ -124,6 +124,7 @@ namespace ZU.Game
                 var ps = h.Make(spec.prop, H, "held_prop");
                 h.prop = ps.node; h.propRends = ps.rends; h.hammerLen = 0.62f * H;
                 if (spec.backProp) { var bs = h.Make(spec.prop, H, "held_back"); h.back = bs.node; h.backRends = bs.rends; h.back.localScale = Vector3.one * 0.85f; }
+                if (spec.prop.kind == HeldKind.Hammer) h.BuildFlame(H);
             }
             if (spec.bracer != null)
                 for (int i = 0; i < 2; i++)
@@ -230,6 +231,83 @@ namespace ZU.Game
             foreach (var b in bracers) if (b != null) foreach (var r in b.GetComponentsInChildren<Renderer>(true)) r.enabled = show;
         }
         static void Show(Renderer[] rs, bool on) { if (rs == null) return; foreach (var r in rs) if (r != null) r.enabled = on; }
+
+        // ---------------------------------------------------------------------------------------------- weapon details
+        Transform flame; MeshRenderer flameR; float flameLen, flameR0; Vector3 nozzle;
+        readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
+        bool bladeGlowOn;
+        static Mesh cone;
+
+        /// <summary>Tenkai-Oh's rocket hammer: the thruster flame at the nozzle, the -X end of the head 12% below its top (TS
+        /// Hammer.ts upgradeHammer), an additive cone 0.045 x 0.16 of the model height trailing away along -X</summary>
+        void BuildFlame(float H)
+        {
+            if (prop == null) return;
+            var b = new Bounds(); bool any = false;
+            foreach (var mf in prop.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null) continue;
+                var m = prop.worldToLocalMatrix * mf.transform.localToWorldMatrix; var mb = mf.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var c = m.MultiplyPoint3x4(mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)));
+                    if (!any) { b = new Bounds(c, Vector3.zero); any = true; } else b.Encapsulate(c);
+                }
+            }
+            if (!any) return;
+            var add = Fx.MatchFx.Current?.Additive ?? Resources.Load<Material>("ZUFx/additive");
+            if (add == null) return;
+            if (cone == null)
+            {
+                // an open cone along +Z, apex at the origin, radius 1 at z = 1 (the TS ConeGeometry, open-ended)
+                var v = new System.Collections.Generic.List<Vector3>(); var c = new System.Collections.Generic.List<Color>(); var tri = new System.Collections.Generic.List<int>();
+                for (int i = 0; i <= 14; i++) { float a = i * Mathf.PI * 2 / 14; v.Add(Vector3.zero); v.Add(new Vector3(Mathf.Cos(a), Mathf.Sin(a), 1)); c.Add(Color.white); c.Add(Color.white); if (i < 14) { int k = i * 2; tri.AddRange(new[] { k, k + 1, k + 3, k, k + 3, k + 2 }); } }
+                cone = new Mesh { name = "flame cone" }; cone.SetVertices(v); cone.SetColors(c); cone.SetTriangles(tri, 0); cone.RecalculateBounds();
+            }
+            var g = new GameObject("thruster flame"); flame = g.transform; flame.SetParent(prop, false);
+            g.AddComponent<MeshFilter>().sharedMesh = cone;
+            flameR = g.AddComponent<MeshRenderer>(); flameR.sharedMaterial = add; flameR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            flameLen = 0.16f * H; flameR0 = 0.045f * H;
+            // the base at the nozzle, the tip trailing back along -X: the cone's apex sits flameLen behind the nozzle, +Z toward it
+            nozzle = new Vector3(b.min.x - 0.012f * H, b.max.y - b.size.y * 0.12f, 0);
+            flame.localRotation = Quaternion.LookRotation(Vector3.right);      // apex behind, the wide end (+Z) at the nozzle
+            g.SetActive(false);
+        }
+
+        /// <summary>the per-frame details CharacterView.updateGuns draws: Tenkai-Oh's thruster roaring through the strike (not the
+        /// wind-up), Hayate's drawn nodachi burning with the koi-dragon's violet through the Dragon Gate</summary>
+        public void UpdateDetails(Actor a, double t)
+        {
+            if (flame != null)
+            {
+                double age = t - a.anim.attackAt;
+                bool on = a.alive && propShown && a.anim.attackKind == "primary" && age > 0.12 && age < 0.45;
+                flame.gameObject.SetActive(on);
+                if (on)
+                {
+                    float k = 0.5f + 0.9f * Mathf.Sin(Mathf.Min(1, (float)(age - 0.12) / 0.33f) * Mathf.PI) + Random.value * 0.15f;
+                    // the cone runs apex -> base along +Z: the apex trails k x the length behind the nozzle, the base on it
+                    flame.localScale = new Vector3(flameR0, flameR0, flameLen * k);
+                    flame.localPosition = nozzle + Vector3.left * (flameLen * k);
+                    flameR.GetPropertyBlock(mpb); var c = Conv.Hex("#ff8a2a"); c.a = 0.7f; mpb.SetColor("_BaseColor", c); flameR.SetPropertyBlock(mpb);
+                }
+            }
+            if (heroId == "hayate" && slots[1]?.rends != null)
+            {
+                bool glow = a.Has("dragonblade", t);
+                if (glow || bladeGlowOn)
+                {
+                    float k = glow ? 0.9f + 0.35f * Mathf.Sin((float)t * 9) : 0;
+                    foreach (var r in slots[1].rends)
+                    {
+                        if (r == null) continue;
+                        if (glow && !bladeGlowOn) { var ms = new System.Collections.Generic.List<Material>(r.sharedMaterials); var rim = Resources.Load<Material>("ZUFx/rim"); if (rim != null && !ms.Contains(rim)) { ms.Add(rim); r.sharedMaterials = ms.ToArray(); } }
+                        r.GetPropertyBlock(mpb); mpb.SetColor("_RimColor", Conv.Hex("#b36bff")); mpb.SetFloat("_Rim", 1.2f * k); mpb.SetFloat("_Fill", 0.45f * k); r.SetPropertyBlock(mpb);
+                    }
+                    bladeGlowOn = glow;
+                }
+            }
+        }
         /// <summary>a ragdoll death (TS CharacterView.deathRagdoll): the two-handed weapon leaves the body, the slung one hides</summary>
         public void HideTwoHanded() { Show(propRends, false); Show(backRends, false); }
 
