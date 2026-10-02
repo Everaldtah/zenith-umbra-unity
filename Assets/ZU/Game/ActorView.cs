@@ -5,7 +5,7 @@ using ZU.Sim;
 
 namespace ZU.Game
 {
-    public class ActorView : MonoBehaviour
+    public class ActorView : MonoBehaviour, IActorView
     {
         Transform body, head, visor;
         Renderer[] rends;

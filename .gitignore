@@ -37,3 +37,6 @@ Assets/ZU/Art/Anim/Kevin.meta
 /Assets/Screenshots/
 /Assets/Screenshots.meta
 /Screenshots/
+
+# work in progress outside Assets (subagents stage code here; it is moved into Assets after review)
+/staging/

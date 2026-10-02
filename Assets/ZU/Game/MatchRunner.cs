@@ -19,6 +19,8 @@ namespace ZU.Game
         public string playerHero = "raijin";
         [Range(0.3f, 0.97f)] public float botSkill = 0.7f;
         public bool thirdPerson;
+        [Tooltip("a bot drives the player's hero (demos, captures, AI testing)")]
+        public bool autopilot;
 
         public Match Match { get; private set; }
         public World World => Match?.world;
@@ -29,7 +31,7 @@ namespace ZU.Game
         double acc;
         readonly Dictionary<int, (V3 prev, V3 cur)> poses = new Dictionary<int, (V3, V3)>();
         LevelView level;
-        readonly Dictionary<int, ActorView> views = new Dictionary<int, ActorView>();
+        readonly Dictionary<int, IActorView> views = new Dictionary<int, IActorView>();
         ProjectileViews projViews;
         PlayerControls controls;
         MatchCamera cam;
@@ -43,20 +45,21 @@ namespace ZU.Game
             projViews = new ProjectileViews(transform);
             controls = new PlayerControls();
             cam = MatchCamera.Ensure(this);
-            if (Player != null) controls.Begin(Player);
+            if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
+            else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
         }
 
         void Update()
         {
             if (World == null) return;
-            controls.Read(Player, World);
+            if (!autopilot) controls.Read(Player, World);
             acc += Time.deltaTime;
             int steps = 0;
             while (acc >= DT && steps < 16)
             {
                 Snapshot();
-                controls.Apply(Player, World);
+                if (!autopilot) controls.Apply(Player, World);
                 World.Step(DT);
                 acc -= DT; steps++;
                 Dispatch();
@@ -90,7 +93,7 @@ namespace ZU.Game
         {
             foreach (var a in World.actors)
             {
-                if (!views.TryGetValue(a.id, out var v)) views[a.id] = v = ActorView.Create(a, transform);
+                if (!views.TryGetValue(a.id, out var v)) views[a.id] = v = ActorViews.Create(a, transform);
                 v.Sync(this, a);
             }
             projViews.Sync(World, Alpha);

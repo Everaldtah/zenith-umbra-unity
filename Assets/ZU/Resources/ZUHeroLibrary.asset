@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 969a96f5f57d04746a4c3244275f45a7, type: 3}
+  m_Name: ZUHeroLibrary
+  m_EditorClassIdentifier: ZU.Game::ZU.Game.HeroLibrary
+  baseController: {fileID: 9100000, guid: 53bd725bda3b29944bab7a9f948a7b2b, type: 2}
+  heroes:
+  - id: kaien
+    prefab: {fileID: 4952271329938285546, guid: 532b32d7ca4c49d4598c9f7a2a49bdd8, type: 3}
+    controller: {fileID: 0}

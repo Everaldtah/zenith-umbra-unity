@@ -29,7 +29,8 @@ namespace ZU.EditorTools
             [CliArg("map", "map id (hanabi, cloudstep, kagura, lantern, starfall, foundry, mile, gulch, training)")] string map = "hanabi",
             [CliArg("hero", "the local player's hero id; empty = spectate the bots")] string hero = "raijin",
             [CliArg("mode", "quickplay | competitive | skirmish | practice | aitest | training | spectate")] string mode = "quickplay",
-            [CliArg("third", "third-person camera")] bool third = false)
+            [CliArg("third", "third-person camera")] bool third = false,
+            [CliArg("autopilot", "a bot drives the player's hero")] bool autopilot = false)
         {
             var d = ZuData.Get();
             if (!d.Map.ContainsKey(map)) return "unknown map " + map;
@@ -40,13 +41,13 @@ namespace ZU.EditorTools
             cam.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
             var go = new GameObject("Match");
             var r = go.AddComponent<MatchRunner>();
-            r.mapId = map; r.playerHero = hero ?? ""; r.mode = mode; r.thirdPerson = third;
+            r.mapId = map; r.playerHero = hero ?? ""; r.mode = mode; r.thirdPerson = third; r.autopilot = autopilot;
             System.IO.Directory.CreateDirectory("Assets/ZU/Scenes");
             EditorSceneManager.SaveScene(scene, MatchScene);
             var list = EditorBuildSettings.scenes.Where(s => s.path != MatchScene).ToList();
             list.Insert(0, new EditorBuildSettingsScene(MatchScene, true));
             EditorBuildSettings.scenes = list.ToArray();
-            return $"saved {MatchScene}: map {map}, hero {(string.IsNullOrEmpty(hero) ? "(spectate)" : hero)}, mode {mode}, {(third ? "third" : "first")} person";
+            return $"saved {MatchScene}: map {map}, hero {(string.IsNullOrEmpty(hero) ? "(spectate)" : hero)}, mode {mode}, {(third ? "third" : "first")} person{(autopilot ? ", autopilot" : "")}";
         }
     }
 }
