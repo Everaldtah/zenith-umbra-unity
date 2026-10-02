@@ -1,7 +1,8 @@
-// A map's look outside its geometry: the surface materials (Resources/ZUEnv, built by `zu_import_env`), the HDRI sky
-// lighting the scene (ambient + reflections from the same panorama the player sees), the sun, aerial fog that lets the
-// outer world fade into the sky, and the post stack (ACES, bloom, grade, a far-only depth of field that gives the
-// skyline depth without ever softening anything you can shoot).
+// A map's look outside its geometry: the surface materials (Resources/ZUEnv, built by `zu_import_env`; TS Surfaces.ts),
+// the per-map HDRI lighting the scene - ambient + reflections, turned so its bright side lies where the map's sun is,
+// scaled by its mood (TS EnvLight.ts) - with the painted panorama as the visible sky, the map's own linear fog, and the
+// post stack (TS PostFx.ts + Game.ts: Neutral tone mapping, the bloom rule, the per-map colour grade; a far-only depth
+// of field as a Unity extra, off unless Options turns it on).
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;

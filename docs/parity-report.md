@@ -30,6 +30,6 @@ TS 26, Unity has 26, missing 0
 
 A Unity file names its TS source in its header ("port of X.ts"); a file nobody names is unported or only partly ported. Not applicable (Unity does it): Assets.ts (Resources + prefabs), Rig.ts (the humanoid Avatar bone map), Retarget.ts (Mecanim humanoid retargeting).
 
-TS 41, Unity has 38, missing 3
+TS 41, Unity has 39, missing 2
 
-Missing: `ClipLayer`, `ClipLibrary`, `EnvLight`
+Missing: `ClipLayer`, `ClipLibrary`
