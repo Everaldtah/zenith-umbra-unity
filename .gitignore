@@ -46,3 +46,7 @@ Assets/ZU/Art/Anim/Kevin.meta
 /Assets/_Recovery.meta
 # Python caches of the export tools
 __pycache__/
+
+# per-worktree solution files the Editor writes (named after the folder)
+*.slnx
+!zenith-umbra-unity.slnx
