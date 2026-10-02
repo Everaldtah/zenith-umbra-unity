@@ -254,6 +254,8 @@ namespace ZU.Game.Anim
         float clipW, cLegs;
         readonly float[] restepT = new float[2];
         float hipYaw, hipYawV, lastYaw, turnRoll, flinch, flinchV, lastHitAge = 9, flinchDir = 1;
+        /// <summary>the lower body's yaw off the facing (radians, TS frame): foot props point with the legs (placeFeet)</summary>
+        public float HipYaw => hipYaw;
         float recoil, recoilV, lastAtkAge = 9, readyW, punchExt, punchW;
         /// <summary>the held hammer's haft length (model units; HeldRig.hammerLen)</summary>
         public float hammerLen = 1;

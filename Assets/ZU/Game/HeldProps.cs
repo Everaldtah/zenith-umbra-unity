@@ -31,7 +31,7 @@ namespace ZU.Game
 
     /// <summary>chains: a blade on a chain in each fist (Enra); bracer: a vambrace prop worn on each forearm;
     /// prop: a two-handed weapon on the hammer frame (haft up +Y from the pommel) - Tenkai-Oh's hammer, Tomoe's axe</summary>
-    public class HeldSpec { public HeldItem L, R, prop; public bool chains, backProp; public string bracer; }
+    public class HeldSpec { public HeldItem L, R, prop; public bool chains, backProp, skates; public string bracer; }
 
     public static class Held
     {
@@ -64,6 +64,8 @@ namespace ZU.Game
             // Haruto's Sunspark sidearm (Hammer.ts buildBlaster, procedural): barrel along the forearm, 6% of the height past the
             // wrist, a little below it, at 1.5x
             { "haruto", new HeldSpec { R = new HeldItem("blaster", HeldKind.Gun, 1.5f, "#eef1f6", "#ffd76a") { at = new Vector3(0, -0.017f, 0.06f) } } },
+            // Hibiki: the Subwoofer Blaster on the right forearm (Hammer.ts buildSonicAmp, procedural), mag-skates on both feet
+            { "hibiki", new HeldSpec { R = new HeldItem("sonicamp", HeldKind.Gun, 1, "#f2f4f7", "#39d6ff"), skates = true } },
         };
 
         /// <summary>after a shot the string hand is empty until it brings the next arrow from the quiver (seconds after the shot)</summary>
@@ -126,6 +128,11 @@ namespace ZU.Game
                 if (spec.backProp) { var bs = h.Make(spec.prop, H, "held_back"); h.back = bs.node; h.backRends = bs.rends; h.back.localScale = Vector3.one * 0.85f; }
                 if (spec.prop.kind == HeldKind.Hammer) h.BuildFlame(H);
             }
+            if (spec.skates)
+            {
+                h.skates = new ProcProps.Skate[2];
+                for (int i = 0; i < 2; i++) { h.skates[i] = ProcProps.MagSkate(H); h.skates[i].root.SetParent(rig.root, false); }
+            }
             if (spec.bracer != null)
                 for (int i = 0; i < 2; i++)
                 {
@@ -152,7 +159,7 @@ namespace ZU.Game
             if (it == null) return s;
             s.body = new GameObject("body").transform; s.body.SetParent(s.node, false);
             float len = it.size * H;
-            GameObject m = it.id == "blaster" ? ProcProps.Blaster(H, it) : it.kind == HeldKind.Arrow ? ProcProps.Arrow(len, H, it) : Load(it.id, it.alt);
+            GameObject m = it.id == "blaster" ? ProcProps.Blaster(H, it) : it.id == "sonicamp" ? ProcProps.SonicAmp(H, out amp) : it.kind == HeldKind.Arrow ? ProcProps.Arrow(len, H, it) : Load(it.id, it.alt);
             if (m == null) m = it.kind == HeldKind.Card ? ProcProps.Card(len, H, it) : ProcProps.Blade(len, H, it);   // (no prop published yet: a procedural stand-in)
             var fit = m.transform; fit.SetParent(s.body, false);
             bool proc = fit.name.StartsWith("proc_");
@@ -202,6 +209,7 @@ namespace ZU.Game
             if (propRends != null) foreach (var r in propRends) yield return r;
             if (backRends != null) foreach (var r in backRends) yield return r;
             foreach (var b in bracers) if (b != null) foreach (var r in b.GetComponentsInChildren<Renderer>(true)) yield return r;
+            if (skates != null) foreach (var s in skates) foreach (var r in s.root.GetComponentsInChildren<Renderer>(true)) yield return r;
         }
 
         /// <summary>gameplay -> which props show this frame (arrow / card gone after a shot, the nodachi sheathed, the axe out)</summary>
@@ -234,6 +242,10 @@ namespace ZU.Game
 
         // ---------------------------------------------------------------------------------------------- weapon details
         Transform flame; MeshRenderer flameR; float flameLen, flameR0; Vector3 nozzle;
+        /// <summary>Hibiki's amp (its woofer, burst ring and glowing parts) and his skates</summary>
+        ProcProps.Amp amp; ProcProps.Skate[] skates;
+        /// <summary>the lower body's yaw off the facing (the animator's hipYaw, model space, TS frame): the skates point with the legs</summary>
+        public float feetYaw;
         readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
         bool bladeGlowOn;
         static Mesh cone;
@@ -274,6 +286,47 @@ namespace ZU.Game
             g.SetActive(false);
         }
 
+        float lastT = -1;
+        /// <summary>CharacterView.updateGuns for Hibiki: the woofer pumps on each round, the burst ring flashes, the equaliser and
+        /// the wheels glow the colour of the track (brighter amped, brighter still grinding and deep in the Groove); placeFeet:
+        /// the skates clamped under the ankles, pointing where the legs face, the wheels rolling with the ground speed</summary>
+        void Hibiki(Actor a, double t)
+        {
+            float dt = lastT < 0 ? 0 : Mathf.Clamp((float)(t - lastT), 0, 0.1f); lastT = (float)t;
+            var col = Conv.Hex(a.Sv("track", 0) != 0 ? "#ffd23f" : "#39d6ff"); float ampK = a.Has("amp", t) ? 1.6f : 1;
+            if (amp != null)
+            {
+                double age = t - a.anim.attackAt; float L = rig.height;
+                amp.spin.localPosition = amp.spin0 + Vector3.forward * (age < 0.06 ? 0.01f * L * (float)(1 - age / 0.06) : 0);
+                bool fl = age < 0.05 && a.alive && a.anim.attackKind != "punch" && shown;
+                amp.flash.gameObject.SetActive(fl);
+                if (fl)
+                {
+                    amp.flash.localScale = Vector3.one * (0.07f * L * (0.8f + (float)age * 12));
+                    amp.flashR.GetPropertyBlock(mpb); var c = Conv.Hex("#bffcff"); c.a = 0.85f; mpb.SetColor("_BaseColor", c); amp.flashR.SetPropertyBlock(mpb);
+                }
+                amp.core.SetColor("_EmissionColor", col * (2.2f * ampK));
+            }
+            if (skates != null)
+            {
+                float H = rig.height, roll = Mathf.Sqrt((float)(a.vel.x * a.vel.x + a.vel.z * a.vel.z)) * dt / (0.016f * H);
+                float groove = 1 + Mathf.Min(2.5f, (float)((a.Sv("rhythm", 1) - 1) * 0.15));
+                float footY = (rig.rest["foot_L"].p.y + rig.rest["foot_R"].p.y) / 2;
+                for (int i = 0; i < 2; i++)
+                {
+                    var s = skates[i]; var fb = rig.B(i == 0 ? "foot_L" : "foot_R");
+                    s.root.gameObject.SetActive(fb != null && shown);
+                    if (fb == null) continue;
+                    // wheels on the floor under the foot (the ankle's height above its rest says how far the foot is lifted)
+                    var p = rig.root.InverseTransformPoint(fb.position);
+                    s.root.localPosition = new Vector3(p.x, Mathf.Max(0, p.y - footY) - 0.004f * H, p.z + 0.015f * H);
+                    s.root.localRotation = Quaternion.Euler(0, -feetYaw * Mathf.Rad2Deg, 0);      // (TS rotation.y; mirrored)
+                    foreach (var w in s.wheels) w.Rotate(Vector3.right, roll * Mathf.Rad2Deg, Space.Self);
+                    s.glow.SetColor("_EmissionColor", col * ((a.Has("grinding", t) ? 3.2f : 2) * ampK * groove));
+                }
+            }
+        }
+
         /// <summary>the per-frame details CharacterView.updateGuns draws: Tenkai-Oh's thruster roaring through the strike (not the
         /// wind-up), Hayate's drawn nodachi burning with the koi-dragon's violet through the Dragon Gate</summary>
         public void UpdateDetails(Actor a, double t)
@@ -292,6 +345,7 @@ namespace ZU.Game
                     flameR.GetPropertyBlock(mpb); var c = Conv.Hex("#ff8a2a"); c.a = 0.7f; mpb.SetColor("_BaseColor", c); flameR.SetPropertyBlock(mpb);
                 }
             }
+            if (amp != null || skates != null) Hibiki(a, t);
             if (heroId == "hayate" && slots[1]?.rends != null)
             {
                 bool glow = a.Has("dragonblade", t);
@@ -464,6 +518,58 @@ namespace ZU.Game
             var steel = Lit(Conv.Hex("#dfe7e3"), 0.85f, 0.75f, Conv.Hex("#4fe3c1") * 0.25f);
             for (int k = 0; k < 4; k++) Prim(PrimitiveType.Cube, g.transform, steel, Vector3.zero, new Vector3(r * 2, 0.005f * L, r * 0.22f), Quaternion.AngleAxis(k * 45, Vector3.up));
             return g;
+        }
+
+        public sealed class Amp { public Transform spin, flash; public Vector3 spin0; public MeshRenderer flashR; public Material core; }
+        public sealed class Skate { public Transform root; public Transform[] wheels; public Material glow; }
+
+        /// <summary>Hibiki's Subwoofer Blaster (TS buildSonicAmp): a housing along the forearm with a gold band and an equaliser
+        /// strip, a round baffle with the woofer cone (pumps on each shot) and a glowing dust cap, a burst ring in front</summary>
+        public static GameObject SonicAmp(float L, out Amp amp)
+        {
+            var g = new GameObject("proc_sonicamp");
+            var shell = Lit(Conv.Hex("#f2f4f7"), 0.25f, 0.65f); var gold = Lit(Conv.Hex("#d9a441"), 0.85f, 0.7f); var dark = Lit(Conv.Hex("#15181f"), 0.4f, 0.5f);
+            var core = Lit(Conv.Hex("#bffcff"), 0, 0.6f, Conv.Hex("#39d6ff") * 2.4f);
+            float cy = -0.028f * L;
+            Prim(PrimitiveType.Cube, g.transform, shell, new Vector3(0, cy, 0.06f * L), new Vector3(0.075f * L, 0.07f * L, 0.2f * L));
+            Prim(PrimitiveType.Cube, g.transform, gold, new Vector3(0, cy + 0.036f * L, 0.06f * L), new Vector3(0.079f * L, 0.012f * L, 0.2f * L));
+            for (int k = 0; k < 6; k++) Prim(PrimitiveType.Cube, g.transform, core, new Vector3(-0.025f * L + k * 0.01f * L, cy + 0.045f * L, 0.03f * L), new Vector3(0.008f * L, (0.01f + (k % 3) * 0.006f) * L, 0.012f * L));
+            float bz = 0.17f * L;
+            Prim(PrimitiveType.Cylinder, g.transform, shell, new Vector3(0, cy, bz), new Vector3(0.11f * L, 0.015f * L, 0.11f * L), AlongZ);     // the baffle
+            Prim(PrimitiveType.Cylinder, g.transform, gold, new Vector3(0, cy, bz + 0.016f * L), new Vector3(0.112f * L, 0.003f * L, 0.112f * L), AlongZ);
+            var spin = new GameObject("woofer").transform; spin.SetParent(g.transform, false); spin.localPosition = new Vector3(0, cy, bz + 0.018f * L);
+            Prim(PrimitiveType.Cylinder, spin, dark, new Vector3(0, 0, -0.004f * L), new Vector3(0.09f * L, 0.01f * L, 0.09f * L), AlongZ);       // the cone
+            Prim(PrimitiveType.Cylinder, spin, core, new Vector3(0, 0, 0.004f * L), new Vector3(0.032f * L, 0.002f * L, 0.032f * L), AlongZ);     // the dust cap
+            // the burst ring in front of the cone (the muzzle flash): the FX annulus stood across the barrel
+            var add = Fx.MatchFx.Current?.Additive ?? Resources.Load<Material>("ZUFx/additive");
+            var fg = new GameObject("burst"); fg.transform.SetParent(g.transform, false);
+            fg.transform.localPosition = new Vector3(0, cy, bz + 0.045f * L); fg.transform.localRotation = Quaternion.Euler(90, 0, 0);
+            fg.AddComponent<MeshFilter>().sharedMesh = Fx.FxKit.RingMesh;
+            var fr = fg.AddComponent<MeshRenderer>(); fr.sharedMaterial = add; fr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            fg.transform.localScale = Vector3.one * 0.07f * L;
+            fg.SetActive(false);
+            Prim(PrimitiveType.Cube, g.transform, dark, new Vector3(0, -0.005f * L, 0), new Vector3(0.03f * L, 0.045f * L, 0.05f * L));
+            amp = new Amp { spin = spin, spin0 = spin.localPosition, flash = fg.transform, flashR = fr, core = core };
+            return g;
+        }
+
+        /// <summary>a mag-skate (TS buildMagSkate): a gold-trimmed white chassis clamped under the shoe, four glowing sky-blue wheels</summary>
+        public static Skate MagSkate(float L)
+        {
+            var g = new GameObject("proc_magskate");
+            var white = Lit(Conv.Hex("#f4f6fa"), 0.3f, 0.65f); var gold = Lit(Conv.Hex("#d9a441"), 0.85f, 0.7f);
+            var glow = Lit(Conv.Hex("#c9fbff"), 0, 0.7f, Conv.Hex("#39d6ff") * 2.2f);
+            Prim(PrimitiveType.Cube, g.transform, white, new Vector3(0, 0.034f * L, 0.02f * L), new Vector3(0.078f * L, 0.022f * L, 0.2f * L));
+            Prim(PrimitiveType.Cube, g.transform, gold, new Vector3(0, 0.047f * L, 0.02f * L), new Vector3(0.082f * L, 0.006f * L, 0.2f * L));
+            foreach (var sx in new[] { 1, -1 }) Prim(PrimitiveType.Cube, g.transform, glow, new Vector3(sx * 0.041f * L, 0.034f * L, 0.02f * L), new Vector3(0.004f * L, 0.01f * L, 0.18f * L));
+            var wheels = new Transform[4];
+            for (int k = 0; k < 4; k++)
+            {
+                var hub = new GameObject("wheel").transform; hub.SetParent(g.transform, false); hub.localPosition = new Vector3(0, 0.022f * L, -0.068f * L + k * 0.058f * L);
+                Prim(PrimitiveType.Cylinder, hub, glow, Vector3.zero, new Vector3(0.048f * L, 0.011f * L, 0.048f * L), Quaternion.Euler(0, 0, 90));
+                wheels[k] = hub;
+            }
+            return new Skate { root = g.transform, wheels = wheels, glow = glow };
         }
 
         /// <summary>Haruto's "Sunspark" sidearm: barrel along +Z from the grip (origin)</summary>

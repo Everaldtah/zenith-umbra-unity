@@ -214,6 +214,7 @@ namespace ZU.Game
                     var o = proc != null && actor.alive ? proc.gunOrbit[i] : null;
                     held.orbit[i] = o.HasValue ? (ProcAnimator.M(o.Value.p), ProcAnimator.M(o.Value.z), ProcAnimator.M(o.Value.y), o.Value.w) : ((Vector3, Vector3, Vector3, float)?)null;
                 }
+                if (proc != null) held.feetYaw = proc.HipYaw;
                 held.Place(); held.UpdateState(actor, syncT, shown && !hiddenFoe);      // a cloaked enemy's weapon goes with it
                 held.UpdateDetails(actor, syncT);
                 if (!actor.alive) held.HideTwoHanded();      // the ragdoll throws the body; the hammer / axe don't ride its hands
