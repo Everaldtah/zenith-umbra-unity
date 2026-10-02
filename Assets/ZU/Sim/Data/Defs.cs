@@ -47,6 +47,9 @@ namespace ZU.Sim.Data
         public string[] attacks;
         public double hpPerPlayer;
         public string summon, weak;
+
+        /// <summary>TS `{ ...def }`: a shallow copy</summary>
+        public HeroDef Clone() => (HeroDef)MemberwiseClone();
     }
 
     public class Skin

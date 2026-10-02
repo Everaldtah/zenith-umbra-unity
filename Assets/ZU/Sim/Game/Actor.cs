@@ -85,6 +85,9 @@ namespace ZU.Sim
         public IController controller;
         public double[] spawn = { 0, 0 };
 
+        /// <summary>per-cast hit lists (TS: ad-hoc `(a as any)._xHit` sets): who a charge / dash / rush / Warpath / returning Fang already hit</summary>
+        public HashSet<int> _chargeHit, _dashHit, _rushHit, _tideHit, _fangBack;
+
         public HeroDef def;
         public string team;
         /// <summary>the hero as picked: a pilot on foot returns to this on Call Mech / respawn</summary>
