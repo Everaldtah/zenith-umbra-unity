@@ -13,6 +13,10 @@ namespace ZU.Game.UI
         public static string Map = "hanabi", Hero = "kaien", Mode = "quickplay";
         public static float Skill = 0.6f;
         public static bool Third = false, Autopilot = false;
+        /// <summary>competitive: the enemy lobby's rating the match was made at (the result moves your rank against it)</summary>
+        public static double Opp = 1800;
+        /// <summary>the campaign level last chosen (mode "campaign": the match's map id is the level id)</summary>
+        public static string Level = "c1_shipyard";
         public const string MenuScene = "Menu", MatchScene = "Match";
 
         public static void Start(string map, string hero, string mode, float skill, bool third)
@@ -72,11 +76,14 @@ namespace ZU.Game.UI
     public static class PauseMenu
     {
         public static bool Paused { get; private set; }
+        static bool recorded;
+        static string resultLine;
 
         public static void Update(MatchRunner r)
         {
             var kb = Keyboard.current;
             bool over = r.World != null && !string.IsNullOrEmpty(r.World.winner);
+            if (over && !recorded) { recorded = true; resultLine = Record(r); }
             if (over && !Paused) Set(true);
             if (kb != null && kb.escapeKey.wasPressedThisFrame && !over) Set(!Paused);
         }
@@ -88,7 +95,39 @@ namespace ZU.Game.UI
             Cursor.lockState = p ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = p;
         }
-        public static void Reset() { Paused = false; Time.timeScale = 1; }
+        public static void Reset() { Paused = false; Time.timeScale = 1; recorded = false; resultLine = null; }
+
+        /// <summary>the finished match into the career: competitive moves the role's rank (with the reasons), quick play the
+        /// hidden rating; returns the line the result screen shows</summary>
+        static string Record(MatchRunner r)
+        {
+            var me = r.Player;
+            if (me == null || (r.mode != "competitive" && r.mode != "quickplay")) return null;
+            bool won = r.World.winner == me.team;
+            var c = Career.Ranks.Load();
+            string line = null;
+            long now = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (r.mode == "competitive")
+            {
+                string role = Career.Ranks.ROLE_OF.TryGetValue(me.baseDef.role ?? "dps", out var rr) ? rr : "damage";
+                var ch = Career.Ranks.ApplyCompetitive(c.roles[role], won, MatchSettings.Opp);
+                c.roles[role] = ch.after;
+                var v = Career.Ranks.RankOf(ch.after.rating, ch.after.games);
+                if (v.placed && (!c.best.TryGetValue(role, out var b) || ch.after.rating > b)) c.best[role] = ch.after.rating;
+                string sign = ch.delta >= 0 ? "+" : "";
+                string flag = ch.promoted ? "  PROMOTED" : ch.demoted ? "  DEMOTED" : ch.placedNow ? "  PLACED" : "";
+                line = role.ToUpperInvariant() + "  " + v.label + (v.placed ? "  " + v.pct.ToString("0") + "%  (" + sign + ch.delta.ToString("0") + ")" : "") + flag
+                       + (ch.mods.Count > 0 ? "\n" + string.Join("  ·  ", ch.mods) : "");
+                c.history.Add(new Career.MatchLog { at = now, mode = "competitive", role = role, map = r.mapId, hero = me.def.id, won = won, delta = ch.delta, mods = ch.mods, score = r.World.winner });
+            }
+            else
+            {
+                Career.Ranks.ApplyQuickPlay(c, won, MatchSettings.Opp);
+                c.history.Add(new Career.MatchLog { at = now, mode = "quickplay", map = r.mapId, hero = me.def.id, won = won, score = r.World.winner });
+            }
+            Career.Ranks.Save(c);
+            return line;
+        }
 
         public static void Draw(MatchRunner r)
         {
@@ -104,6 +143,8 @@ namespace ZU.Game.UI
             var hs = new GUIStyle(UiStyle.H1) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(44 * s) };
             if (over) hs.normal.textColor = r.Player == null || winner == r.Player.team ? UiStyle.Zenith : UiStyle.Umbra;
             GUI.Label(new Rect(panel.x, panel.y + 24 * s, panel.width, 60 * s), head, hs);
+            if (over && !string.IsNullOrEmpty(resultLine))
+                GUI.Label(new Rect(panel.x + 20, panel.y + 80 * s, panel.width - 40, 40 * s), resultLine, new GUIStyle(UiStyle.Small) { alignment = TextAnchor.UpperCenter, wordWrap = true });
             float y = panel.y + 120 * s, bw = panel.width - 80 * s, bh = 58 * s;
             var c = new GUIStyle(UiStyle.Button) { alignment = TextAnchor.MiddleCenter };
             if (!over && GUI.Button(new Rect(panel.x + 40 * s, y, bw, bh), "RESUME", c)) Set(false);

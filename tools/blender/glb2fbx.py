@@ -27,7 +27,8 @@ def upright(arm):
         return False
     up_arm = (head.head_local - hips.head_local).normalized()
     up_world = (arm.matrix_world.to_3x3().normalized() @ up_arm).normalized()
-    if up_world.dot(Vector((0, 0, 1))) > 0.9:
+    # only a rig lying down (hips -> head more than ~70 deg off vertical): hunched bosses, serpents and birds lean by design
+    if up_world.dot(Vector((0, 0, 1))) > 0.35:
         return False
     arm.rotation_mode = 'QUATERNION'
     arm.rotation_quaternion = up_arm.rotation_difference(Vector((0, 0, 1)))

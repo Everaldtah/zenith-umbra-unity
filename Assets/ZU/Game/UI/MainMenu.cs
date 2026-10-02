@@ -6,6 +6,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using ZU.Game.Env;
+using ZU.Sim;
 using ZU.Sim.Data;
 
 namespace ZU.Game.UI
@@ -21,7 +22,9 @@ namespace ZU.Game.UI
         float spin;
         Vector2 heroScroll, mapScroll;
         static int quality = 2;
-        static readonly (string id, string label)[] MODES = { ("quickplay", "QUICK PLAY"), ("skirmish", "SKIRMISH"), ("practice", "PRACTICE RANGE") };
+        static readonly (string id, string label)[] MODES = { ("quickplay", "QUICK PLAY"), ("competitive", "COMPETITIVE"), ("stadium", "STADIUM"), ("campaign", "CAMPAIGN \u00b7 STARFALL"), ("skirmish", "SKIRMISH"), ("practice", "PRACTICE RANGE") };
+        Career.CareerData career;
+        List<CampaignLevel> levels;
         static readonly (float skill, string label)[] SKILLS = { (0.45f, "EASY"), (0.6f, "NORMAL"), (0.75f, "HARD"), (0.9f, "ELITE") };
 
         void Start()
@@ -33,6 +36,8 @@ namespace ZU.Game.UI
             maps = data.Maps.Where(m => !m.retired).OrderBy(m => m.id == "training" ? 1 : 0).ToList();
             if (data.Def(MatchSettings.Hero) == null) MatchSettings.Hero = heroes[0].id;
             if (!data.Map.ContainsKey(MatchSettings.Map)) MatchSettings.Map = maps[0].id;
+            career = Career.Ranks.Load();
+            levels = CampaignLevel.All(data).Values.ToList();
             Stage();
             ApplyQuality(quality);
         }
@@ -105,6 +110,21 @@ namespace ZU.Game.UI
             // title
             GUI.Label(new Rect(pad, pad * 0.6f, 900 * s, 70 * s), "ZENITH<color=#5cc8ff>//</color>UMBRA", new GUIStyle(UiStyle.Title) { richText = true });
             GUI.Label(new Rect(pad + 4 * s, pad * 0.6f + 66 * s, 600 * s, 30 * s), "UNITY EDITION", UiStyle.H2);
+            if (career != null)
+            {
+                // the career strip: the rank per role (Overwatch 2's role queue), quick play's record
+                float cx = 700 * s;
+                foreach (var role in new[] { "tank", "damage", "support" })
+                {
+                    var rr = career.roles[role]; var v = Career.Ranks.RankOf(rr.rating, rr.games);
+                    GUI.Label(new Rect(cx, pad * 0.6f + 20 * s, 240 * s, 22 * s), role.ToUpperInvariant(), UiStyle.Small);
+                    string pct = v.placed ? "  " + v.pct.ToString("0") + "%" : "";
+                    GUI.Label(new Rect(cx, pad * 0.6f + 40 * s, 240 * s, 30 * s), "<color=#" + ColorUtility.ToHtmlStringRGB(v.color) + ">" + v.label + "</color>" + pct, new GUIStyle(UiStyle.Body) { richText = true, fontStyle = FontStyle.Bold });
+                    cx += 230 * s;
+                }
+                GUI.Label(new Rect(cx, pad * 0.6f + 20 * s, 300 * s, 22 * s), "QUICK PLAY", UiStyle.Small);
+                GUI.Label(new Rect(cx, pad * 0.6f + 40 * s, 300 * s, 30 * s), career.qp.wins + "W  " + (career.qp.games - career.qp.wins) + "L", UiStyle.Body);
+            }
 
             // roster
             var left = new Rect(pad, 140 * s, 330 * s, H - 140 * s - pad);
@@ -161,12 +181,19 @@ namespace ZU.Game.UI
             UiStyle.Panel_(right);
             float ry = right.y + 10 * s, rx = right.x + 14 * s, rw = right.width - 28 * s;
             GUI.Label(new Rect(rx, ry, rw, 30 * s), "MAP", UiStyle.H2); ry += 34 * s;
-            float fixedH = (32 + 3 * 38 + 32 + 40 + 32 + 36 + 36 + 150 + 16) * s;
+            float fixedH = (32 + MODES.Length * 38 + 32 + 40 + 32 + 36 + 36 + 150 + 16) * s;
             float listH = Mathf.Max(110 * s, right.yMax - ry - fixedH);
             var mapRect = new Rect(rx, ry, rw, listH);
-            mapScroll = GUI.BeginScrollView(mapRect, mapScroll, new Rect(0, 0, rw - 18 * s, maps.Count * 38 * s));
-            for (int k = 0; k < maps.Count; k++)
-                if (GUI.Button(new Rect(0, k * 38 * s, rw - 22 * s, 34 * s), maps[k].name, MatchSettings.Map == maps[k].id ? UiStyle.ButtonOn : UiStyle.Button)) MatchSettings.Map = maps[k].id;
+            // the campaign lists its five levels instead of the maps
+            bool camp = MatchSettings.Mode == "campaign";
+            int rows = camp ? levels.Count : maps.Count;
+            mapScroll = GUI.BeginScrollView(mapRect, mapScroll, new Rect(0, 0, rw - 18 * s, rows * 38 * s));
+            for (int k = 0; k < rows; k++)
+            {
+                string id = camp ? levels[k].id : maps[k].id, label = camp ? (k + 1) + ". " + levels[k].name : maps[k].name;
+                bool on = camp ? MatchSettings.Level == id : MatchSettings.Map == id;
+                if (GUI.Button(new Rect(0, k * 38 * s, rw - 22 * s, 34 * s), label, on ? UiStyle.ButtonOn : UiStyle.Button)) { if (camp) MatchSettings.Level = id; else MatchSettings.Map = id; }
+            }
             GUI.EndScrollView();
             ry += listH + 10 * s;
             GUI.Label(new Rect(rx, ry, rw, 30 * s), "MODE", UiStyle.H2); ry += 32 * s;
@@ -194,7 +221,21 @@ namespace ZU.Game.UI
             for (int k = 0; k < 3; k++)
                 if (GUI.Button(new Rect(rx + k * (qw + 3 * s), ry, qw, 32 * s), q[k], quality == k ? new GUIStyle(cst) { normal = UiStyle.ButtonOn.normal } : cst)) { quality = k; ApplyQuality(k); }
             if (GUI.Button(new Rect(right.x + 14 * s, right.yMax - 140 * s, rw, 74 * s), "PLAY", UiStyle.Big))
-                MatchSettings.Start(MatchSettings.Map, MatchSettings.Hero, MatchSettings.Mode, MatchSettings.Skill, MatchSettings.Third);
+            {
+                float skill = MatchSettings.Skill;
+                if (MatchSettings.Mode == "competitive")
+                {
+                    // ranked: the bots play at your role's matchmaking rating; the lobby is rated around it
+                    var hd = data.Def(MatchSettings.Hero);
+                    string role = Career.Ranks.ROLE_OF.TryGetValue(hd?.role ?? "dps", out var rr) ? rr : "damage";
+                    MatchSettings.Opp = Career.Ranks.LobbyRating(career.roles[role].mmr);
+                    skill = (float)Career.Ranks.SkillFor(MatchSettings.Opp);
+                }
+                else if (MatchSettings.Mode == "quickplay") MatchSettings.Opp = Career.Ranks.LobbyRating(career.qp.mmr);
+                // Stadium is the third-person mode
+                bool third = MatchSettings.Mode == "stadium" || MatchSettings.Third;
+                MatchSettings.Start(MatchSettings.Mode == "campaign" ? MatchSettings.Level : MatchSettings.Map, MatchSettings.Hero, MatchSettings.Mode, skill, third);
+            }
             if (GUI.Button(new Rect(right.x + 14 * s, right.yMax - 58 * s, rw * 0.6f, 44 * s), "SPECTATE", new GUIStyle(UiStyle.Button) { alignment = TextAnchor.MiddleCenter }))
                 MatchSettings.Start(MatchSettings.Map, "", "quickplay", MatchSettings.Skill, true);
             if (GUI.Button(new Rect(right.x + 14 * s + rw * 0.62f, right.yMax - 58 * s, rw * 0.38f, 44 * s), "QUIT", new GUIStyle(UiStyle.Button) { alignment = TextAnchor.MiddleCenter }))
@@ -204,6 +245,8 @@ namespace ZU.Game.UI
         /// <summary>LOW / MEDIUM / HIGH: render scale, shadow distance, MSAA on the active URP asset</summary>
         public static void ApplyQuality(int level)
         {
+            // (the player changes its in-memory asset; in the editor that would rewrite the project's URP asset)
+            if (Application.isEditor) return;
             var a = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
             if (a == null) return;
             a.renderScale = level == 0 ? 0.75f : 1f;

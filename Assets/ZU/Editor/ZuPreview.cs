@@ -21,7 +21,8 @@ namespace ZU.EditorTools
             [CliArg("size", "image size in pixels")] int size = 1024,
             [CliArg("clip", "optional animation take to pose with, e.g. TR_Jog_Fwd (searched in Assets/ZU/Art/Anim)")] string clip = "",
             [CliArg("time", "time into the clip, seconds")] float time = 0.3f,
-            [CliArg("zoom", "1 = full body; 2.5 = head and shoulders")] float zoom = 1)
+            [CliArg("zoom", "1 = full body; 2.5 = head and shoulders")] float zoom = 1,
+            [CliArg("held", "attach the hero's held weapons (HeldProps) and close the fingers on them, as the game does")] bool held = false)
         {
             string path = id.Contains("/") ? id : $"Assets/ZU/Art/Heroes/{id}/{id}.prefab";
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -33,6 +34,15 @@ namespace ZU.EditorTools
                 var go = Object.Instantiate(asset);
                 go.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
                 pru.AddSingleGO(go);
+                // the weapons and finger grips bind to the bind pose, so before the clip poses the rig
+                ZU.Game.HeldRig heldRig = null; ZU.Game.Fingers fingers = null;
+                if (held)
+                {
+                    var def = ZU.Game.ZuData.Get().Def(asset.name);
+                    var rig = new ZU.Game.FirstPerson.RigPose(go.transform);
+                    if (def != null) heldRig = ZU.Game.HeldRig.Attach(go, rig, def);
+                    fingers = ZU.Game.Fingers.Build(go.transform);
+                }
                 // pose: evaluate a humanoid clip through a PlayableGraph (runs the avatar's retargeting in edit mode, unlike
                 // AnimationMode sampling, which leaves a humanoid in a preview scene in its bind pose)
                 var animator = go.GetComponentInChildren<Animator>();
@@ -53,6 +63,8 @@ namespace ZU.EditorTools
                     po.SetSourcePlayable(play);
                     graph.Evaluate(0);
                 }
+                if (heldRig != null) { heldRig.PlacePropAtRest(); heldRig.Place(); }
+                if (fingers != null) { var g = ZU.Game.Fingers.BaseGrips(asset.name); fingers.Set(0, g.L); fingers.Set(1, g.R); fingers.Update(1, 1000); }
                 // frame the model: its renderers' bounds
                 var rs = go.GetComponentsInChildren<Renderer>();
                 var b = rs.Length > 0 ? rs[0].bounds : new Bounds(Vector3.up, Vector3.one * 2);

@@ -21,6 +21,7 @@ namespace ZU.Game.Env
             public float hill = 30, mountain = 160;       // terrain amplitudes (m)
             public float flat = 40;                       // flat apron around the play space (m)
             public bool sea, clouds, mesas;
+            public bool space;                            // the Starfall campaign: platforms in orbit, nothing below
             public float shore = 150;                     // sea maps: distance from the centre to the far shore
             public float density = 1;                     // buildings per ring
             public float minH = 1, maxH = 4;              // storeys near -> far
@@ -31,6 +32,9 @@ namespace ZU.Game.Env
 
         public static Theme For(MapDef map)
         {
+            // the campaign levels (c1_shipyard .. c5_citadel): floating platforms in space
+            if (map.id.Length > 2 && map.id[0] == 'c' && char.IsDigit(map.id[1]) && map.id[2] == '_')
+                return new Theme { style = Style.Sky, space = true, hill = 0, mountain = 0, trees = new string[0], treeCount = 0, lit = true };
             switch (map.id)
             {
                 case "hanabi": return new Theme { style = Style.Japan, sea = true, shore = 175, hill = 45, mountain = 190, lit = true, trees = new[] { "prop_amatsu_sakura", "prop_cloud_teatree" }, treeCount = 520, minH = 2, maxH = 4 };
@@ -57,7 +61,7 @@ namespace ZU.Game.Env
             float water = map.water.HasValue ? (float)map.water.Value : float.NaN;
             float HeightAt(float x, float z) => Height(th, X, Z, x, z);
 
-            if (!th.clouds) Terrain(map, th, root, mat, HeightAt, X, Z);
+            if (!th.clouds && !th.space) Terrain(map, th, root, mat, HeightAt, X, Z);
             if (th.sea) Water(map, root, water, mat);
             if (th.clouds) Clouds(map, root);
 
@@ -304,12 +308,15 @@ namespace ZU.Game.Env
         {
             if (th.style == Style.Sky)
             {
-                // floating islands at every distance, high and low
-                for (int i = 0; i < 38; i++)
+                // floating islands at every distance, high and low (in orbit: bare rock, debris below and above)
+                int n = th.space ? 60 : 38;
+                for (int i = 0; i < n; i++)
                 {
-                    float a = (float)(rng.NextDouble() * Mathf.PI * 2), r = 110 + (float)rng.NextDouble() * 520;
-                    var p = new Vector3(Mathf.Cos(a) * r, -10 + (float)rng.NextDouble() * 70 - r * 0.03f, Mathf.Sin(a) * r);
-                    Buildings.FloatingIsland(b, rng, p, 4 + (float)rng.NextDouble() * 14 + r * 0.02f);
+                    float a = (float)(rng.NextDouble() * Mathf.PI * 2), r = 130 + (float)rng.NextDouble() * 560;
+                    float y = th.space ? -120 + (float)rng.NextDouble() * 220 : -10 + (float)rng.NextDouble() * 70 - r * 0.03f;
+                    var p = new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r);
+                    if (th.space) b["rock"].Cylinder(p - Vector3.up * 6, 2 + (float)rng.NextDouble() * 10, 6 + (float)rng.NextDouble() * 16, 6 + (float)rng.NextDouble() * 14, 7, top: true, bottom: true, phase: (float)rng.NextDouble() * 6);
+                    else Buildings.FloatingIsland(b, rng, p, 4 + (float)rng.NextDouble() * 14 + r * 0.02f);
                 }
                 return;
             }

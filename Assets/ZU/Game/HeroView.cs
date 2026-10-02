@@ -26,6 +26,8 @@ namespace ZU.Game
         Animator anim;
         Renderer[] rends;
         ZuDynamics dyn;
+        HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
+        Actor actor; double syncT; float syncDt;
         bool wasAlive = true;
         double seenAttack = -9, seenCast = -9, seenHit = -9, seenJump = -9, seenLand = -9;
         Vector3 lastPos; bool hasLast;
@@ -45,6 +47,10 @@ namespace ZU.Game
             v.rends = go.GetComponentsInChildren<Renderer>(true);
             v.dyn = go.GetComponent<ZuDynamics>();       // hair and cloth (HeroImport puts it on the prefab)
             if (v.dyn != null) v.dyn.overrideVelocity = true;
+            // the held weapons (HeldProps) and finger grips (Fingers) bind to the bind pose: before the Animator's first frame
+            var rig = new FirstPerson.RigPose(go.transform);
+            v.held = HeldRig.Attach(go, rig, a.def);
+            v.fingers = Fingers.Build(go.transform);
             return v;
         }
 
@@ -55,6 +61,7 @@ namespace ZU.Game
             bool hidden = a.Has("stealth", t) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", t);
             bool show = !(firstPerson || hidden) && (a.alive || t - a.deathAt < 2.5);
             foreach (var x in rends) if (x != null) x.enabled = show;
+            actor = a; syncT = t; syncDt = Time.deltaTime; shown = show;
             var pos = r.DrawPos(a);
             transform.SetPositionAndRotation(pos, Conv.Yaw(a.yaw));
             if (dyn != null)
@@ -88,6 +95,15 @@ namespace ZU.Game
             }
             if (c.castAt > seenCast) { seenCast = c.castAt; if (t - c.castAt < 0.2) anim.SetTrigger(Cast); }
             if (c.hitAt > seenHit) { seenHit = c.hitAt; if (t - c.hitAt < 0.2 && a.alive) anim.SetTrigger(Hit); }
+        }
+
+        bool shown;
+        /// <summary>after the Animator: the weapons follow the hands, the fingers close on them</summary>
+        void LateUpdate()
+        {
+            if (actor == null) return;
+            if (held != null) { if (held.prop != null) held.PlacePropAtRest(); held.Place(); held.UpdateState(actor, syncT, shown); }
+            if (fingers != null && shown) fingers.Drive(actor, syncT, syncDt, false);
         }
     }
 }

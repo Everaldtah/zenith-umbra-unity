@@ -17,7 +17,8 @@ namespace ZU.EditorTools
             [CliArg("height", "pixels")] int height = 900,
             [CliArg("pos", "optional camera position \"x,y,z\" (Unity world): a temporary camera with the main camera's settings")] string pos = "",
             [CliArg("look", "with pos: the point to look at \"x,y,z\"")] string look = "",
-            [CliArg("fov", "with pos: vertical field of view, degrees")] float fov = 60)
+            [CliArg("fov", "with pos: vertical field of view, degrees")] float fov = 60,
+            [CliArg("stack", "render the camera's whole URP stack (base + overlay cameras, e.g. the first-person viewmodel) via Camera.Render instead of a single-camera render request")] bool stack = false)
         {
             var main = Camera.main;
             if (main == null) return "no main camera";
@@ -38,7 +39,7 @@ namespace ZU.EditorTools
             try
             {
                 var req = new RenderPipeline.StandardRequest { destination = rt };
-                if (RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
+                if (!stack && RenderPipeline.SupportsRenderRequest(cam, req)) RenderPipeline.SubmitRenderRequest(cam, req);
                 else { var t = cam.targetTexture; cam.targetTexture = rt; cam.Render(); cam.targetTexture = t; }
                 RenderTexture.active = rt;
                 var tex = new Texture2D(width, height, TextureFormat.RGB24, false);

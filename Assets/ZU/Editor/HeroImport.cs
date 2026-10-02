@@ -29,7 +29,8 @@ namespace ZU.EditorTools
             m.preserveHierarchy = true;
             m.importBlendShapes = true;
             m.importCameras = false; m.importLights = false;
-            if (assetPath.Contains("/Heroes/")) { m.importAnimation = false; m.animationType = ModelImporterAnimationType.Generic; }
+            // the viewmodel cuts the arms out of the hero mesh at runtime (FirstPerson.ArmsMesh): the vertices must stay readable
+            if (assetPath.Contains("/Heroes/")) { m.importAnimation = false; m.animationType = ModelImporterAnimationType.Generic; m.isReadable = true; }
             if (assetPath.Contains("/Props/")) { m.importAnimation = false; m.animationType = ModelImporterAnimationType.None; }
         }
         void OnPreprocessTexture()

@@ -36,6 +36,7 @@ namespace ZU.Game
         ProjectileViews projViews;
         PlayerControls controls;
         MatchCamera cam;
+        FirstPerson.FirstPersonView fp;
 
         void Start()
         {
@@ -49,11 +50,15 @@ namespace ZU.Game
             PauseMenu.Reset();
             ZuData.Get();
             Rng.Seed((uint)System.Environment.TickCount);
-            Match = Setup.CreateMatch(mapId, mode, string.IsNullOrEmpty(playerHero) ? null : playerHero, botSkill);
+            // the Starfall campaign: the level's own floating-platform map, the squad, and the encounter director
+            if (mode == "campaign")
+                Match = Director.CreateCampaign(mapId, new System.Collections.Generic.List<(string, string)> { (string.IsNullOrEmpty(playerHero) ? "raijin" : playerHero, "local") }, botSkill);
+            else Match = Setup.CreateMatch(mapId, mode, string.IsNullOrEmpty(playerHero) ? null : playerHero, botSkill);
             level = LevelView.Build(World.map, transform, World.level);
             projViews = new ProjectileViews(transform);
             controls = new PlayerControls();
             cam = MatchCamera.Ensure(this);
+            fp = FirstPerson.FirstPersonView.Ensure(this);
             Audio.MatchAudio.Attach(this);
             Fx.MatchFx.Attach(this);
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
@@ -65,7 +70,8 @@ namespace ZU.Game
         {
             if (World == null) return;
             PauseMenu.Update(this);
-            if (!autopilot && !PauseMenu.Paused) controls.Read(Player, World);
+            ModeHud.Update(this);
+            if (!autopilot && !PauseMenu.Paused && !ModeHud.Shopping(this)) controls.Read(Player, World);
             acc += Time.deltaTime;
             int steps = 0;
             while (acc >= DT && steps < 16)
@@ -110,8 +116,9 @@ namespace ZU.Game
             }
             projViews.Sync(World, Alpha);
             cam.Sync(this);
+            if (fp != null) fp.Sync(this);          // the local player's arms (first person only; needs the camera placed)
         }
 
-        void OnGUI() { Hud.Draw(this); PauseMenu.Draw(this); }
+        void OnGUI() { Hud.Draw(this); ModeHud.Draw(this); PauseMenu.Draw(this); }
     }
 }

@@ -40,3 +40,9 @@ Assets/ZU/Art/Anim/Kevin.meta
 
 # work in progress outside Assets (subagents stage code here; it is moved into Assets after review)
 /staging/
+
+# the editor's crash recovery (scene backups after a crash)
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+# Python caches of the export tools
+__pycache__/
