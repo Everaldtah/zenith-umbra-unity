@@ -3,6 +3,8 @@
 # jobs.txt: one "<in.glb>|<out.fbx>|<mode>" per line; mode = model (mesh + rig, textures copied beside it)
 #           or anim (armature + every action as its own take, no meshes needed by Unity's clip import).
 import sys, os, bpy
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'export'))
+from gltf_factors import write_factors   # the glTF material factors the FBX loses
 from mathutils import Vector
 
 def reset():
@@ -89,6 +91,7 @@ def convert(src, dst, mode):
         # the name says, so tools/blender/fix_textures.py re-encodes them as real PNGs afterwards
         tex_dir = os.path.splitext(dst)[0] + '_tex'
         os.makedirs(tex_dir, exist_ok=True)
+        write_factors(src, dst)
         roles = image_roles()
         base = os.path.splitext(os.path.basename(dst))[0]
         used = set()

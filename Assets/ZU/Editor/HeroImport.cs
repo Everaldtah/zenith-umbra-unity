@@ -69,8 +69,10 @@ namespace ZU.EditorTools
             if (!avatar.isValid || !avatar.isHuman) return "avatar lost validity when saved: " + avPath;
 
             // ---- materials
-            var mat1 = MakeMaterial($"{d}/{id}_lod1_tex", $"{d}/{id}_lod1.mat", lod0 != null ? 1024 : 2048);   // LOD1 is only seen far off when an HD LOD0 exists
-            var mat0 = lod0 != null ? MakeMaterial($"{d}/{id}_lod0_tex", $"{d}/{id}_lod0.mat") : null;
+            bool mech = def.frame == "mech";
+            float metalCap = mech ? 0.7f : 0.25f, selfLight = id == "mirei" ? 0.04f : 0.16f;   // TS CharacterView: BRIGHT_SUITS get less
+            var mat1 = MakeMaterial($"{d}/{id}_lod1_tex", $"{d}/{id}_lod1.mat", lod0 != null ? 1024 : 2048, metalCap, selfLight);   // LOD1 is only seen far off when an HD LOD0 exists
+            var mat0 = lod0 != null ? MakeMaterial($"{d}/{id}_lod0_tex", $"{d}/{id}_lod0.mat", 2048, metalCap, selfLight) : null;
 
             // ---- the prefab: the game rig + Animator, the HD mesh rebound onto its bones as LOD0
             var root = new GameObject(id);
@@ -128,8 +130,11 @@ namespace ZU.EditorTools
         }
 
         /// <summary>a URP Lit material from a folder of baked maps: base colour, normal, and the glTF metal-roughness map
-        /// converted to URP's mask layout (R metallic, A smoothness)</summary>
-        internal static Material MakeMaterial(string texDir, string matPath, int maskMax = 2048)
+        /// converted to URP's mask layout (R metallic, A smoothness), scaled by the GLB's material factors
+        /// (gltf_material.json, tools/export/gltf_factors.py). metalCap: Tripo's generated metal channel is noise on
+        /// cloth, skin, wood and paint (the TS drops it on characters) - capped unless the thing really is metal.
+        /// selfLight: the TS's hint of albedo self-light that keeps dark heroes readable (CharacterView: 0.16).</summary>
+        internal static Material MakeMaterial(string texDir, string matPath, int maskMax = 2048, float metalCap = 1f, float selfLight = 0f)
         {
             var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
             if (mat == null) { mat = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(mat, matPath); }
@@ -139,25 +144,49 @@ namespace ZU.EditorTools
             var baseTex = F("basecolor", "base_color", "albedo", "diffuse");
             var normal = F("normal");
             var rm = F("_rm", "metallic", "roughness");
-            if (baseTex != null) mat.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(baseTex));
+            // the glTF factors the textures are multiplied by (three applies them; the FBX doesn't carry them)
+            float mf = 1, rf = 1; var bc = Color.white;
+            string fj = $"{texDir}/gltf_material.json";
+            if (File.Exists(fj))
+            {
+                var j = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(fj));
+                mf = (float)(j["metallicFactor"] ?? 1); rf = (float)(j["roughnessFactor"] ?? 1);
+                if (j["baseColorFactor"] is Newtonsoft.Json.Linq.JArray a && a.Count >= 3) bc = new Color((float)a[0], (float)a[1], (float)a[2], 1);
+            }
+            var baseMap = baseTex != null ? AssetDatabase.LoadAssetAtPath<Texture2D>(baseTex) : null;
+            mat.SetTexture("_BaseMap", baseMap);
+            mat.SetColor("_BaseColor", bc);
             if (normal != null) { mat.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(normal)); mat.EnableKeyword("_NORMALMAP"); mat.SetFloat("_BumpScale", 1); }
             if (rm != null)
             {
-                var mask = ToUrpMask(rm, maskMax);
+                var mask = ToUrpMask(rm, maskMax, Mathf.Min(mf, 1f), metalCap, rf);
                 if (mask != null) { mat.SetTexture("_MetallicGlossMap", mask); mat.EnableKeyword("_METALLICSPECGLOSSMAP"); mat.SetFloat("_Smoothness", 1); mat.SetFloat("_Metallic", 1); }
             }
+            else { mat.DisableKeyword("_METALLICSPECGLOSSMAP"); mat.SetFloat("_Metallic", Mathf.Min(mf, metalCap)); mat.SetFloat("_Smoothness", 1 - rf * 0.7f); }
+            if (selfLight > 0 && baseMap != null)
+            {
+                mat.EnableKeyword("_EMISSION"); mat.SetTexture("_EmissionMap", baseMap); mat.SetColor("_EmissionColor", Color.white * selfLight);
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            }
+            else { mat.DisableKeyword("_EMISSION"); mat.SetColor("_EmissionColor", Color.black); }
             EditorUtility.SetDirty(mat);
             return mat;
         }
 
-        /// <summary>glTF ORM/RM (G = roughness, B = metallic) -> URP (R = metallic, A = smoothness = 1 - roughness)</summary>
-        static Texture2D ToUrpMask(string rmPath, int maxSize)
+        /// <summary>glTF ORM/RM (G = roughness, B = metallic) -> URP (R = metallic x metalFactor (capped), A = smoothness =
+        /// 1 - roughness x roughFactor)</summary>
+        static Texture2D ToUrpMask(string rmPath, int maxSize, float metalFactor = 1, float metalCap = 1, float roughFactor = 1)
         {
             string outPath = rmPath.Substring(0, rmPath.Length - 4) + "_urpmask.png";
             var src = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
             if (!src.LoadImage(File.ReadAllBytes(rmPath))) return null;
             var px = src.GetPixels32();
-            for (int i = 0; i < px.Length; i++) { var c = px[i]; px[i] = new Color32(c.b, 0, 0, (byte)(255 - c.g)); }
+            float cap = Mathf.Clamp01(metalCap) * 255f;
+            for (int i = 0; i < px.Length; i++)
+            {
+                var c = px[i];
+                px[i] = new Color32((byte)Mathf.Min(cap, c.b * metalFactor), 0, 0, (byte)(255 - Mathf.Clamp(c.g * roughFactor, 0, 255)));
+            }
             // metallic / smoothness at up to maxSize (2048 = half a 4K albedo, as games pack them; 1024 for the distance LOD): a quarter of the pixels to store,
             // nothing visible lost - box-filtered 2x steps
             int w = src.width, h = src.height;

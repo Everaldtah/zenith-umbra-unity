@@ -32,11 +32,16 @@ namespace ZU.EditorTools
             return $"{ok} prop prefab(s) in {Out}" + (report.Count > 0 ? "; problems: " + string.Join("; ", report) : "");
         }
 
+        /// <summary>props that really are metal keep their metal map; on everything else (wood, paint, cloth, stone) Tripo's
+        /// metal channel is noise that turns a red torii into black chrome</summary>
+        static bool IsMetal(string pid) => new[] { "loco", "car", "orrery", "telescope", "dish", "crane", "gaspump", "payload", "katana", "blade",
+            "axe", "shotgun", "hammer", "shuriken", "nodachi", "sword", "bracer", "fist", "chain", "vending", "crucible", "press" }.Any(k => pid.Contains(k));
+
         static string One(string dir, string pid)
         {
             var model = AssetDatabase.LoadAssetAtPath<GameObject>($"{dir}/{pid}.fbx");
             if (model == null) return "no " + pid + ".fbx";
-            var mat = HeroImport.MakeMaterial($"{dir}/{pid}_tex", $"{dir}/{pid}.mat", 1024);
+            var mat = HeroImport.MakeMaterial($"{dir}/{pid}_tex", $"{dir}/{pid}.mat", 1024, IsMetal(pid) ? 1f : 0.15f);
             var root = new GameObject(pid);
             try
             {
