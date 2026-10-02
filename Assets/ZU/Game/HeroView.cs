@@ -112,6 +112,8 @@ namespace ZU.Game
             actor = a; syncT = t; syncDt = Time.deltaTime; shown = show; host = r;
             drawPos = r.DrawPos(a);
             transform.SetPositionAndRotation(drawPos, Conv.Yaw(a.yaw));
+            // a drone bobs on its rotors: a slow roll side to side (TS model.rotation.z; mirrored)
+            if (a.def.frame == "drone") transform.rotation *= Quaternion.AngleAxis(-Mathf.Sin((float)t * 2 + a.id) * 0.1f * Mathf.Rad2Deg, Vector3.forward);
             if (dyn != null)
             {
                 // the sim's velocity and footing; a respawn snaps the chains to the new pose instead of whipping them across
