@@ -11,7 +11,9 @@ namespace ZU.Sim.Data
     {
         public static GameData Current;
 
-        public List<HeroDef> Heroes, Pilots, Robots, Enemies, Bosses;
+        public List<HeroDef> Heroes, Robots, Enemies, Bosses;
+        /// <summary>mech id -> pilot (TS PILOTS)</summary>
+        public Dictionary<string, HeroDef> Pilots;
         public List<MapDef> Maps;
         public Dictionary<string, HeroDef> Hero, PilotById, Robot, Enemy, Boss;
         public Dictionary<string, MapDef> Map;
@@ -33,7 +35,7 @@ namespace ZU.Sim.Data
                 Rules = Newtonsoft.Json.Linq.JObject.Parse(rules),
             };
             d.Hero = d.Heroes.ToDictionary(x => x.id);
-            d.PilotById = d.Pilots.ToDictionary(x => x.id);
+            d.PilotById = d.Pilots.Values.ToDictionary(x => x.id);
             d.Robot = d.Robots.ToDictionary(x => x.id);
             d.Enemy = d.Enemies.ToDictionary(x => x.id);
             d.Boss = d.Bosses.ToDictionary(x => x.id);

@@ -59,7 +59,9 @@ namespace ZU.Sim.Data
 
     public class HeroesFile
     {
-        public List<HeroDef> heroes, pilots, robots;
+        public List<HeroDef> heroes, robots;
+        /// <summary>mech id -> its pilot on foot (TS PILOTS)</summary>
+        public Dictionary<string, HeroDef> pilots;
         public Dictionary<string, Dictionary<string, string>> teams;
         public Dictionary<string, List<Skin>> skins;
         public Dictionary<string, List<PowerInfo>> powers;

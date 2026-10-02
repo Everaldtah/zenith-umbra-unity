@@ -24,7 +24,7 @@ const write = (name: string, data: unknown) => {
 };
 
 write('heroes.json', {
-  heroes: HEROES, pilots: Object.values(PILOTS), robots: Object.values(ROBOTS),
+  heroes: HEROES, pilots: PILOTS /* keyed by the mech they pilot */, robots: Object.values(ROBOTS),
   teams: { names: TEAM_NAME, colors: TEAM_COLOR },
   skins: Object.fromEntries(HEROES.map(h => [h.id, skinsFor(h.id, h.team)])),
   // Stadium powers carry an apply() function: export their names / descriptions, the C# side implements apply

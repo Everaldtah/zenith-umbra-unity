@@ -1090,8 +1090,8 @@
    ]
   }
  ],
- "pilots": [
-  {
+ "pilots": {
+  "tenkai": {
    "id": "haruto",
    "name": "Haruto Daimon",
    "title": "Tenkai-Oh's pilot",
@@ -1163,7 +1163,7 @@
    ],
    "gunProp": true
   }
- ],
+ },
  "robots": [
   {
    "team": "umbra",
