@@ -125,7 +125,9 @@ namespace ZU.Game.UI.Toolkit
             nm.RegisterCallback<FocusOutEvent>(_ =>
             {
                 string v = nm.value.Trim(); if (v.Length == 0) v = "Vanguard"; if (v.Length > 20) v = v.Substring(0, 20);
-                NetDriver.PlayerName = v; s.lobby.SetName(v); PlayerPrefs.SetString("zu-name", v); PlayerPrefs.Save();
+                // (the session renames your seat and a hosted game's line too; the co-op squad only if it is already online)
+                NetDriver.PlayerName = v; s.SetName(v); if (coopWired) NetDriver.Coop.SetName(v);
+                PlayerPrefs.SetString("zu-name", v); PlayerPrefs.Save();
             });
             var conn = U.Div("conn", st);
             if (sp != null && Quality.TIER.TryGetValue(sp.tier ?? "", out var t))

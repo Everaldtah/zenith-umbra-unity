@@ -18,6 +18,12 @@
     <Compile Include="$(ProjectRoot)\Assets\ZU\Game\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Dynamics\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Net\Core\**\*.cs" />
+    <Compile Include="$(ProjectRoot)\Assets\ZU\Net\Unity\**\*.cs" />
+    <!-- com.unity.webrtc (ZU.Net.Unity): the package's own sources once this worktree's editor has resolved it, else the
+         stub of the API RtcPeer uses (WebRtcStub.cs). -p:UseWebRtcStub=true forces the stub. -->
+    <WebRtcSrc Include="$(ProjectRoot)\Library\PackageCache\com.unity.webrtc@*\Runtime\Scripts\**\*.cs" Condition="'$(UseWebRtcStub)' != 'true'" />
+    <Compile Include="@(WebRtcSrc)" />
+    <Compile Include="$(MSBuildThisFileDirectory)WebRtcStub.cs" Condition="'@(WebRtcSrc)' == ''" />
     <!-- work in progress outside Assets (Unity never sees it); test harnesses under staging/*/tests are not part of it -->
     <Compile Include="$(ProjectRoot)\staging\*\Runtime\**\*.cs" />
   </ItemGroup>

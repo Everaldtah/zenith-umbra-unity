@@ -1,0 +1,24 @@
+{
+  "name": "ZU.Net.Editor",
+  "rootNamespace": "ZU.Net.EditorTools",
+  "references": [
+    "ZU.Net",
+    "ZU.Net.Unity",
+    "ZU.Sim",
+    "Unity.Pipeline",
+    "Unity.Pipeline.Attributes"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
