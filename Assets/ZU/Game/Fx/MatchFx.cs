@@ -13,6 +13,9 @@ namespace ZU.Game.Fx
     {
         MatchRunner r;
         FxKit fx;
+        WeaponFx wfx;
+        /// <summary>the match's gunfire effects (tracers, flashes, impacts, brass)</summary>
+        public static WeaponFx Weapons { get; private set; }
         public static FxKit Current { get; private set; }
         const string REBIRTH = "#ffd98a";
 
@@ -21,11 +24,16 @@ namespace ZU.Game.Fx
             var m = runner.gameObject.AddComponent<MatchFx>();
             m.r = runner;
             m.fx = Current = new FxKit(runner.transform);
+            // the desktop edition's gunfire (TS WeaponFx): travelling tracers, star flashes, sparks, smoke, scorch marks, brass
+            var alpha = Resources.Load<Material>("ZUFx/alpha");
+            m.wfx = Weapons = new WeaponFx(runner.transform, m.fx.Additive, alpha != null ? alpha : new Material(Shader.Find("ZU/FxAlpha")));
+            var lvl = runner.World.level;
+            m.wfx.ground = (x, z, y) => (float)lvl.GroundAt(-x, z, y);      // (Unity x is the sim's -x)
             return m;
         }
 
         void Start() { EventSink.OnEvent += OnEvent; }
-        void OnDestroy() { EventSink.OnEvent -= OnEvent; if (Current == fx) Current = null; }
+        void OnDestroy() { EventSink.OnEvent -= OnEvent; if (Current == fx) Current = null; if (Weapons == wfx) Weapons = null; }
 
         static Color C(string hex, string fallback = "#ffffff") => Conv.Hex(hex ?? fallback, Color.white);
         static Vector3 U(V3 v) => Conv.U(v);
@@ -49,16 +57,22 @@ namespace ZU.Game.Fx
             void Shake(float k) => fx.Shake = Mathf.Max(fx.Shake, k);
             switch (e.kind)
             {
-                case "hit": fx.Emit(p, N(8), c, FxKit.O(5, 0.25f, 0.18f)); fx.Emit(p, N(3), Color.white, FxKit.O(2, 0.1f, 0.35f)); break;
-                case "impact": fx.Emit(p, N(6), c, FxKit.O(3, 0.3f, 0.15f, grav: 6, dir: e.n.HasValue ? U(e.n.Value) : (Vector3?)null)); fx.Emit(p, N(2), new Color(0.6f, 0.55f, 0.5f), FxKit.O(1, 0.5f, 0.35f, up: 0.6f)); break;
+                case "hit": fx.Emit(p, N(8), c, FxKit.O(5, 0.25f, 0.18f)); wfx.Impact(p, null, c, now); break;
+                case "impact": wfx.Impact(p, e.n.HasValue ? U(e.n.Value) : (Vector3?)null, c, now); break;
                 case "healhit": fx.Emit(p, N(10), C("#9dffb0"), FxKit.O(2, 0.6f, 0.2f, up: 2)); break;
                 case "burst": fx.Emit(p, N(30), c, FxKit.O(7, 0.45f, 0.35f)); fx.Ring(p, (float)(e.r ?? 2) * 1.2f, c, now, 0.35f, false); fx.Light(p, c, 25, now); Shake(0.12f / (1 + near / 10)); break;
                 case "tracer":
                     if (to.HasValue)
                     {
+                        // heavy rotary rounds: fat orange-white tracers, big flashes, brass; everything else a lean rail round
                         bool heavy = a != null && a.def.dualGuns;
-                        fx.Beam(p, to.Value, c, now, heavy ? 0.09f : 0.07f, heavy ? 0.05f : 0.025f);
-                        fx.Emit(p, N(heavy ? 5 : 3), Color.Lerp(c, Color.white, 0.5f), FxKit.O(2, 0.06f, heavy ? 0.5f : 0.3f));      // muzzle flash
+                        if (heavy) wfx.Tracer(p, to.Value, c, now, speed: 150, w: 0.16f, len: 5.5f); else wfx.Tracer(p, to.Value, c, now, speed: 220, w: 0.08f, len: 3.5f);
+                        wfx.Muzzle(p, c, now, heavy ? 0.85f : 0.5f, heavy);
+                        if (heavy)
+                        {
+                            var f = a.Forward(); double hh = a.Height;
+                            wfx.Casing(Conv.U(a.pos.x + f.x * 0.6 - f.z * 0.5, a.pos.y + hh * 0.45, a.pos.z + f.z * 0.6 + f.x * 0.5), Conv.U(-f.z, 0, f.x), now);
+                        }
                         if (near < 25) fx.Light(p, c, heavy ? 10 : 6, now, 0.04f);
                     }
                     break;
@@ -259,6 +273,7 @@ namespace ZU.Game.Fx
             if (w == null) return;
             float now = Now;
             fx.Update(now, Time.deltaTime);
+            wfx.Update(now, Time.deltaTime);
             SyncZones(w, now);
             SyncBeams(w, now);
             Status(w, now, Time.deltaTime);
