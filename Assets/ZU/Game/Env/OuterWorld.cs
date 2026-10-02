@@ -50,9 +50,11 @@ namespace ZU.Game.Env
         }
 
         public const float Extent = 900f;       // how far the world reaches from the centre (m)
+        /// <summary>the outer world is a Unity extra (the PC game draws only its painted sky past the walls): Options decides</summary>
+        public static bool Enabled => UI.Toolkit.ZuSettings.Current.video.outerWorld;
 
         /// <summary>build it under `parent`; `mat(kind)` resolves surface kinds to the map's materials</summary>
-        public static void Build(MapDef map, Transform parent, System.Func<string, Material> mat)
+        public static void Build(MapDef map, Transform parent, System.Func<string, Material> mat, bool full = true)
         {
             var th = For(map);
             var root = new GameObject("Outer World").transform; root.SetParent(parent, false);
@@ -61,9 +63,11 @@ namespace ZU.Game.Env
             float water = map.water.HasValue ? (float)map.water.Value : float.NaN;
             float HeightAt(float x, float z) => Height(th, X, Z, x, z);
 
-            if (!th.clouds && !th.space) Terrain(map, th, root, mat, HeightAt, X, Z);
+            // (the PC game's own harbour water and cloud sea, MapScene.ts, stay when the rest of the outer world is off)
             if (th.sea) Water(map, root, water, mat);
             if (th.clouds) Clouds(map, root);
+            if (!full) return;
+            if (!th.clouds && !th.space) Terrain(map, th, root, mat, HeightAt, X, Z);
 
             var bins = new MeshBins();
             Skyline(th, rng, bins, X, Z, HeightAt, water);

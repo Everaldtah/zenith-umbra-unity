@@ -192,6 +192,8 @@ namespace ZU.Game.UI.Toolkit
             Select("Ambient Occlusion", () => v.ao, x => { v.ao = x; Custom(); }, Lv("off", "low", "medium", "high"));
             Select("Local Reflections", () => v.localReflections, x => { v.localReflections = x; Custom(); }, ON_OFF);
             Select("Bloom", () => v.bloom, x => { v.bloom = x; Custom(); }, ON_OFF);
+            Select("Outer World (Unity)", () => v.outerWorld, x => { v.outerWorld = x; }, ON_OFF, "Terrain, skyline and landmarks past the arena's walls - a Unity edition extra (the PC game shows its painted sky there). Applies to the next map loaded.");
+            Select("Far Depth of Field (Unity)", () => v.farDof, x => { v.farDof = x; }, ON_OFF, "Softens the far distance past the play space - a Unity edition extra. Applies to the next map loaded.");
             Select("Damage FX", () => v.damageFx, x => v.damageFx = x, new[] { ("low", "LOW"), ("default", "DEFAULT"), ("high", "HIGH") }, "How much impact sparks and damage effects fill the screen.");
             Head("PERFORMANCE");
             Select("Performance Stats", () => v.perfStats, x => v.perfStats = x, new[] { ("off", "OFF"), ("simple", "SIMPLE"), ("advanced", "ADVANCED") }, "F8 cycles it in game.");

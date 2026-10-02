@@ -91,6 +91,10 @@ namespace ZU.Game.UI.Toolkit
             public double sharpen;
             public double gamma = 1, contrast = 1, brightness = 1;
             public string perfStats = "simple";              // off | simple | advanced
+            /// <summary>Unity extra: terrain, skyline and landmarks past the arena's walls (the PC game shows only its painted sky)</summary>
+            public bool outerWorld = false;
+            /// <summary>Unity extra: a far-only depth of field past the play space (the PC game has none)</summary>
+            public bool farDof = false;
         }
         public sealed class SoundSettings
         {

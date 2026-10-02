@@ -63,14 +63,14 @@ namespace ZU.Game.Env
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
             RenderSettings.reflectionIntensity = 0.9f;
 
-            // aerial perspective: the map's fog colour, pushed out so the skyline and mountains read in layers
+            // the map's own linear fog (MapScene: THREE.Fog(colour, near, far) - Hanabi 55-180 m, Kagura 90-260 m ...): the
+            // haze that gives the PC game its depth; the sky isn't fogged in either engine
             if (map.fog != null && map.fog.Length == 3)
             {
                 RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Linear;
                 RenderSettings.fogColor = Conv.Hex(map.fog[0] as string, Color.gray);
-                float near = System.Convert.ToSingle(map.fog[1]), far = System.Convert.ToSingle(map.fog[2]);
-                RenderSettings.fogStartDistance = near * 1.6f;
-                RenderSettings.fogEndDistance = Mathf.Max(far * 2.6f, extent * 1.15f);
+                RenderSettings.fogStartDistance = System.Convert.ToSingle(map.fog[1]);
+                RenderSettings.fogEndDistance = System.Convert.ToSingle(map.fog[2]);
             }
 
             // a real-time reflection probe over the play space, rendered once the level stands (the outer world included)
@@ -119,22 +119,51 @@ namespace ZU.Game.Env
 
             // the TS renders with Neutral tone mapping at exposure 0.95 (Game.ts)
             var tm = p.Add<Tonemapping>(true); tm.mode.value = TonemappingMode.Neutral;
+            // bloom (Game.ts): strength .55 over .82; bright daylight maps (sun >= 2.1) only bloom real highlights (.38 over
+            // .97); a map's own [threshold, strength] wins
+            bool day = map.sun != null && map.sun.intensity >= 2.1;
+            float threshold = day ? 0.97f : 0.82f, strength = day ? 0.38f : 0.55f;
+            if (map.bloom != null && map.bloom.Length == 2) { threshold = (float)map.bloom[0]; strength = (float)map.bloom[1]; }
             var bloom = p.Add<Bloom>(true);
-            bloom.threshold.value = 1.05f; bloom.intensity.value = 0.38f; bloom.scatter.value = 0.65f;
-            bloom.tint.value = Color.Lerp(Color.white, tint, 0.25f); bloom.highQualityFiltering.value = true;
+            bloom.threshold.value = threshold; bloom.intensity.value = strength; bloom.scatter.value = 0.55f;
+            bloom.highQualityFiltering.value = true;
+            // the map's colour grade (PostFx.ts GRADES): contrast as the TS soft S-curve's strength, vibrance as a gentle
+            // saturation lift, the split tone into shadows / highlights, the vignette
+            var g = Grade(map.id);
             var ca = p.Add<ColorAdjustments>(true);
             ca.postExposure.value = Mathf.Log(0.95f, 2);
-            ca.contrast.value = 5f; ca.saturation.value = 0f;
-            ca.colorFilter.value = Color.Lerp(Color.white, tint, 0.05f);
-            var vig = p.Add<Vignette>(true); vig.intensity.value = 0.2f; vig.smoothness.value = 0.45f;
-            // far-only depth of field: everything inside the play space stays sharp, the skyline and mountains soften
+            ca.contrast.value = (g.contrast - 1) * 125f;
+            ca.saturation.value = g.vibrance * 40f;
+            var st = p.Add<SplitToning>(true);
+            st.shadows.value = new Color(0.5f + g.shadows.x * 4, 0.5f + g.shadows.y * 4, 0.5f + g.shadows.z * 4);
+            st.highlights.value = new Color(0.5f + g.highlights.x * 4, 0.5f + g.highlights.y * 4, 0.5f + g.highlights.z * 4);
+            var vig = p.Add<Vignette>(true); vig.intensity.value = g.vignette; vig.smoothness.value = 0.45f;
+            // far-only depth of field (a Unity extra, Options > Video): everything inside the play space stays sharp, the
+            // skyline and mountains soften
+            if (!UI.Toolkit.ZuSettings.Current.video.farDof) return;
             var dof = p.Add<DepthOfField>(true);
             dof.mode.value = DepthOfFieldMode.Gaussian;
             float reach = Mathf.Max((float)map.size[0], (float)map.size[1]) * 2.2f;
             dof.gaussianStart.value = reach * 1.6f; dof.gaussianEnd.value = reach * 6f; dof.gaussianMaxRadius.value = 0.6f;
             dof.highQualitySampling.value = true;
-            var lgg = p.Add<LiftGammaGain>(true); lgg.lift.value = new Vector4(1, 1, 1, -0.02f);   // a touch of black depth (OW's crisp shadows)
         }
+
+        /// <summary>PostFx.ts GRADES: contrast, vibrance, the split tone's shadow / highlight offsets (sRGB), vignette</summary>
+        public struct GradeDef { public float contrast, vibrance, vignette; public Vector3 shadows, highlights; }
+        static GradeDef G(float c, float v, Vector3 s, Vector3 h, float vig) => new GradeDef { contrast = c, vibrance = v, shadows = s, highlights = h, vignette = vig };
+        static readonly GradeDef NEUTRAL = G(1.04f, 0.12f, new Vector3(0, 0.004f, 0.02f), new Vector3(0.02f, 0.01f, -0.01f), 0.16f);
+        static readonly Dictionary<string, GradeDef> GRADES = new Dictionary<string, GradeDef>
+        {
+            ["hanabi"] = G(1.07f, 0.18f, new Vector3(0.01f, -0.004f, 0.026f), new Vector3(0.045f, 0.02f, -0.025f), 0.2f),
+            ["cloudstep"] = G(1.05f, 0.16f, new Vector3(-0.01f, 0.01f, 0.035f), new Vector3(0.025f, 0.018f, -0.008f), 0.14f),
+            ["kagura"] = G(1.06f, 0.16f, new Vector3(-0.005f, 0.005f, 0.03f), new Vector3(0.03f, 0.015f, -0.01f), 0.15f),
+            ["lantern"] = G(1.08f, 0.2f, new Vector3(0.006f, -0.003f, 0.035f), new Vector3(0.035f, 0.015f, -0.02f), 0.22f),
+            ["starfall"] = G(1.06f, 0.18f, new Vector3(-0.015f, 0.012f, 0.04f), new Vector3(0.04f, 0.022f, -0.012f), 0.18f),
+            ["foundry"] = G(1.1f, 0.14f, new Vector3(-0.02f, 0.012f, 0.03f), new Vector3(0.05f, 0.018f, -0.03f), 0.22f),
+            ["mile"] = G(1.07f, 0.18f, new Vector3(-0.012f, 0.004f, 0.032f), new Vector3(0.04f, 0.018f, -0.02f), 0.17f),
+            ["gulch"] = G(1.08f, 0.18f, new Vector3(-0.008f, 0f, 0.03f), new Vector3(0.05f, 0.022f, -0.024f), 0.2f),
+        };
+        public static GradeDef Grade(string mapId) => mapId != null && GRADES.TryGetValue(mapId, out var g) ? g : NEUTRAL;
 
         static void CameraSetup(float extent)
         {

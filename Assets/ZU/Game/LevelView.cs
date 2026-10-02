@@ -1,7 +1,9 @@
 // A map on screen, built from its data: the boxes the simulation collides with, ramps, floors and render-only decor
 // merged into one mesh per surface (the map's CC0 PBR materials, world-metric UVs and the ZU/Surface bevel / grime
-// data), the props, the objective, then the environment - HDRI sky, sun, fog, post (Env/EnvKit) - and the world past
-// the walls (Env/OuterWorld). Colliders exist for the camera only; the simulation's level is the authority.
+// data), the props, the objective and pickups (Env/MapObjects), ambient particles, then the environment - HDRI sky,
+// sun, fog, post (Env/EnvKit) - and, when enabled, the world past the walls (Env/OuterWorld, a Unity extra). The PC
+// game's MapScene.ts is the reference (docs/map-parity.md). Colliders exist for the camera only; the simulation's level
+// is the authority.
 using System.Collections.Generic;
 using UnityEngine;
 using ZU.Game.Env;
@@ -37,14 +39,9 @@ namespace ZU.Game
         {
             kind ??= "wall";
             if (mats.TryGetValue(kind, out var m)) return m;
-            m = EnvKit.Surface(map, kind);
+            m = TsMaterial(kind);
+            if (m == null) m = EnvKit.Surface(map, kind);
             if (m == null) m = Resources.Load<Material>("ZUEnv/common_" + kind);
-            if (m != null && kind == "window")
-            {
-                // lit windows: the shipped material (its emissive variant survives the build), brighter at dusk / night
-                m = new Material(m) { name = "zu_window" };
-                m.SetColor("_EmissionColor", new Color(1f, 0.58f, 0.26f) * (OuterWorld.For(map).lit ? 1.4f : 0.6f));
-            }
             if (m == null && kind == "water") m = Resources.Load<Material>("ZUEnv/water");
             if (m == null)
             {
@@ -65,6 +62,54 @@ namespace ZU.Game
             mats[kind] = m;
             return m;
         }
+
+        /// <summary>MapScene.ts's own materials for the kinds the PC game doesn't take from the surface sets: windows (lit
+        /// paper at dusk and night - sun under 2 - else day glass with a faint glow behind), road paint, the tint-coloured
+        /// accent boxes and the tinted glass. Built on shipped materials so their emissive / transparent variants survive a
+        /// build (common_window: URP Lit + _EMISSION; common_glass_clear: transparent + _EMISSION).</summary>
+        Material TsMaterial(string kind)
+        {
+            var tint = Conv.Hex(map.tint, Color.white);
+            bool dusk = map.sun == null || map.sun.intensity < 2;
+            Material Emissive(string name, Color baseC, Color emit, float smooth, float metal)
+            {
+                var src = Resources.Load<Material>("ZUEnv/common_window");
+                if (src == null) return null;
+                var m = new Material(src) { name = name };
+                m.SetColor("_BaseColor", baseC); m.SetColor("_EmissionColor", emit);
+                m.SetFloat("_Smoothness", smooth); m.SetFloat("_Metallic", metal);
+                return m;
+            }
+            switch (kind)
+            {
+                case "window":
+                    return dusk ? Emissive("zu_window", Conv.Hex("#ffe2a8"), Conv.Hex("#ffc46b") * 1.1f, 0.7f, 0)
+                                : Emissive("zu_window", Conv.Hex("#7d97ad"), Conv.Hex("#ffd49a") * 0.12f, 0.85f, 0.35f);
+                case "paint": return Emissive("zu_paint", Conv.Hex("#f2cf5b"), Conv.Hex("#f2cf5b") * 0.08f, 0.3f, 0);
+                case "accent":
+                {
+                    // the wall texture tinted toward the map's colour, glowing a little in it
+                    var m = Emissive("zu_accent", Color.Lerp(tint, Color.white, 0.4f), tint * 0.25f, 0.6f, 0);
+                    var wall = EnvKit.Surface(map, "wall");
+                    if (m != null && wall != null && wall.HasProperty("_BaseMap"))
+                    {
+                        m.SetTexture("_BaseMap", wall.GetTexture("_BaseMap"));
+                        m.SetTextureScale("_BaseMap", wall.GetTextureScale("_BaseMap")); m.SetTextureOffset("_BaseMap", wall.GetTextureOffset("_BaseMap"));
+                    }
+                    return m;
+                }
+                case "glass":
+                {
+                    var src = Resources.Load<Material>("ZUEnv/common_glass_clear");
+                    if (src == null) return null;
+                    var m = new Material(src) { name = "zu_glass" };
+                    m.SetColor("_BaseColor", U(tint, 0.35f)); m.SetColor("_EmissionColor", tint * 0.3f);
+                    return m;
+                }
+            }
+            return null;
+        }
+        static Color U(Color c, float a) { c.a = a; return c; }
 
         public static LevelView Build(MapDef map, Transform parent, ILevel level = null)
         {
@@ -88,13 +133,21 @@ namespace ZU.Game
                 solid[f.mat ?? "ground"].Box(c, new Vector3((float)f.w / 2, (y1 - y0) / 2, (float)f.d / 2), bevel: false);
                 if (voidMap && f.mat != "trim")
                 {
+                    // MapScene: a 7-sided cylinder tapering 1 -> 0.35, scaled (max 0.55, min 0.5 + 3, min 0.55), its centre
+                    // at -(min 0.25 + 1.5), in the wall texture - the island's underside sinking into the cloud sea
                     float s = Mathf.Min((float)f.w, (float)f.d), l = Mathf.Max((float)f.w, (float)f.d);
-                    deco["rock"].Cylinder(Conv.U(f.x, -(s * 0.5f + 3), f.z), l * 0.2f, l * 0.6f, s * 0.5f + 3, 9, top: false);
+                    float h = s * 0.5f + 3, cy = -(s * 0.25f + 1.5f);
+                    // (an elliptical footprint: x by l * 0.55, z by s * 0.55)
+                    var bins = deco["wall"];
+                    var keep = bins.xf;
+                    bins.xf = keep * Matrix4x4.TRS(Conv.U(f.x, cy - h / 2, f.z), Quaternion.identity, new Vector3(l * 0.55f, 1, s * 0.55f));
+                    bins.Cylinder(Vector3.zero, 0.35f, 1, h, 7, top: false);
+                    bins.xf = keep;
                 }
             }
             foreach (var b in map.boxes ?? new List<Box>())
             {
-                if (b.mat == null && IsBoundary(b)) continue;      // the invisible walls around the play space
+                // (the perimeter walls of Kagura, Lantern, Starfall, Foundry and the Training Grounds are drawn, as in MapScene)
                 if (b.ramp != null) Ramp(solid[b.mat ?? "wall"], b);
                 else Boxed(solid[b.mat ?? "wall"], b, grime: true);
             }
@@ -112,10 +165,14 @@ namespace ZU.Game
 
             var props = new GameObject("Props").transform; props.SetParent(transform, false);
             foreach (var p in map.props ?? new List<Prop>()) Prop(p, props);
-            Point();
+            TintLight();
+            MapObjects.Build(map, transform, level, Mat);
+            AmbientParticles.Build(map, transform);
             Sun();
-            OuterWorld.Build(map, transform, Mat);
-            EnvKit.Apply(map, transform, OuterWorld.Extent);
+            // the world past the walls is a Unity extra the PC game doesn't have (it shows the painted sky above its walls):
+            // off, only the PC game's own harbour water and cloud sea are built
+            OuterWorld.Build(map, transform, Mat, full: OuterWorld.Enabled);
+            EnvKit.Apply(map, transform, OuterWorld.Enabled ? OuterWorld.Extent : 600f);
         }
 
         /// <summary>the 4 unmaterialled walls that fence the play space in (they stand on its edge)</summary>
@@ -172,6 +229,8 @@ namespace ZU.Game
                 m.transform.localPosition = Conv.U(p.x, y, p.z);
                 m.transform.localRotation = Conv.Yaw(p.rot ?? 0);
                 m.transform.localScale = Vector3.one * (float)s;
+                // image-to-3D keeps a cherry tree's trunk but loses its thin foliage: MapScene adds a blossom canopy
+                if (p.id.Contains("sakura")) Blossoms(m.transform, (float)s);
                 return;
             }
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -183,17 +242,47 @@ namespace ZU.Game
             go.GetComponent<Renderer>().sharedMaterial = Mat("wood");
         }
 
-        /// <summary>the objective: the capture point ring (Control) - the payload route is drawn by the payload view</summary>
-        void Point()
+        /// <summary>MapScene's PointLight(tint, 30, 40, 1.6) five metres over the objective (three.js intensity is candela-ish
+        /// with physical lights; URP's point light carries the 1/pi the sun does)</summary>
+        void TintLight()
         {
-            if (map.objective == "push" || map.point == null || map.point.Length != 3) return;
-            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder); Destroy(ring.GetComponent<Collider>());
-            ring.name = "Point"; ring.transform.SetParent(transform, false);
-            ring.transform.localPosition = Conv.U(map.point[0], map.point[1] + 0.02, map.point[2]);
-            ring.transform.localScale = new Vector3(12, 0.02f, 12);
-            var m = new Material(Mat("accent")); m.SetColor("_BaseColor", Conv.Hex(map.tint, Color.cyan) * 0.8f);
-            m.EnableKeyword("_EMISSION"); m.SetColor("_EmissionColor", Conv.Hex(map.tint, Color.cyan) * 0.6f);
-            ring.GetComponent<Renderer>().sharedMaterial = m;
+            if (map.point == null || map.point.Length != 3) return;
+            var go = new GameObject("Tint Light"); go.transform.SetParent(transform, false);
+            go.transform.localPosition = Conv.U(map.point[0], map.point[1] + 5, map.point[2]);
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point; l.color = Conv.Hex(map.tint, Color.white); l.range = 40; l.intensity = 30f / Mathf.PI / 4f;
+            l.shadows = LightShadows.None;
+        }
+
+        /// <summary>MapScene.blossoms: a cherry canopy of 70 faceted puffs (seeded, so every match grows the same tree)</summary>
+        static Mesh blossomMesh; static Material blossomMat;
+        static void Blossoms(Transform tree, float s)
+        {
+            if (blossomMesh == null)
+            {
+                // an icosphere-ish puff: a low-poly sphere is close enough at this size
+                var tmp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                blossomMesh = tmp.GetComponent<MeshFilter>().sharedMesh; Destroy(tmp);
+                var src = Resources.Load<Material>("ZUEnv/common_window");
+                blossomMat = src != null ? new Material(src) { name = "zu_blossom", enableInstancing = true } : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                blossomMat.SetColor("_BaseColor", Conv.Hex("#ffb3cf")); blossomMat.SetColor("_EmissionColor", Conv.Hex("#ff8fb8") * 0.18f);
+                blossomMat.SetFloat("_Smoothness", 0.2f); blossomMat.SetFloat("_Metallic", 0);
+            }
+            var root = new GameObject("blossoms").transform; root.SetParent(tree.parent, false);
+            root.localPosition = tree.localPosition; root.localRotation = tree.localRotation;
+            int seed = 7;
+            float Rnd() { seed = (int)((long)seed * 16807 % 2147483647); return seed / 2147483647f; }
+            for (int i = 0; i < 70; i++)
+            {
+                float a = Rnd() * Mathf.PI * 2, r = Mathf.Sqrt(Rnd()) * s * 0.42f;
+                var pos = new Vector3(Mathf.Cos(a) * r, s * (0.62f + Rnd() * 0.3f) - r * 0.25f, Mathf.Sin(a) * r);
+                float k = s * (0.07f + Rnd() * 0.07f) * 2;            // (three's unit icosahedron has radius 1; Unity's sphere diameter 1)
+                var rot = Quaternion.Euler(Rnd() * Mathf.Rad2Deg, Rnd() * 6 * Mathf.Rad2Deg, Rnd() * Mathf.Rad2Deg);
+                var go = new GameObject("puff"); go.transform.SetParent(root, false);
+                go.transform.localPosition = new Vector3(-pos.x, pos.y, pos.z); go.transform.localRotation = rot; go.transform.localScale = new Vector3(k * 1.3f, k, k * 1.3f);
+                go.AddComponent<MeshFilter>().sharedMesh = blossomMesh;
+                var mr = go.AddComponent<MeshRenderer>(); mr.sharedMaterial = blossomMat;
+            }
         }
 
         void Sun()
