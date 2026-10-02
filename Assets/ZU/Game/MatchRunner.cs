@@ -66,6 +66,7 @@ namespace ZU.Game
             Audio.MatchAudio.Attach(this);
             Fx.MatchFx.Attach(this);
             Fx.AbilityFx.Register(this);            // (after MatchFx: the seal storm draws its bursts through MatchFx.Current)
+            UI.Toolkit.MatchUi.Attach(this);         // the HUD, Armory, pause / results / Options (UI Toolkit)
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
             else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
@@ -131,7 +132,5 @@ namespace ZU.Game
             cam.Sync(this);
             if (fp != null) fp.Sync(this);          // the local player's arms (first person only; needs the camera placed)
         }
-
-        void OnGUI() { Hud.Draw(this); ModeHud.Draw(this); PauseMenu.Draw(this); }
     }
 }
