@@ -17,6 +17,7 @@ namespace ZU.Game.UI.Toolkit
         ArmoryView armory;
         PauseView pause;
         UltViewerView ult;
+        Label netro;                // the online readout, top left
         int cues;                   // director cues already shown
         VisualElement labPanel;     // the AI Test Lab's live report (aitest)
         float labNext, labNextMap = -1;
@@ -52,8 +53,12 @@ namespace ZU.Game.UI.Toolkit
             ZButton.Sfx = id => Sfx(id);
             SettingsApply.Apply(ZuSettings.Current);
             // the Career Profile follows the local player (spectating, the AI lab and the Ult Viewer record nothing)
-            string cm = Career.CareerProfile.ModeOf(r.mode);
-            career = cm != null && r.Player != null ? new Career.CareerTracker(cm, r.mapId) : null;
+            // (online: the match's own career mode - online-qp / online-comp / custom - and a client's player arrives with the
+            // first snapshot, so the tracker starts without one)
+            var net = ZU.Net.NetMatch.Current;
+            string cm = net != null ? net.Career : Career.CareerProfile.ModeOf(r.mode);
+            career = cm != null && (r.Player != null || net != null) ? new Career.CareerTracker(cm, r.mapId) : null;
+            if (net != null) { netro = U.Txt("", "netro", ui.HudLayer); }
             LastRecord = null;
             lastSimT = r.World?.time ?? 0;
             if (r.mode == "aitest") { labPanel = U.Div("lab", ui.HudLayer); }
@@ -62,7 +67,13 @@ namespace ZU.Game.UI.Toolkit
 
         /// <summary>the match into the Career Profile (TS recordCareerMatch): "win" / "loss" / "draw" at the end, "none"
         /// when it is left early (its time still counts)</summary>
-        public void RecordCareer(string result)
+        public void RecordCareer(string result) => RecordCareer(result, null);
+
+        /// <summary>the world's winner ("" while undecided)</summary>
+        public string WorldWinner => r?.World?.winner ?? "";
+
+        /// <summary>roleRating: where an unplaced hero's Hero SR starts (the role's rank: online ranks for online matches)</summary>
+        public void RecordCareer(string result, System.Func<string, double> roleRating)
         {
             if (career == null || r.World == null) return;
             var t = career; career = null;
@@ -80,7 +91,10 @@ namespace ZU.Game.UI.Toolkit
             LastRecord = Career.CareerProfile.RecordMatch(p, sum, hero =>
             {
                 var role = ZU.Sim.Data.GameData.Current?.Def(hero)?.role;
-                return role != null && ranks.roles.TryGetValue(role == "dps" ? "damage" : role, out var rr) ? rr.rating : 1800;
+                if (role == null) return 1800;
+                string rk = role == "dps" ? "damage" : role;
+                if (roleRating != null) return roleRating(rk);
+                return ranks.roles.TryGetValue(rk, out var rr) ? rr.rating : 1800;
             });
             Career.CareerProfile.Save(p);
         }
@@ -175,6 +189,7 @@ namespace ZU.Game.UI.Toolkit
             if (sc != null && sc.Hero != null && ult == null) { ult = new UltViewerView(UiRoot.Get().MenuLayer, sc); U.Toggle(hud.root, "ultsc-on", true); }
             if (sc == null && ult != null) { ult.Close(); ult = null; U.Toggle(hud.root, "ultsc-on", false); }
             ult?.Update();
+            if (netro != null) OnlineView.Readout(netro);
         }
     }
 }

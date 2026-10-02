@@ -59,7 +59,8 @@ namespace ZU.Game.UI
         static void Set(bool p)
         {
             Paused = p;
-            Time.timeScale = p ? 0 : 1;
+            // online the world keeps running under the menu (TS: a paused player just stands still); MatchRunner holds their input
+            if (ZU.Net.NetMatch.Current == null) Time.timeScale = p ? 0 : 1;
             Cursor.lockState = p ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = p;
         }
@@ -70,7 +71,8 @@ namespace ZU.Game.UI
         static void Record(MatchRunner r)
         {
             var me = r.Player; var w = r.World;
-            if (me == null || (r.mode != "competitive" && r.mode != "quickplay")) return;
+            // (an online match moves the online ranks, on its own result screen - OnlineView.Results)
+            if (me == null || ZU.Net.NetMatch.Current != null || (r.mode != "competitive" && r.mode != "quickplay")) return;
             string us = me.team, them = us == "zenith" ? "umbra" : "zenith";
             bool won = w.winner == us;
             string score = w.rules == "push" ? $"{System.Math.Round(w.push.best[us])}m - {System.Math.Round(w.push.best[them])}m" : $"{w.control.wins[us]} - {w.control.wins[them]}";

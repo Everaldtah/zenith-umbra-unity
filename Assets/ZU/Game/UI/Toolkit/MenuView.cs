@@ -16,10 +16,6 @@ namespace ZU.Game.UI.Toolkit
     public sealed class MenuView
     {
         static readonly (string name, double v, string desc)[] DIFFS = { ("RECRUIT", 0.4, "Relaxed bots: slower aim, slower reactions."), ("VETERAN", 0.62, "A fair fight."), ("ELITE", 0.8, "Sharp aim, quick ability use."), ("LEGEND", 0.95, "Top-tier bots that punish every mistake.") };
-        /// <summary>PLAY ONLINE opens the online lobby once the netcode layer sets this (null: the button is disabled)</summary>
-        public static Action<MenuView> OnlineOpen;
-        /// <summary>the Starfall co-op lobby (the online layer sets it; null: solo only)</summary>
-        public static Action<VisualElement, MenuView> CoopPanel;
 
         /// <summary>modes whose view is fixed (TS Game FIXED_VIEW); the rest follow Options > Camera and V</summary>
         public static readonly Dictionary<string, string> FIXED_VIEW = new Dictionary<string, string> { ["skirmish"] = "first", ["stadium"] = "third", ["quickplay"] = "first", ["competitive"] = "first", ["practice"] = "first" };
@@ -54,6 +50,7 @@ namespace ZU.Game.UI.Toolkit
             else if (to == "find" && MenuState.Queue != null) m.FindMatch();
             else if (to == "campaign") m.Campaign();
             else if (to.StartsWith("viewer:")) m.Viewer(to.Substring(7));
+            else if (to == "online" || to == "online-queue") OnlineView.Return(m, to);
             else m.Title();
             return m;
         }
@@ -66,6 +63,12 @@ namespace ZU.Game.UI.Toolkit
             m.HeroSelect(swap: true);
             return m;
         }
+
+        /// <summary>a fresh screen for the online pages (OnlineView)</summary>
+        public VisualElement Screen(string cls) => Show(cls);
+        public bool IsOpen => root.panel != null;
+        /// <summary>the screen showing has this class (the online lobby refreshes itself only while it's up)</summary>
+        public bool Showing(string cls) => root.childCount > 0 && root[0].ClassListContains(cls);
 
         public void Close() { timer?.Pause(); root.RemoveFromHierarchy(); if (current == this) current = null; }
 
@@ -96,9 +99,7 @@ namespace ZU.Game.UI.Toolkit
             var best = new[] { "tank", "damage", "support" }.Select(r => c.roles[r]).OrderByDescending(r => r.rating * (r.games >= Career.Ranks.PLACEMENTS ? 1 : 0)).First();
             var b = U.Div("btns two", s);
             var row1 = U.Div("brow", b);
-            var online = U.Btn("PLAY ONLINE\n<size=12><alpha=#B3>with other players</alpha></size>", "primary", () => OnlineOpen?.Invoke(this), row1);
-            online.SetEnabled(OnlineOpen != null);
-            if (OnlineOpen == null) online.tooltip = "Online play arrives with the Unity edition's netcode";
+            U.Btn("PLAY ONLINE\n<size=12><alpha=#B3>with other players</alpha></size>", "primary", () => OnlineView.Open(this), row1);
             U.Btn("QUICK PLAY", "primary", () => QueueSelect("quickplay"), U.Div("brow", b));
             void Pair(string a, Action fa, string bb, Action fb) { var r = U.Div("brow", b); U.Btn(a, null, fa, r); if (bb != null) U.Btn(bb, null, fb, r); }
             Pair($"COMPETITIVE\n<size=12><alpha=#B3>{Career.Ranks.RankOf(best.rating, best.games).label}</alpha></size>", () => QueueSelect("competitive"), "AI QUICK MATCH", () => QueueSelect("practice"));
@@ -465,6 +466,8 @@ namespace ZU.Game.UI.Toolkit
             mode = "campaign";
             MenuState.Queue = null;
             int prog = Progress();
+            // a squad member follows the host's level
+            if (OnlineView.CoopClient && !string.IsNullOrEmpty(OnlineView.CoopLevel)) cLevel = OnlineView.CoopLevel;
             var ids = d.Campaign.levels.Select(j => (string)j["id"]).ToList();
             var levels = CampaignLevel.All(d);
             if (!levels.ContainsKey(cLevel)) cLevel = ids[0];
@@ -476,7 +479,7 @@ namespace ZU.Game.UI.Toolkit
             {
                 var l = levels[ids[i]]; int idx = i;
                 bool locked = i > prog;
-                var lv = U.Btn(null, "lv" + (l.id == cLevel ? " sel" : "") + (locked ? " locked" : ""), () => { cLevel = l.id; Campaign(); }, lvls);
+                var lv = U.Btn(null, "lv" + (l.id == cLevel ? " sel" : "") + (locked ? " locked" : ""), () => { cLevel = l.id; OnlineView.CoopSetLevel(cLevel); Campaign(); }, lvls);
                 lv.SetEnabled(!locked);
                 U.Pic("map_" + l.id, "lv-img", lv);
                 var bi = U.Pic("key_" + l.boss, "bimg", lv);
@@ -491,15 +494,15 @@ namespace ZU.Game.UI.Toolkit
             foreach (var id in d.Campaign.heroes)
             {
                 var h = Hero(id); if (h == null) continue;
-                HeroCard(hs, h, id == cHero, () => { cHero = id; Campaign(); }, "cpick");
+                HeroCard(hs, h, id == cHero, () => { cHero = id; OnlineView.CoopSetHero(cHero); Campaign(); }, "cpick");
             }
             var coop = U.Div("coop", squad);
             U.Txt("ONLINE CO-OP", "coop-h4", coop);
-            if (CoopPanel != null) CoopPanel(coop, this);
-            else U.Txt("Online co-op arrives with the Unity edition's netcode - the campaign plays solo with AI wingmates meanwhile.", "st", coop);
+            OnlineView.CoopPanel(coop, this, cLevel, cHero, Campaign);
             var bar = Bar(s);
-            U.Btn("BACK", null, Title, bar);
-            U.Btn("START SOLO", "primary go", () => PlayLevel(cLevel, cHero), bar);
+            U.Btn("BACK", null, () => { OnlineView.CoopLeave(); Title(); }, bar);
+            if (OnlineView.CoopClient) U.Txt("Waiting for the host to launch...", "st", bar);
+            else U.Btn(OnlineView.CoopHost ? "LAUNCH SQUAD" : "START SOLO", "primary go", () => { if (OnlineView.CoopHost) OnlineView.CoopStart(); else PlayLevel(cLevel, cHero); }, bar);
         }
 
         void PlayLevel(string level, string hero)

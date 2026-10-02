@@ -596,3 +596,71 @@
 .lab .lab-td { flex-grow: 1; flex-basis: 0; padding: 1px 4px; font-size: 12px; }
 .lab .th .lab-td { opacity: 0.7; }
 .lab .lab-maps { opacity: 0.8; font-size: 12px; }
+
+
+/* ---------------- PLAY ONLINE (online.css): lobby, queue, assemble, the in-match network readout */
+.online .o-h3 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; letter-spacing: 2.4px; margin: 18px 0 10px 0; opacity: 0.85; }
+.online .ostat { flex-direction: row; flex-wrap: wrap; align-items: center; background-color: rgba(0, 0, 0, 0.35); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 10px 16px; }
+.online .ostat > * { margin-right: 18px; }
+.online .ostat .ok { color: #7dff9a; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; letter-spacing: 1.6px; }
+.online .ostat .bad { color: #ffb347; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; letter-spacing: 1.6px; }
+.online .ostat .nm-l { flex-direction: row; align-items: center; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; letter-spacing: 1.6px; }
+.online .ostat .nm { width: 170px; margin-left: 8px; }
+.online .ostat .nm .unity-base-field__input { background-color: #111827; border-color: rgba(255, 255, 255, 0.14); color: #fff; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 16px; }
+.online .conn { margin-left: auto; font-size: 14px; }
+.online .conn .cb { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 15px; letter-spacing: 1.8px; }
+.online .ostat .zb { padding: 8px 16px; font-size: 15px; }
+.online .onotice { color: #ffd76a; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; letter-spacing: 0.8px; margin-top: 10px; }
+.online .ogrid { flex-direction: row; flex-wrap: wrap; margin-top: 16px; }
+.online .ocard { flex-grow: 1; flex-basis: 300px; margin: 0 16px 16px 0; background-color: rgba(255, 255, 255, 0.05); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 14px 16px; }
+.online .ocard > * { margin-bottom: 8px; }
+.online .ocard .o-h3 { margin: 0 0 8px 0; color: #ffd76a; opacity: 1; }
+.online .ocard .op { opacity: 0.8; }
+.online .ocard .os { opacity: 0.7; font-size: 14px; }
+.online .oroles { flex-direction: row; flex-wrap: wrap; }
+.online .oroles .zb { flex-direction: row; padding: 10px 14px; font-size: 15px; margin: 0 8px 8px 0; }
+.online .oroles .zb .ri { width: 20px; height: 20px; margin-right: 8px; }
+.online .zb.orole { flex-grow: 1; min-width: 90px; padding: 10px 6px; margin: 0 8px 0 0; --cut: 0; --fill: rgba(0, 0, 0, 0.25); --stroke: rgba(0, 0, 0, 0); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
+.online .zb.orole:hover { --fill: rgba(255, 255, 255, 0.1); translate: 0 0; }
+.online .orole > * { margin-bottom: 4px; }
+.online .orole .ri { width: 26px; height: 26px; }
+.online .orole .ors { font-size: 13px; }
+.online .row2 { flex-direction: row; align-items: center; }
+.online .row2 > * { margin-right: 8px; }
+.online .row2 .zb { padding: 8px 16px; }
+.online .clist .cli { flex-direction: row; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.06); }
+.online .clist .zb { padding: 4px 12px; font-size: 14px; }
+.online .dim { opacity: 0.55; }
+.online .plist { flex-direction: row; flex-wrap: wrap; }
+.online .plist .pli { width: 300px; flex-direction: row; align-items: center; padding: 4px 8px; margin: 0 14px 6px 0; background-color: rgba(255, 255, 255, 0.04); }
+.online .plist .pli.me { background-color: rgba(255, 215, 106, 0.1); }
+.online .plist .pli > * { margin-right: 10px; }
+.online .plist .ps { opacity: 0.75; font-size: 14px; }
+.online .plist .st { margin-left: auto; opacity: 0.55; font-size: 14px; }
+.asm .asmhead { flex-direction: row; justify-content: space-between; align-items: center; padding: 16px 20px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-size: cover; }
+.asm .asmhead .ah-t { flex-shrink: 1; }
+.asm .asmhead .tips { margin-top: 6px; max-width: 760px; opacity: 0.85; }
+.asm .clock { min-width: 140px; align-items: center; }
+.asm .clock .ck-s { letter-spacing: 4.8px; opacity: 0.7; -unity-text-align: upper-center; }
+.asm .clock .cd { -unity-font: url("Fonts/Orbitron-900.ttf"); -unity-font-definition: initial; font-size: 46px; color: #ffd76a; -unity-text-align: upper-center; }
+.asm .teams { flex-direction: row; margin-top: 14px; }
+.asm .oteam { flex-grow: 1; flex-basis: 0; margin-right: 18px; }
+.asm .oteam .o-h3.zenith { color: #5cc8ff; }
+.asm .oteam .o-h3.umbra { color: #ff3b5c; }
+.asm .oteam .oli { flex-direction: row; align-items: center; background-color: rgba(255, 255, 255, 0.05); border-left-width: 4px; border-color: #556; padding: 6px 10px; margin-bottom: 6px; }
+.asm .oteam .oli.me { background-color: rgba(255, 215, 106, 0.12); }
+.asm .oteam .oli.ai { opacity: 0.45; border-color: #333; }
+.asm .oteam .oli > * { margin-right: 10px; }
+.asm .oteam .oli-img { width: 40px; height: 40px; background-position-y: top; }
+.asm .oteam .q { width: 40px; height: 40px; background-color: #1b2233; -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 14px; -unity-text-align: middle-center; }
+.asm .oteam .oli-host { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 11px; color: #ffd76a; letter-spacing: 1.65px; }
+.asm .oteam .oli-s { flex-direction: row; align-items: center; opacity: 0.8; }
+.asm .oteam .oli-s .ri { width: 14px; height: 14px; margin-right: 6px; }
+.asm .oteam .lk { margin-left: auto; font-size: 13px; opacity: 0.8; }
+.asm .oteam .lk.connecting { color: #ffb347; }
+.asm .oteam .lk.closed { color: #ff6b81; }
+.asm .oteam .zb.sw { padding: 2px 10px; font-size: 14px; }
+.asm .opick { flex-direction: row; flex-wrap: wrap; }
+.asm .opick .zb.hc { width: 108px; margin: 0 8px 8px 0; }
+.asm .opick .zb.hc.taken { opacity: 0.3; }
+.netro { position: absolute; left: 10px; top: 24px; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 12px; letter-spacing: 0.5px; color: #dfe6ff; text-shadow: 0 1px 2px #000; opacity: 0.85; }

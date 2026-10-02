@@ -19,6 +19,8 @@ namespace ZU.Game.UI.Toolkit
         static VisualElement root, bg, fillBar, spin;
         static Label barLabel;
         static float shownAt;
+        /// <summary>the next match's tips line instead of the controls (an online match: players / AI / hosting)</summary>
+        public static string NextTips;
         static bool loading;
         public static bool Open => root != null && root.parent != null;
 
@@ -89,7 +91,8 @@ namespace ZU.Game.UI.Toolkit
             else
             {
                 d.Map.TryGetValue(map, out var m);
-                Show("map_" + map, m?.name ?? map, m?.story ?? "", TIPS);
+                Show("map_" + map, m?.name ?? map, m?.story ?? "", NextTips ?? TIPS);
+                NextTips = null;
             }
             UiRoot.Get().StartCoroutine(Load());
         }
@@ -109,8 +112,10 @@ namespace ZU.Game.UI.Toolkit
         public static IEnumerator Warm()
         {
             if (!Open) yield break;
-            // the simulation holds still behind the screen (MatchRunner steps on scaled time)
-            Time.timeScale = 0;
+            // the simulation holds still behind the screen (MatchRunner steps on scaled time) - not online, where the host's
+            // world and the snapshots it streams keep going
+            bool online = ZU.Net.NetMatch.Current != null;
+            if (!online) Time.timeScale = 0;
             Progress("Compiling shaders", 0.65f);
             yield return null;
             Shader.WarmupAllShaders();
@@ -119,7 +124,7 @@ namespace ZU.Game.UI.Toolkit
             Progress("Ready", 1);
             // (the TS closes 600 ms after the match starts)
             yield return new WaitForSecondsRealtime(0.25f);
-            if (!PauseMenu.Paused) Time.timeScale = 1;
+            if (!PauseMenu.Paused && !online) Time.timeScale = 1;
             Close();
         }
     }

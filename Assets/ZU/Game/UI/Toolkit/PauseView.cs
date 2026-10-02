@@ -132,6 +132,8 @@ namespace ZU.Game.UI.Toolkit
             shown = "results";
             var w = r.World; var me = r.Player;
             string q = MenuState.Queue;
+            // an online match: its own results (online ranks, Hero SR) and the session's finish (OnlineView)
+            if (ZU.Net.NetMatch.Current != null) { OnlineView.Results(Screen("pause results queue-res"), r, ToMenu); return; }
             if (me != null && q != null && q == r.mode) { QueueResults(r, q); return; }
             var s = Screen("pause results");
             var h = U.Txt($"{(w.winner == "zenith" ? "ZENITH VANGUARD" : "UMBRA SYNDICATE")} WINS", "p-h2 " + w.winner, s);
@@ -181,7 +183,7 @@ namespace ZU.Game.UI.Toolkit
         }
 
         /// <summary>hero level-ups and Hero Skill Rating changes (OnlineUI.progressHtml)</summary>
-        static void ProgressBlock(VisualElement s)
+        public static void ProgressBlock(VisualElement s)
         {
             var rec = MatchUi.LastRecord; if (rec == null) return;
             var d = ZuData.Get(); var p = Career.CareerProfile.Load();

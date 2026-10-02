@@ -4,6 +4,7 @@
   "references": [
     "ZU.Sim",
     "ZU.Net",
+    "ZU.Net.Unity",
     "ZU.Dynamics",
     "Unity.InputSystem",
     "Unity.RenderPipelines.Universal.Runtime",
