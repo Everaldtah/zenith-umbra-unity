@@ -165,11 +165,23 @@ namespace ZU.Game
             var a = actor;
             if (a == null || proc == null) return;
             // the dead belong to the Animator's death state and the ragdoll (AbilityFx); the hidden aren't worth posing
-            if (!shown || !a.alive) { proc.prop = null; downYaw = null; return; }
+            if (!shown || !a.alive)
+            {
+                proc.prop = null; downYaw = null;
+                // the TS keeps the clip layer running on a body that doesn't ragdoll (mechs, drones, bosses, holograms): its
+                // held death clip plays
+                if (!a.alive && shown && clips != null && (a.def.frame == "mech" || a.def.frame == "drone" || a.isBoss || !string.IsNullOrEmpty(a.def.holo)))
+                {
+                    var spd = Conv.S(drawPos);
+                    state = AnimState.From(a, syncT, Time.deltaTime, false, new Vector3((float)spd.x, (float)spd.y, (float)spd.z), transform.lossyScale.y, state);
+                    clips.Update(state, new ClipLayer.Input { speed = 0, angle = 0, moveBlend = 0, airBlend = 0, eligible = true });
+                }
+                return;
+            }
             bool hammer = held != null && held.prop != null && (a.def.id != "tomoe" || Held.AxeOut(a, syncT));
             var sp = Conv.S(drawPos);           // where the body is drawn, in the sim's frame
             state = AnimState.From(a, syncT, Time.deltaTime, hammer, new Vector3((float)sp.x, (float)sp.y, (float)sp.z), transform.lossyScale.y, state);
-            proc.Update(state, anim);
+            proc.Update(state, anim, clips);
             // the performance layer, in the TS frame: tilt about a pivot at the hips, then a knockdown laid along the push
             float piv = (float)a.Height * 0.55f;
             var q = Quaternion.AngleAxis(proc.tiltPitch * Mathf.Rad2Deg, Vector3.right) * Quaternion.AngleAxis(proc.tiltRoll * Mathf.Rad2Deg, Vector3.forward);

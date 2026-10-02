@@ -19,10 +19,11 @@ namespace ZU.Game.Anim
         }
         readonly ClipOut clip = new ClipOut();
 
-        /// <summary>read the Animator's pose before anything procedural is written (the TS layer.update)</summary>
-        void SampleClip(Animator anim, float dt)
+        /// <summary>the clip pose before anything procedural is written: the clip layer's (TS ClipLayer: its LayerOut weights,
+        /// the pose it put on the bones) or, without one, the Animator controller's (weights guessed from its states)</summary>
+        void SampleClip(Animator anim, float dt, ClipLayer.Out lo)
         {
-            clip.ok = anim != null && anim.isActiveAndEnabled && anim.runtimeAnimatorController != null;
+            clip.ok = lo != null ? lo.ok : anim != null && anim.isActiveAndEnabled && anim.runtimeAnimatorController != null;
             if (!clip.ok) return;
             var inv = Quaternion.Inverse(root.rotation);
             foreach (var kv in bones)
@@ -31,6 +32,13 @@ namespace ZU.Game.Anim
                 clip.q[kv.Key] = M(inv * kv.Value.rotation) * Quaternion.Inverse(r.q);
                 clip.p[kv.Key] = M(root.InverseTransformPoint(kv.Value.position));
             }
+            if (lo != null)
+            {
+                clip.legs = lo.legs; clip.torso = lo.torso; clip.armsLoco = lo.armsLoco; clip.armsAction = lo.armsAction; clip.loco = lo.loco;
+                clip.contact[0] = lo.contact[0]; clip.contact[1] = lo.contact[1];
+                return;
+            }
+            clip.legs = clip.torso = 1;
             clip.loco = anim.GetCurrentAnimatorStateInfo(0).IsName("Locomotion") ? 1 : 0;
             bool action = anim.layerCount > 1 && !anim.GetCurrentAnimatorStateInfo(1).IsName("Empty");
             clip.armsAction += ((action ? 1 : 0) - clip.armsAction) * Mathf.Min(1, dt * 14);
@@ -42,12 +50,11 @@ namespace ZU.Game.Anim
         static Quaternion BlendD(Quaternion D, Quaternion? q, float w) => q.HasValue && w > 0 ? Quaternion.Slerp(D, q.Value, w) : D;
 
         // ------------------------------------------------------------------------------------------------ update
-        public void Update(AnimState s, Animator anim)
+        public void Update(AnimState s, Animator anim, ClipLayer layer = null)
         {
             if (!ok) return;
             float dt = Mathf.Min(0.05f, s.dt);
             modelQ.Clear();
-            SampleClip(anim, s.dt);
             var R = rest;
             bool heavy = s.frame == "mech", flyer = s.frame == "flyer";
             var PS = PERF ? PersonaOf(s.hero ?? "", heavy) : PERSONA_LEGACY;
@@ -65,6 +72,10 @@ namespace ZU.Game.Anim
             bool skating = PERF && s.skate && (moving > 0 || s.grind != 0);
             bool eligible = !heavy && s.frame != "drone" && !s.flying && !s.hammer && s.move == "" && !angelAir && !skating;
             clipW += ((eligible || s.dead ? 1 : 0) - clipW) * Mathf.Min(1, dt * 8);
+            // the clip layer poses the bones (TS layer.update), we read the pose back, then its cuts are inertialized
+            var lo = layer?.Update(s, new ClipLayer.Input { speed = speed / legLen, angle = Mathf.Atan2(lvx, lvz), moveBlend = moveBlend, airBlend = airBlend, eligible = clipW > 0.01f || s.dead });
+            SampleClip(anim, s.dt, lo);
+            if (lo != null && lo.ok) layer.Inertialize(clip.q, clip.p, s.dt);
             var L = clip.ok ? clip : null;
             float cw = L != null ? (s.dead ? 1 : clipW) : 0;
             float wLegs = L != null ? L.legs * cw : 0, wTorso = L != null ? L.torso * cw : 0;

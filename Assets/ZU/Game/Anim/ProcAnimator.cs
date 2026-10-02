@@ -69,6 +69,9 @@ namespace ZU.Game.Anim
         public static Persona PersonaOf(string hero, bool mech = false) => PERSONA.TryGetValue(hero ?? "", out var p) ? p : mech ? PERSONA_MECH : PERSONA_DEFAULT;
         /// <summary>the performance layer ships with the desktop edition (FULL): the Unity edition is FULL</summary>
         public static bool PERF = true;
+        /// <summary>the clip layer (TS ClipLayer) replaces the Animator controller once the clips are baked: ProcAnimator reads it</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void UseClipLayer() => ClipLayer.Use = true;
 
         // ------------------------------------------------------------------------------------------------ hammer path
         // Tenkai-Oh's rocket hammer, choreographed after a heavyweight hammer tank: swings alternate sides - wind up behind
