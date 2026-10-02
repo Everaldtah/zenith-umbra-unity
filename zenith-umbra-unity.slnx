@@ -1,3 +1,5 @@
 ﻿<Solution>
   <Project Path="ZU.Sim.csproj" />
+  <Project Path="ZU.Game.csproj" />
+  <Project Path="ZU.Editor.csproj" />
 </Solution>

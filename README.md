@@ -20,8 +20,8 @@ Work in progress.
 | Path | What |
 |---|---|
 | `Assets/ZU/Sim` | the game rules (C#), a line-by-line port of `zenith-umbra/src/game`, `src/ai`, `src/engine` |
-| `Assets/ZU/Data` | game data exported from the TypeScript source (`tools/export`) |
-| `tools/export` | `node tools/export/export_data.mjs <zenith-umbra repo> Assets/ZU/Data` |
+| `Assets/ZU/Resources/ZUData` | game data exported from the TypeScript source (`tools/export`) |
+| `tools/export` | `node tools/export/export_data.mjs <zenith-umbra repo> Assets/ZU/Resources/ZUData` |
 | `tools/simtest` | headless build and tests with the .NET SDK bundled in the Unity editor (`build.ps1`, `run.ps1 smoke` / `aimatch`) |
 | `tools/blender` | GLB to FBX conversion for Unity's humanoid importer |
 | `docs/PORTING.md` | the porting rules |

@@ -32,3 +32,8 @@ Assets/ZU/Art/Anim/Kevin/
 Assets/ZU/Art/Anim/Kevin.meta
 # desktop app output
 /out/
+
+# editor captures
+/Assets/Screenshots/
+/Assets/Screenshots.meta
+/Screenshots/

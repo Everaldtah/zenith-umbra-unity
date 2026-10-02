@@ -12,7 +12,7 @@ namespace ZU.SimTest
         static int Main(string[] args)
         {
             var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
-            var data = GameData.Load(Path.Combine(root, "Assets/ZU/Data"));
+            var data = GameData.Load(Path.Combine(root, "Assets/ZU/Resources/ZUData"));
             var cmd = args.Length > 0 ? args[0] : "smoke";
             switch (cmd)
             {
