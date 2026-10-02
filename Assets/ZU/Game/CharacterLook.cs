@@ -26,6 +26,8 @@ namespace ZU.Game
         readonly Material[][] opaque;           // each renderer's own materials (+ the rim pass)
         Material[][] clear;                     // transparent copies, made the first time a translucent look is needed
         Mode mode = Mode.Opaque;
+        /// <summary>how opaque the body is drawn this frame (1 solid; stealth / rebirth / hologram less)</summary>
+        public float Alpha { get; private set; } = 1;
         readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
         readonly Transform shield, barrier; readonly MeshRenderer shieldR, barrierR;
         readonly Color holoCol; readonly bool holo;
@@ -151,6 +153,7 @@ namespace ZU.Game
                 if (a.Has("spawnprot", t)) rim = 1.2f + Mathf.Sin(time * 20) * 0.5f;
             }
             SetMode(want, alpha);
+            Alpha = want == Mode.Opaque ? 1 : alpha;
             for (int i = 0; i < body.Length; i++)
             {
                 var r = body[i]; if (r == null) continue;

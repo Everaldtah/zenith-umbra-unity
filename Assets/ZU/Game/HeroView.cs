@@ -67,6 +67,8 @@ namespace ZU.Game
         public float[] ChainExt => proc?.chainExt;
         /// <summary>1 on the frame a heavy strike lands (the camera kicks)</summary>
         public float Impact => proc?.impact ?? 0;
+        /// <summary>how opaque the body is drawn (1 solid; a cloaked hero 0.35 to allies, 0.25 / 0.04 to enemies): face parts fade with it</summary>
+        public float BodyAlpha => look?.Alpha ?? 1;
 
         public static HeroView Create(Actor a, HeroLibrary.Entry e, HeroLibrary lib, Transform parent)
         {
