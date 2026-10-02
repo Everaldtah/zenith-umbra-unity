@@ -33,6 +33,8 @@ namespace ZU.Game.Fx
         }
 
         void Start() { EventSink.OnEvent += OnEvent; }
+        /// <summary>draw an effect the views raise themselves (not a sim event: a heavy footfall's dust, TS Game's onStep)</summary>
+        public void Fire(FxEvent e) => OnEvent(r, e);
         void OnDestroy() { EventSink.OnEvent -= OnEvent; if (Current == fx) Current = null; if (Weapons == wfx) Weapons = null; }
 
         static Color C(string hex, string fallback = "#ffffff") => Conv.Hex(hex ?? fallback, Color.white);

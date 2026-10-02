@@ -51,7 +51,7 @@ namespace ZU.Game
         ZuDynamics dyn;
         HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
         ProcAnimator proc; AnimState state; // the procedural layer (TS Animator.ts) and what it reads
-        Actor actor; double syncT; float syncDt; Vector3 drawPos;
+        Actor actor; double syncT; float syncDt; Vector3 drawPos; IViewHost host;
         Vector3 baseScale = Vector3.one; float? downYaw;
         bool wasAlive = true;
         double seenAttack = -9, seenCast = -9, seenHit = -9, seenJump = -9, seenLand = -9;
@@ -89,6 +89,8 @@ namespace ZU.Game
                 {
                     v.proc = p;
                     p.hasProp = v.held != null && v.held.prop != null; if (p.hasProp) p.hammerLen = v.held.hammerLen;
+                    p.onStep = v.OnStep;
+                    Audio.MatchAudio.StrideSteps = false;       // steps come from the animator's foot plants, as in the TS
                     go.AddComponent<ProcDriver>().view = v;
                 }
             }
@@ -102,7 +104,7 @@ namespace ZU.Game
             bool hidden = a.Has("stealth", t) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", t);
             bool show = !(firstPerson || hidden) && (a.alive || t - a.deathAt < BODY_SECS);
             foreach (var x in rends) if (x != null) x.enabled = show;
-            actor = a; syncT = t; syncDt = Time.deltaTime; shown = show;
+            actor = a; syncT = t; syncDt = Time.deltaTime; shown = show; host = r;
             drawPos = r.DrawPos(a);
             transform.SetPositionAndRotation(drawPos, Conv.Yaw(a.yaw));
             if (dyn != null)
@@ -174,7 +176,24 @@ namespace ZU.Game
             var yawQ = Conv.Yaw(yaw);
             transform.SetPositionAndRotation(drawPos + yawQ * ProcAnimator.M(pos), yawQ * ProcAnimator.M(q));
             transform.localScale = Vector3.Scale(baseScale, new Vector3(proc.sqXZ, proc.sqY, proc.sqXZ));
-            if (proc.impact > 0 && Fx.MatchFx.Current != null) Fx.MatchFx.Current.Shake = Mathf.Max(Fx.MatchFx.Current.Shake, 0.6f);
+            // a heavy strike's impact frame (TS Game onImpact): the striker's own camera kicks, anyone near feels the shake
+            if (proc.impact > 0 && Fx.MatchFx.Current != null)
+            {
+                var cam = Camera.main; float near = cam != null ? Vector3.Distance(cam.transform.position, transform.position) : 20;
+                Fx.MatchFx.Current.Shake = Mathf.Max(Fx.MatchFx.Current.Shake, host != null && a == host.Player ? 0.3f : 0.18f / (1 + near / 6));
+            }
+        }
+
+        /// <summary>a foot planted (TS Game addView's onStep): the step sound; a heavy stomp also kicks up dust and shakes the
+        /// camera of anyone near</summary>
+        void OnStep(int side, bool heavy)
+        {
+            if (actor == null || !(host is MatchRunner mr)) return;
+            mr.GetComponent<Audio.MatchAudio>()?.Step(actor, heavy);
+            if (!heavy) return;
+            mr.GetComponent<Fx.MatchFx>()?.Fire(new FxEvent("step", actor.pos, new FxOpts()));
+            var cam = Camera.main; var fx = Fx.MatchFx.Current;
+            if (fx != null && cam != null) fx.Shake = Mathf.Max(fx.Shake, 0.08f / (1 + Vector3.Distance(cam.transform.position, transform.position) / 8));
         }
 
         /// <summary>after the Animator and the procedural pose: the weapons follow the hands, the fingers close on them</summary>

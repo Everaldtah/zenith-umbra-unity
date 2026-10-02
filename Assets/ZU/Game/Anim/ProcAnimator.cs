@@ -281,8 +281,11 @@ namespace ZU.Game.Anim
         public (Vector3 pos, Vector3 haft, Vector3 side)? prop;
 
         /// <summary>a foot lands: the heavy chest / hips punctuation and a flutter through an angel's wings</summary>
+        /// <summary>a foot planted (side 0 = left, heavy = a mech's stomp): the view plays the step and its dust</summary>
+        public System.Action<int, bool> onStep;
         void Footfall(int i, bool heavy, Persona P)
         {
+            onStep?.Invoke(i, heavy);
             kick.v += (heavy ? 1.6f : 2.4f) * P.weight * moveBlend;
             if (isAngel) stepFlutter += 0.035f;
         }
