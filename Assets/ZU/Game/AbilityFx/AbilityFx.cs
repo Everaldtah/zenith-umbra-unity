@@ -49,7 +49,6 @@ namespace ZU.Game.Fx
             extras = new CharacterExtras(r, ViewOf);
             // the swarm is built at match start when Hex is in it (the TS: so the preloader compiles it), else on the first puppet
             foreach (var a in r.World.actors) if (a.baseDef.id == "hex") { swarm = new PuppetSwarm(); break; }
-            if (UltShowcase.Pending) UltShowcase.Attach(r);
         }
 
         float Now => (float)r.World.time;
@@ -76,6 +75,8 @@ namespace ZU.Game.Fx
         {
             Init();
             if (!ready) return;
+            // (here, never from OnEvent: the showcase adds its dummies, and the world's events are being enumerated there)
+            if (UltShowcase.Pending) UltShowcase.Attach(r);
             var w = r.World; float now = Now;
             var kit = MatchFx.Current;
             dragons.Update(now, (q, c, big) => kit?.Emit(q, big ? 3 : 2, c, FxKit.O(speed: big ? 2.2f : 1.2f, life: big ? 0.7f : 0.5f, size: big ? 0.55f : 0.4f, spread: big ? 0.8f : 0.5f)));

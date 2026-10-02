@@ -94,6 +94,9 @@ namespace ZU.Game.Fx
                 if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;      // (the puppets are the swarm's)
                 var x = Bind(a);
                 if (x == null) continue;
+                // TS-PARITY: the lids and the glow follow the body's renderer, not its stealth fade - in the TS they are made after
+                // collectMats() gathers the materials that fade (and the glow is a Sprite, never collected), so a cloaked hero's
+                // blink and a masked hero's eye glow stay at full strength (on the user's list of TS bugs)
                 bool shown = x.body != null && x.body.enabled;
                 if (!a.alive) DeathRagdoll(w, a, x, time, dt);
                 else if (x.ragdoll != null || x.ragdollDone) { x.ragdoll = null; x.ragdollDone = false; x.frozen = null; }   // back to life: the Animator takes the skeleton back
