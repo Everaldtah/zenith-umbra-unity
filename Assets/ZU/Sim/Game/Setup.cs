@@ -1,0 +1,123 @@
+// Match construction shared by the game, the AI test lab and headless tests. Port of zenith-umbra src/game/setup.ts
+// (the campaign's createCampaign is in Campaign/Director.cs).
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using ZU.Sim.Data;
+
+namespace ZU.Sim
+{
+    public class Match { public World world; public INav nav; public Actor player; public List<Bot> bots = new List<Bot>(); }
+
+    public static class Setup
+    {
+        static readonly HashSet<string> PLAYER_MODES = new HashSet<string> { "skirmish", "stadium", "quickplay", "competitive", "practice" };
+
+        /// <param name="level">collision for the map (default: the classic box level); <paramref name="nav"/> likewise</param>
+        public static Match CreateMatch(string mapId, string mode, string playerHero, double skill = 0.7, ILevel level = null, INav nav = null)
+        {
+            var map = GameData.Current.Map[mapId];
+            var world = new World(map, mode, true, null, level);
+            nav ??= new BoxNav((BoxLevel)world.level);
+            world.nav = nav;
+            var m = new Match { world = world, nav = nav };
+            if (mode == "gallery")
+            {
+                // animation test bench: one hero runs a scripted routine through every movement / combat state
+                var a = world.AddHero(playerHero ?? "raijin", "zenith");
+                a.pos = new V3(-10, 0, 0);
+                a.controller = new DemoRoutine(world, a);
+                world.point.unlockAt = 1e9;
+                return m;
+            }
+            if (mode == "training")
+            {
+                var p = world.AddHero(playerHero ?? "raijin", "zenith");
+                p.isPlayer = true; m.player = p;
+                var robots = new (string id, double x, double z)[]
+                {
+                    ("bot_dummy", 8, -4), ("bot_dummy", 8, 4), ("bot_dummy", 14, 0),
+                    ("bot_sentry", 30, -10), ("bot_sentry", 30, 10),
+                    ("bot_drone", 20, -16), ("bot_drone", 20, 16),
+                };
+                foreach (var (id, x, z) in robots)
+                {
+                    var r = world.AddHero(id, "umbra");
+                    r.spawn = new[] { x, z }; world.Respawn(r, true);
+                    var b = new Bot(world, r, nav, skill); r.controller = b; m.bots.Add(b);
+                }
+                return m;
+            }
+            // the AI lab / headless sims alternate the two-tank team's pick map by map (deterministic, both get exercised)
+            int seed = mapId.Sum(c => (int)c) % 2;
+            Func<double> rnd = mode == "aitest" ? (Func<double>)(() => seed * 0.99) : Rng.Random;
+            foreach (var h in Lineup(playerHero, rnd))
+            {
+                var a = world.AddHero(h.id);
+                if (h.id == playerHero && PLAYER_MODES.Contains(mode)) { a.isPlayer = true; m.player = a; continue; }
+                var b = new Bot(world, a, nav, skill);
+                a.controller = b; m.bots.Add(b);
+            }
+            if (mode == "stadium") world.stadium = new Stadium(world);
+            return m;
+        }
+
+        public static List<HeroDef> RosterFor(bool full) => GameData.Current.Heroes.Where(h => full || !h.full).ToList();
+
+        /// <summary>Role queue, the 5v5 way: one tank, two supports, two damage per side (a random pick where a team has more).</summary>
+        public static List<HeroDef> Lineup(string playerHero, Func<double> rnd = null, bool full = true)
+        {
+            rnd ??= Rng.Random;
+            var SLOTS = new (string role, int n)[] { ("tank", 1), ("support", 2), ("dps", 2) };
+            var output = new List<HeroDef>();
+            var HEROES = RosterFor(full);
+            foreach (var team in new[] { "zenith", "umbra" })
+                foreach (var (role, n) in SLOTS)
+                {
+                    var pool = HEROES.Where(h => h.team == team && h.role == role).ToList();
+                    var mine = pool.Where(h => h.id == playerHero).ToList(); var rest = pool.Where(h => h.id != playerHero).ToList();
+                    for (int i = rest.Count - 1; i > 0; i--) { int j = (int)Math.Floor(rnd() * (i + 1)); (rest[i], rest[j]) = (rest[j], rest[i]); }
+                    output.AddRange(mine.Concat(rest).Take(n));
+                }
+            // keep the roster order (spawn slots, scoreboard) stable
+            return HEROES.Where(h => output.Contains(h)).ToList();
+        }
+    }
+
+    /// <summary>Scripted routine for the gallery / animation test: idle, walk, run, strafe, backpedal, jump, fly, attack, cast, hit.</summary>
+    public class DemoRoutine : IController
+    {
+        readonly World w; readonly Actor a; readonly double t0;
+        public string step = "";
+        public DemoRoutine(World w, Actor a) { this.w = w; this.a = a; t0 = w.time; }
+        public static readonly (string name, double secs)[] STEPS = { ("idle", 2), ("run", 2.5), ("strafe", 2), ("back", 1.5), ("jump", 1.4), ("attack", 1.6), ("alt", 1.2), ("cast", 1.4), ("fly", 3), ("hit", 1), ("idle2", 1) };
+
+        public void Think(double dt)
+        {
+            var i = a.input;
+            double total = STEPS.Sum(x => x.secs);
+            double k = (w.time - t0) % total; string s = "idle";
+            foreach (var (n, d) in STEPS) { if (k < d) { s = n; break; } k -= d; }
+            step = s;
+            i.mx = i.mz = 0; i.fire = i.alt = i.jump = i.jumpHeld = false; i.a1 = i.a2 = i.ult = false;
+            // walk a circle around the origin so the camera always has room
+            double ang = Math.Atan2(a.pos.z, a.pos.x), tangent = ang + Math.PI / 2;
+            double fx = Math.Cos(tangent), fz = Math.Sin(tangent);
+            i.yaw = s == "strafe" ? Math.Atan2(-a.pos.x, -a.pos.z) : s == "back" ? Math.Atan2(-fx, -fz) : Math.Atan2(fx, fz);
+            i.pitch = 0;
+            if (s == "run" || s == "jump" || s == "fly") i.mz = 1;
+            if (s == "strafe") i.mx = 1;
+            if (s == "back") i.mz = -1;
+            if (s == "jump") i.jump = Math.Floor((w.time - t0) * 2) % 3 == 0;
+            if (s == "fly") { i.jump = true; i.jumpHeld = a.def.frame == "flyer"; }
+            if (s == "attack") i.fire = true;
+            if (s == "alt") i.alt = true;
+            if (s == "cast") a.anim.castAt = w.time - (w.time % 0.7);
+            if (s == "hit" && Math.Floor(w.time * 3) != Math.Floor((w.time - 1.0 / 60) * 3)) a.anim.hitAt = w.time;
+            // keep them on the circle (radius ~10)
+            double r = M.Hypot(a.pos.x, a.pos.z);
+            if (r > 12 || r < 8) { double c = (10 - r) / 10; a.vel.x += a.pos.x / (r == 0 ? 1 : r) * c * 2; a.vel.z += a.pos.z / (r == 0 ? 1 : r) * c * 2; }
+            a.hp = a.def.hp; a.ammo = 99;
+        }
+    }
+}

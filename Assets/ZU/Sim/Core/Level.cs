@@ -39,9 +39,12 @@ namespace ZU.Sim
 
     public sealed class BoxLevel : ILevel
     {
-        struct Solid { public double x, z, r, y0, y1; }
+        public struct Solid { public double x, z, r, y0, y1; }
         readonly List<Box> boxes, floors;
         readonly List<Solid> solids = new List<Solid>();
+        public IReadOnlyList<Box> Boxes => boxes;
+        public IReadOnlyList<Box> Floors => floors;
+        public IReadOnlyList<Solid> Solids => solids;
         readonly List<Pad> pads;
         public MapDef Map { get; }
         public double KillY => Map.killY;

@@ -9,6 +9,7 @@ namespace ZU.Sim
     public class Stadium
     {
         public bool frozen;                               // PENDING: stadium.ts
+        public Stadium(World w) { }
         public void Update(double dt) { }
     }
 }

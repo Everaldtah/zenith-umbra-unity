@@ -68,6 +68,12 @@ namespace ZU.Sim
     /// <summary>prevIn: last tick's buttons, for edge detection (World.pressed)</summary>
     public class PrevInput { public bool a1, a2, ult, alt, jump, fire, melee, swoop, descend; }
 
-    public interface INav { List<V3> Find(V3 from, V3 to, int maxIter = 4000); }
-    public interface IDirector { void Update(double dt); void OnKill(Actor a, Actor src); }
+    /// <summary>a path finder: the classic arenas' grid (BoxNav) or a Unity NavMesh on the detailed maps</summary>
+    public interface INav
+    {
+        List<V3> Find(V3 from, V3 to, int maxIter = 60000);
+        /// <summary>the nearest walkable point to p within maxR (TS: nav.center(nav.nearest(p, maxR)))</summary>
+        V3? NearestPoint(V3 p, double maxR);
+    }
+    public interface IDirector { void Update(double dt); void OnKill(Actor a, Actor src); V3? Waypoint(); }
 }
