@@ -1,0 +1,5 @@
+Orbitron (Matt McInerney) and Rajdhani (Indian Type Foundry): SIL Open Font License 1.1, from Google Fonts - the same
+files the PC game ships in public/fonts (woff2), converted to TTF; Orbitron's variable font instanced at 600/800/900.
+ZUSymbols-Bold.ttf: a subset of DejaVu Sans Bold (Bitstream Vera licence + DejaVu changes in the public domain; see
+LICENSE_DEJAVU.txt) - the arrows, triangles and symbols Orbitron and Rajdhani lack (a browser falls back to a system
+font for those).
