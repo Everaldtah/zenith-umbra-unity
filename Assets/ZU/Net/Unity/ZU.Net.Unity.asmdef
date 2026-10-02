@@ -1,0 +1,20 @@
+{
+  "name": "ZU.Net.Unity",
+  "rootNamespace": "ZU.Net.Unity",
+  "references": [
+    "ZU.Net",
+    "ZU.Sim",
+    "Unity.WebRTC"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

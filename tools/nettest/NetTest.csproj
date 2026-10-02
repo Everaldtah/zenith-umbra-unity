@@ -1,0 +1,23 @@
+<!-- Headless build + tests of the netcode (Assets/ZU/Net/Core, with the ZU.Sim sources it drives) on the .NET 8 SDK bundled
+     in the Unity editor - tools/nettest/build.ps1 compiles, `run.ps1 [unit|node <url>|golden <file>]` runs (Program.cs). -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ZU.NetTest</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>CS0649;CS0414;CS0169;SYSLIB0050</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/ZU/Sim/**/*.cs" />
+    <Compile Include="../../Assets/ZU/Net/Core/**/*.cs" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>
