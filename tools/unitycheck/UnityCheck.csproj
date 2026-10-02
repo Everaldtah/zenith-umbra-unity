@@ -17,6 +17,7 @@
     <Compile Include="$(ProjectRoot)\Assets\ZU\Sim\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Game\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Dynamics\**\*.cs" />
+    <Compile Include="$(ProjectRoot)\Assets\ZU\Net\Core\**\*.cs" />
     <!-- work in progress outside Assets (Unity never sees it); test harnesses under staging/*/tests are not part of it -->
     <Compile Include="$(ProjectRoot)\staging\*\Runtime\**\*.cs" />
   </ItemGroup>

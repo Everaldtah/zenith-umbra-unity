@@ -4,6 +4,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ZU.Game.UI;
+using ZU.Net;
 using ZU.Sim;
 
 namespace ZU.Game
@@ -54,8 +55,12 @@ namespace ZU.Game
             PauseMenu.Reset();
             ZuData.Get();
             Rng.Seed((uint)System.Environment.TickCount);
+            // online (ZU.Net, TS Game.ts online start): the net layer builds the match - the host from the lobby's slots, a client
+            // an empty world the host's snapshots fill (its Match.player arrives with the first snapshot)
+            var net = NetMatch.Current;
+            if (net != null) Match = net.Build(-1, null, null, e => EventSink.Handle(this, e));
             // the Starfall campaign: the level's own floating-platform map, the squad, and the encounter director
-            if (mode == "campaign")
+            else if (mode == "campaign")
                 Match = Director.CreateCampaign(mapId, new System.Collections.Generic.List<(string, string)> { (string.IsNullOrEmpty(playerHero) ? "raijin" : playerHero, "local") }, botSkill);
             else Match = Setup.CreateMatch(mapId, mode, string.IsNullOrEmpty(playerHero) ? null : playerHero, botSkill);
             level = LevelView.Build(World.map, transform, World.level);
@@ -77,21 +82,42 @@ namespace ZU.Game
             if (World == null) return;
             PauseMenu.Update(this);
             ModeHud.Update(this);
-            if (!autopilot && !PauseMenu.Paused && !ModeHud.Shopping(this)) controls.Read(Player, World);
+            bool menu = PauseMenu.Paused || ModeHud.Shopping(this);
+            if (!autopilot && !menu) controls.Read(Player, World);
+            var net = NetMatch.Current;
+            // online, a paused player's world keeps going: their hero just stands still and holds fire (TS Game.ts:
+            // `if (!locked || paused) { fire = alt = false; mx = mz = 0 }`)
+            if (net != null && menu && Player != null) { var i = Player.input; i.fire = i.alt = false; i.mx = i.mz = 0; }
+            if (net != null && !net.StepsWorld)
+            {
+                // a client never steps the world: the host's snapshots place everything; we send our input and draw
+                if (Match.player == null && net.Player != null) { Match.player = net.Player; if (!autopilot) controls.Begin(net.Player); }
+                if (Player != null && !autopilot) controls.Apply(Player, World);
+                net.Frame(Time.deltaTime, Player?.input);
+                Snapshot(); Snapshot(); Alpha = 1;
+                SyncViews();
+                return;
+            }
             acc += Time.deltaTime;
             int steps = 0;
             while (acc >= DT && steps < 16)
             {
                 Snapshot();
                 if (!autopilot) controls.Apply(Player, World);
+                net?.BeforeStep();
                 World.Step(DT);
+                net?.AfterStep();
+                net?.Capture(World.events);         // (before Dispatch clears them: the host streams the step's events)
                 acc -= DT; steps++;
                 Dispatch();
             }
             if (steps >= 16) acc = 0;
+            net?.Frame(Time.deltaTime, null);          // the host: snapshots out
             Alpha = (float)(acc / DT);
             SyncViews();
         }
+
+        void OnDestroy() => NetMatch.Current?.End();
 
         /// <summary>Training Grounds: take another hero mid-match (TS Game.swapHero) - the new hero stands where the old one
         /// stood, facing the same way; the old one leaves the world and its view goes. Training only; false otherwise.</summary>
