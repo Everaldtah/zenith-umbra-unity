@@ -40,10 +40,10 @@ namespace ZU.Game
             return v;
         }
 
-        public void Sync(MatchRunner r, Actor a)
+        public void Sync(IViewHost r, Actor a)
         {
-            bool show = a.alive && !(a == r.Player && !r.thirdPerson);
-            if (a.Has("stealth", r.World.time) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", r.World.time)) show = false;
+            bool show = a.alive && !(a == r.Player && !r.ThirdPerson);
+            if (a.Has("stealth", r.SimTime) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", r.SimTime)) show = false;
             foreach (var x in rends) x.enabled = show;
             if (!a.alive) return;
             transform.position = r.DrawPos(a);

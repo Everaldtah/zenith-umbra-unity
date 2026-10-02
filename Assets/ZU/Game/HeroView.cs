@@ -1,13 +1,22 @@
-// A hero drawn with its imported model (HeroLibrary): the prefab, its humanoid Animator driven by the simulation - local
-// velocity into the 8-way locomotion blend, grounded / air / fly / stun / dead states, and one-shot triggers from the
-// sim's animation cues (Actor.anim: attackAt, castAt, hitAt, jumpAt, landAt) - interpolated between simulation steps.
+// A hero drawn with its imported model (HeroLibrary), the TS CharacterView's job: the prefab, its humanoid Animator driven
+// by the simulation (local velocity into the 8-way locomotion blend, grounded / air / fly / stun / dead states, one-shot
+// triggers from the sim's animation cues), then the procedural animator on top of it (Anim/ProcAnimator, the TS
+// Animator.ts: planted feet, aim-twisted spine, per-hero personas, every hero-specific arm pose, Tenkai-Oh's hammer path),
+// the performance layer's squash / whole-body tilt / knockdown applied to the root, the held weapons following the hands
+// and the fingers closing on them - interpolated between simulation steps.
+// Order each frame: Sync (MatchRunner.Update) -> Animator -> ProcDriver.LateUpdate (-100: the procedural pose) ->
+// AbilityFx (-50: ragdolls, eyelids) -> HeroView.LateUpdate (0: weapons, fingers) -> ZuDynamics (500: hair, cloth).
 using UnityEngine;
 using ZU.Dynamics;
+using ZU.Game.Anim;
 using ZU.Sim;
 
 namespace ZU.Game
 {
-    public interface IActorView { void Sync(MatchRunner r, Actor a); }
+    /// <summary>what a hero view reads from whoever drives it: a match (MatchRunner), or the Hero Viewer's turntable</summary>
+    public interface IViewHost { double SimTime { get; } Actor Player { get; } bool ThirdPerson { get; } Vector3 DrawPos(Actor a); }
+
+    public interface IActorView { void Sync(IViewHost r, Actor a); }
 
     public static class ActorViews
     {
@@ -35,47 +44,67 @@ namespace ZU.Game
 
     public class HeroView : MonoBehaviour, IActorView
     {
+        /// <summary>the TS keeps a dead body on screen this long (the ragdoll or death clip, then the sink from 2.6 s)</summary>
+        public const double BODY_SECS = 3.8;
         Animator anim;
         Renderer[] rends;
         ZuDynamics dyn;
         HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
-        Actor actor; double syncT; float syncDt;
+        ProcAnimator proc; AnimState state; // the procedural layer (TS Animator.ts) and what it reads
+        Actor actor; double syncT; float syncDt; Vector3 drawPos;
+        Vector3 baseScale = Vector3.one; float? downYaw;
         bool wasAlive = true;
         double seenAttack = -9, seenCast = -9, seenHit = -9, seenJump = -9, seenLand = -9;
-        Vector3 lastPos; bool hasLast;
         Vector2 vel;            // smoothed local velocity for the blend tree
         static readonly int VelX = Animator.StringToHash("VelX"), VelZ = Animator.StringToHash("VelZ"), Speed = Animator.StringToHash("Speed"), VelY = Animator.StringToHash("VelY"),
             Grounded = Animator.StringToHash("Grounded"), Dead = Animator.StringToHash("Dead"), Stun = Animator.StringToHash("Stun"), Fly = Animator.StringToHash("Fly"),
             Jump = Animator.StringToHash("Jump"), Land = Animator.StringToHash("Land"), Shoot = Animator.StringToHash("Shoot"), Cast = Animator.StringToHash("Cast"),
             Melee = Animator.StringToHash("Melee"), Hit = Animator.StringToHash("Hit");
 
+        /// <summary>Enra's chain blades: how far out on its chain each blade is (0 in the fist .. 1 full length) - the chain view reads it</summary>
+        public float[] ChainExt => proc?.chainExt;
+        /// <summary>1 on the frame a heavy strike lands (the camera kicks)</summary>
+        public float Impact => proc?.impact ?? 0;
+
         public static HeroView Create(Actor a, HeroLibrary.Entry e, HeroLibrary lib, Transform parent)
         {
             var go = Instantiate(e.prefab, parent);
             go.name = $"{a.def.id} #{a.id} ({a.team})";
             var v = go.AddComponent<HeroView>();
+            v.baseScale = go.transform.localScale;
             v.anim = go.GetComponentInChildren<Animator>();
             if (v.anim != null) { v.anim.runtimeAnimatorController = e.controller != null ? e.controller : lib.baseController; v.anim.applyRootMotion = false; }
             v.rends = go.GetComponentsInChildren<Renderer>(true);
             v.dyn = go.GetComponent<ZuDynamics>();       // hair and cloth (HeroImport puts it on the prefab)
             if (v.dyn != null) v.dyn.overrideVelocity = true;
-            // the held weapons (HeldProps) and finger grips (Fingers) bind to the bind pose: before the Animator's first frame
+            // the held weapons (HeldProps), finger grips (Fingers) and the procedural animator bind to the bind pose: before the
+            // Animator's first frame
             var rig = new FirstPerson.RigPose(go.transform);
             v.held = HeldRig.Attach(go, rig, a.def);
             v.fingers = Fingers.Build(go.transform);
+            if (v.anim != null)
+            {
+                var p = new ProcAnimator(rig);
+                if (p.ok)
+                {
+                    v.proc = p;
+                    p.hasProp = v.held != null && v.held.prop != null; if (p.hasProp) p.hammerLen = v.held.hammerLen;
+                    go.AddComponent<ProcDriver>().view = v;
+                }
+            }
             return v;
         }
 
-        public void Sync(MatchRunner r, Actor a)
+        public void Sync(IViewHost r, Actor a)
         {
-            double t = r.World.time;
-            bool firstPerson = a == r.Player && !r.thirdPerson;
+            double t = r.SimTime;
+            bool firstPerson = a == r.Player && !r.ThirdPerson;
             bool hidden = a.Has("stealth", t) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", t);
-            bool show = !(firstPerson || hidden) && (a.alive || t - a.deathAt < 2.5);
+            bool show = !(firstPerson || hidden) && (a.alive || t - a.deathAt < BODY_SECS);
             foreach (var x in rends) if (x != null) x.enabled = show;
             actor = a; syncT = t; syncDt = Time.deltaTime; shown = show;
-            var pos = r.DrawPos(a);
-            transform.SetPositionAndRotation(pos, Conv.Yaw(a.yaw));
+            drawPos = r.DrawPos(a);
+            transform.SetPositionAndRotation(drawPos, Conv.Yaw(a.yaw));
             if (dyn != null)
             {
                 // the sim's velocity and footing; a respawn snaps the chains to the new pose instead of whipping them across
@@ -110,12 +139,70 @@ namespace ZU.Game
         }
 
         bool shown;
-        /// <summary>after the Animator: the weapons follow the hands, the fingers close on them</summary>
+        /// <summary>after the Animator (ProcDriver, order -100): the procedural pose over the clips, then the performance layer on
+        /// the root (TS CharacterView: squash and stretch about the feet, the whole-body tilt about the hips, knocked flat about
+        /// the feet along the push)</summary>
+        internal void Animate()
+        {
+            transform.localScale = baseScale;          // last frame's squash off before the pose is read
+            var a = actor;
+            if (a == null || proc == null) return;
+            // the dead belong to the Animator's death state and the ragdoll (AbilityFx); the hidden aren't worth posing
+            if (!shown || !a.alive) { proc.prop = null; downYaw = null; return; }
+            bool hammer = held != null && held.prop != null && (a.def.id != "tomoe" || Held.AxeOut(a, syncT));
+            var sp = Conv.S(drawPos);           // where the body is drawn, in the sim's frame
+            state = AnimState.From(a, syncT, Time.deltaTime, hammer, new Vector3((float)sp.x, (float)sp.y, (float)sp.z), transform.lossyScale.y, state);
+            proc.Update(state, anim);
+            // the performance layer, in the TS frame: tilt about a pivot at the hips, then a knockdown laid along the push
+            float piv = (float)a.Height * 0.55f;
+            var q = Quaternion.AngleAxis(proc.tiltPitch * Mathf.Rad2Deg, Vector3.right) * Quaternion.AngleAxis(proc.tiltRoll * Mathf.Rad2Deg, Vector3.forward);
+            var jp = q * new Vector3(0, piv, 0);
+            var pos = new Vector3(-jp.x, piv - jp.y, -jp.z);
+            float yaw = (float)a.yaw;
+            if (proc.down > 0)
+            {
+                // knocked flat: the body keeps the facing it fell with (the aim may turn, a body on the floor doesn't spin)
+                downYaw ??= yaw;
+                float dy = downYaw.Value - yaw; dy = Mathf.Atan2(Mathf.Sin(dy), Mathf.Cos(dy));
+                yaw += dy * Mathf.Min(1, proc.down * 3);
+                float th = proc.down * 1.5f; var d = proc.downDir;
+                var kq = Quaternion.AngleAxis(th * Mathf.Rad2Deg, new Vector3(d.z, 0, -d.x).normalized);     // up x the push
+                q = kq * q; pos = kq * pos;
+                pos.y += Mathf.Sin(th) * (float)a.Height * 0.09f;
+            }
+            else downYaw = null;
+            var yawQ = Conv.Yaw(yaw);
+            transform.SetPositionAndRotation(drawPos + yawQ * ProcAnimator.M(pos), yawQ * ProcAnimator.M(q));
+            transform.localScale = Vector3.Scale(baseScale, new Vector3(proc.sqXZ, proc.sqY, proc.sqXZ));
+            if (proc.impact > 0 && Fx.MatchFx.Current != null) Fx.MatchFx.Current.Shake = Mathf.Max(Fx.MatchFx.Current.Shake, 0.6f);
+        }
+
+        /// <summary>after the Animator and the procedural pose: the weapons follow the hands, the fingers close on them</summary>
         void LateUpdate()
         {
             if (actor == null) return;
-            if (held != null) { if (held.prop != null) held.PlacePropAtRest(); held.Place(); held.UpdateState(actor, syncT, shown); }
+            if (held != null)
+            {
+                // the hammer along the animator's swing path (or riding the fist without one); props out of the hand (Tomoe's
+                // Fang in the Warpath, Enra's blades on their chains) where the animator flung them
+                var pp = proc?.prop;
+                if (held.prop != null) { if (pp.HasValue) held.PlacePropFrame(ProcAnimator.M(pp.Value.pos), ProcAnimator.M(pp.Value.haft), ProcAnimator.M(pp.Value.side)); else held.PlacePropAtRest(); }
+                for (int i = 0; i < 2; i++)
+                {
+                    var o = proc != null && actor.alive ? proc.gunOrbit[i] : null;
+                    held.orbit[i] = o.HasValue ? (ProcAnimator.M(o.Value.p), ProcAnimator.M(o.Value.z), ProcAnimator.M(o.Value.y), o.Value.w) : ((Vector3, Vector3, Vector3, float)?)null;
+                }
+                held.Place(); held.UpdateState(actor, syncT, shown);
+            }
             if (fingers != null && shown) fingers.Drive(actor, syncT, syncDt, false);
         }
+    }
+
+    /// <summary>runs the hero's procedural animator after the Animator and before AbilityFx (-50) / HeroView (0) / ZuDynamics (500)</summary>
+    [DefaultExecutionOrder(-100)]
+    public class ProcDriver : MonoBehaviour
+    {
+        public HeroView view;
+        void LateUpdate() { if (view != null) view.Animate(); }
     }
 }

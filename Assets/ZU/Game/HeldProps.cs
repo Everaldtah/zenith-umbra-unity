@@ -242,6 +242,16 @@ namespace ZU.Game
             prop.localRotation = Quaternion.LookRotation(Vector3.Cross(T, H), H);
             propPlaced = true; Show(propRends, propShown);
         }
+        /// <summary>the two-handed prop with its pommel exactly at `pommel` (model space; the animator's held-hammer pose, the
+        /// 10% grip offset already taken), the haft along `dir`, the striking face toward `side`</summary>
+        public void PlacePropFrame(Vector3 pommel, Vector3 dir, Vector3 side)
+        {
+            if (prop == null) return;
+            var H = dir.normalized; var T = (side - H * Vector3.Dot(side, H)).normalized;
+            prop.localPosition = pommel;
+            prop.localRotation = Quaternion.LookRotation(Vector3.Cross(T, H), H);
+            propPlaced = true; Show(propRends, propShown);
+        }
         /// <summary>third person without a swing path: the hammer rides in the right fist, haft up and a little forward</summary>
         public void PlacePropAtRest()
         {

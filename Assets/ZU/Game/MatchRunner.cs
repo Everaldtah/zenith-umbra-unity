@@ -8,7 +8,7 @@ using ZU.Sim;
 
 namespace ZU.Game
 {
-    public class MatchRunner : MonoBehaviour
+    public class MatchRunner : MonoBehaviour, IViewHost
     {
         public const double DT = 1.0 / 120;
 
@@ -26,6 +26,9 @@ namespace ZU.Game
         public Match Match { get; private set; }
         public World World => Match?.world;
         public Actor Player => Match?.player;
+        // IViewHost: what a hero view reads from whoever drives it (a match here; the Hero Viewer's turntable elsewhere)
+        public double SimTime => World.time;
+        public bool ThirdPerson => thirdPerson;
         /// <summary>0..1 between the previous and the current simulation step (for interpolation)</summary>
         public float Alpha { get; private set; }
 
