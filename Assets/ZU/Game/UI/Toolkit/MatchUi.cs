@@ -16,6 +16,7 @@ namespace ZU.Game.UI.Toolkit
         ArmoryView armory;
         PauseView pause;
         UltViewerView ult;
+        int cues;                   // director cues already shown
         float fpsAvg;
         Career.CareerTracker career;
         double lastSimT;
@@ -115,6 +116,13 @@ namespace ZU.Game.UI.Toolkit
                 s.video.perfStats = o[(System.Array.IndexOf(o, s.video.perfStats) + 1) % 3];
                 ZuSettings.Save(s);
             }
+            // V (or its rebinding): first / third person where the mode allows (Quick Play, Competitive, AI matches and
+            // Normal are first person, Stadium third, as in the TS FIXED_VIEW)
+            if (!PauseMenu.Paused && !MenuView.FIXED_VIEW.ContainsKey(r.mode ?? "") && r.Player != null && Keys.Pressed(ZuSettings.BindsFor(s, r.Player.def.id, "view")))
+            {
+                r.thirdPerson = !r.thirdPerson;
+                s.view = r.thirdPerson ? "third" : "first"; ZuSettings.Save(s);
+            }
             bool board = !PauseMenu.Paused && Keys.Held(ZuSettings.BindsFor(s, r.Player?.def.id, "score"));
             hud.Update(w, r.Player, Camera.main, w.time, s.video.perfStats != "off" ? fpsAvg : 0, board, r.Player == null ? "SPECTATING · Esc menu" : "");
             if (s.video.perfStats == "advanced")
@@ -132,6 +140,10 @@ namespace ZU.Game.UI.Toolkit
             if (!want && armory.open) armory.Hide();
             armory.Update();
             pause.Update(r);
+            // the campaign's boss intros: the title card when a colossus arrives
+            if (w.director is ZU.Sim.Director dir)
+                for (; cues < dir.events.Count; cues++)
+                    if (dir.events[cues].t == "bossintro") StoryView.BossCard(dir.events[cues].id);
             // the Ult Viewer's overlay while the showcase runs (the HUD's objective bar steps aside for it)
             var sc = Fx.UltShowcase.Current;
             if (sc != null && sc.Hero != null && ult == null) { ult = new UltViewerView(UiRoot.Get().MenuLayer, sc); U.Toggle(hud.root, "ultsc-on", true); }

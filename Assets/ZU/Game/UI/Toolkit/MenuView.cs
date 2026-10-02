@@ -21,6 +21,9 @@ namespace ZU.Game.UI.Toolkit
         /// <summary>the Starfall co-op lobby (the online layer sets it; null: solo only)</summary>
         public static Action<VisualElement, MenuView> CoopPanel;
 
+        /// <summary>modes whose view is fixed (TS Game FIXED_VIEW); the rest follow Options > Camera and V</summary>
+        public static readonly Dictionary<string, string> FIXED_VIEW = new Dictionary<string, string> { ["skirmish"] = "first", ["stadium"] = "third", ["quickplay"] = "first", ["competitive"] = "first", ["practice"] = "first" };
+
         static MenuView current;
         readonly VisualElement root;
         readonly GameData d;
@@ -408,7 +411,7 @@ namespace ZU.Game.UI.Toolkit
             string map = mode == "training" ? "training" : MapId;
             float skill = q == "practice" ? (float)MenuState.Diff : q != null ? (float)Career.Ranks.SkillFor(MatchSettings.Opp) : (float)ZuSettings.Current.difficulty;
             bool watch = mode == "spectate" || mode == "aitest";
-            bool third = mode == "stadium" || watch || (q == null && ZuSettings.Current.view == "third");
+            bool third = watch || (FIXED_VIEW.TryGetValue(mode, out var fixedView) ? fixedView == "third" : ZuSettings.Current.view == "third");
             if (q == "quickplay" && MatchSettings.Opp <= 0) MatchSettings.Opp = Career.Ranks.LobbyRating(Career.Ranks.Load().qp.mmr);
             Close();
             MatchSettings.Start(map, watch ? "" : HeroId, mode, skill, third);
@@ -491,8 +494,16 @@ namespace ZU.Game.UI.Toolkit
         void PlayLevel(string level, string hero)
         {
             MatchSettings.Level = level;
+            var ids = d.Campaign.levels.Select(j => (string)j["id"]).ToList();
+            CampaignLevel.All(d).TryGetValue(level, out var L);
+            var beats = StoryView.Beats(L?.intro);
+            if (ids.IndexOf(level) == 0)
+            {
+                beats.Add(("img/cine_02.webp", "The night the Colossus fell on Neo-Kurogane, nobody had ever seen a machine that large."));
+                beats.Add(("img/cine_04.webp", "The Vanguard launched before sunrise."));
+            }
             Close();
-            MatchSettings.Start(level, hero, "campaign", 0.7f, true);
+            StoryView.Play(beats, () => MatchSettings.Start(level, hero, "campaign", 0.7f, true));
         }
     }
 }

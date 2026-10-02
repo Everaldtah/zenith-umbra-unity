@@ -78,6 +78,21 @@ namespace ZU.Game.UI.Toolkit
             MatchSettings.BackToMenu();
         }
 
+        /// <summary>a won level plays its outro (the last level the epilogue too) before the campaign menu</summary>
+        void CampaignOutro(MatchRunner r)
+        {
+            var me = r.Player; var w = r.World;
+            bool won = me != null && w.winner == me.team;
+            var d = ZuData.Get();
+            var ids = d.Campaign.levels.Select(j => (string)j["id"]).ToList();
+            CampaignLevel.All(d).TryGetValue(r.mapId, out var L);
+            var beats = won ? StoryView.Beats(L?.outro) : new System.Collections.Generic.List<(string, string)>();
+            if (won && ids.IndexOf(r.mapId) == ids.Count - 1)
+                beats.Add(("img/key_qelvaris.webp", "\"You have not ended the Eclipse,\" whispers a voice from the static. \"You have only made it curious.\" - To be continued."));
+            screen?.RemoveFromHierarchy(); screen = null;
+            StoryView.Play(beats, () => ToMenu("campaign"));
+        }
+
         static void Again(MatchRunner r)
         {
             PauseMenu.Reset();
@@ -108,7 +123,7 @@ namespace ZU.Game.UI.Toolkit
                 int i = ids.IndexOf(r.mapId); if (i >= 0) MenuView.Unlock(i + 1);
             }
             var b = U.Div("btns", s);
-            if (r.mode == "campaign") { U.Btn("CONTINUE", "primary", () => ToMenu("campaign"), b); U.Btn("MAIN MENU", null, () => ToMenu("title"), b); return; }
+            if (r.mode == "campaign") { U.Btn("CONTINUE", "primary", () => CampaignOutro(r), b); U.Btn("MAIN MENU", null, () => ToMenu("title"), b); return; }
             U.Btn("PLAY AGAIN", "primary", () => Again(r), b);
             U.Btn("CHANGE HERO", null, () => ToMenu("heroes"), b);      // keeps Normal / Stadium
             U.Btn("MAIN MENU", null, () => ToMenu("title"), b);

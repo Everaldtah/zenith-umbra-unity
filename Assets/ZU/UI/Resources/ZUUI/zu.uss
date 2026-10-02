@@ -570,3 +570,19 @@
 .ultsc .up-img { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 .ultsc .uhint { position: absolute; left: 50%; bottom: 80px; translate: -50% 0; font-size: 12px; opacity: 0.55; letter-spacing: 0.96px; }
 .hud.ultsc-on .obj { display: none; }
+
+/* ---------------- story cinematics + boss title cards (Cinematic.ts) */
+.cine-panel { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: #000; overflow: hidden; }
+.cine-img { position: absolute; left: -5%; top: -5%; right: -5%; bottom: -5%; background-size: cover; }
+.cine-bar { position: absolute; left: 0; right: 0; height: 9%; background-color: #000; }
+.cine-bar.top { top: 0; }
+.cine-bar.bot { bottom: 0; }
+.cine-cap { position: absolute; left: 8%; right: 8%; bottom: 13%; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; font-size: 30px; color: #fff; text-shadow: 0 3px 14px #000; }
+.cine-skip { position: absolute; right: 3%; bottom: 3%; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 14px; color: rgba(255, 255, 255, 0.53); letter-spacing: 2.1px; }
+.cine-fade { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-color: #000; opacity: 0; transition-property: opacity; transition-duration: 0.6s; }
+.cine-fade.on { opacity: 1; }
+.cine-boss { position: absolute; left: 0; right: 0; top: 22%; align-items: center; }
+.cine-boss .cb-s { -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; font-size: 16px; letter-spacing: 9.6px; color: #fff; -unity-text-align: upper-center; }
+.cine-boss .cb-b { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 96px; text-shadow: 0 0 30px rgba(255, 255, 255, 0.4); -unity-text-align: upper-center; }
+.cine-boss .cb-t { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 20px; color: #eee; letter-spacing: 5px; -unity-text-align: upper-center; }
+.cine-boss .cb-w { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 16px; color: #ffd76a; margin-top: 8px; -unity-text-align: upper-center; }
