@@ -93,6 +93,23 @@ namespace ZU.Game
             SyncViews();
         }
 
+        /// <summary>Training Grounds: take another hero mid-match (TS Game.swapHero) - the new hero stands where the old one
+        /// stood, facing the same way; the old one leaves the world and its view goes. Training only; false otherwise.</summary>
+        public bool SwapHero(string id)
+        {
+            var m = Match;
+            if (m?.player == null || World.mode != "training") return false;
+            var old = m.player; var w = World;
+            var a = w.AddHero(id, "zenith");
+            a.isPlayer = true; a.pos = old.pos; a.yaw = old.yaw;
+            w.actors.Remove(old);
+            if (views.TryGetValue(old.id, out var v)) { if (v is Component c && c != null) Destroy(c.gameObject); views.Remove(old.id); }
+            viewDef.Remove(old.id); poses.Remove(old.id);
+            m.player = a;
+            if (!autopilot) controls.Begin(a);
+            return true;
+        }
+
         void Snapshot()
         {
             foreach (var a in World.actors)
