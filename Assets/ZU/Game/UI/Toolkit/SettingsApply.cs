@@ -33,7 +33,6 @@ namespace ZU.Game.UI.Toolkit
             }
             // sound
             AudioListener.volume = Mathf.Clamp01((float)s.sound.master);
-            Audio.AudioKit.VoiceVol = Mathf.Clamp01((float)s.sound.voice);
         }
     }
 }
