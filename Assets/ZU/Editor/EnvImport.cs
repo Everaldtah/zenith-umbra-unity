@@ -122,6 +122,19 @@ namespace ZU.EditorTools
                 Finish(mat, kind == "metal" || kind == "rust" ? 0.35f : 0.6f);
                 EditorUtility.SetDirty(mat); nm++;
             }
+            // flat-colour kit materials that need shader variants a build would otherwise strip (lit windows: Lit + _EMISSION)
+            {
+                var lit = Shader.Find("Universal Render Pipeline/Lit");
+                var win = Load($"{Out}/common_window.mat", lit); win.shader = lit;
+                win.SetColor("_BaseColor", new Color(0.18f, 0.13f, 0.09f)); win.SetFloat("_Smoothness", 0.3f);
+                win.EnableKeyword("_EMISSION"); win.SetColor("_EmissionColor", new Color(1f, 0.58f, 0.26f) * 1.4f);
+                win.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None; win.enableInstancing = true;
+                EditorUtility.SetDirty(win);
+                foreach (var (k, c, sm) in new[] { ("pane", new Color(0.10f, 0.12f, 0.15f), 0.9f), ("glass", new Color(0.55f, 0.75f, 0.85f), 0.9f) })
+                {
+                    var m = Load($"{Out}/common_{k}.mat", lit); m.shader = lit; m.SetColor("_BaseColor", c); m.SetFloat("_Smoothness", sm); m.enableInstancing = true; EditorUtility.SetDirty(m);
+                }
+            }
             // water: ZU/Water when it exists, else a glossy Lit stand-in
             {
                 var ws = Shader.Find("ZU/Water");
@@ -129,6 +142,16 @@ namespace ZU.EditorTools
                 if (ws != null) mat.shader = ws;
                 else { mat.SetColor("_BaseColor", new Color(0.10f, 0.25f, 0.40f)); mat.SetFloat("_Smoothness", 0.95f); }
                 EditorUtility.SetDirty(mat);
+            }
+            // the effects material (FxKit loads Resources/ZUFx/additive; referencing ZU/FxAdditive here ships the shader)
+            {
+                var fs = Shader.Find("ZU/FxAdditive");
+                if (fs != null)
+                {
+                    Directory.CreateDirectory("Assets/ZU/Resources/ZUFx");
+                    var mat = Load("Assets/ZU/Resources/ZUFx/additive.mat", fs); mat.shader = fs; mat.enableInstancing = true;
+                    mat.renderQueue = 3000; EditorUtility.SetDirty(mat);
+                }
             }
             // the outer world's terrain material (referenced here so the shader ships in a build)
             {

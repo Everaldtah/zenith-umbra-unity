@@ -39,6 +39,12 @@ namespace ZU.Game
             if (mats.TryGetValue(kind, out var m)) return m;
             m = EnvKit.Surface(map, kind);
             if (m == null) m = Resources.Load<Material>("ZUEnv/common_" + kind);
+            if (m != null && kind == "window")
+            {
+                // lit windows: the shipped material (its emissive variant survives the build), brighter at dusk / night
+                m = new Material(m) { name = "zu_window" };
+                m.SetColor("_EmissionColor", new Color(1f, 0.58f, 0.26f) * (OuterWorld.For(map).lit ? 1.4f : 0.6f));
+            }
             if (m == null && kind == "water") m = Resources.Load<Material>("ZUEnv/water");
             if (m == null)
             {

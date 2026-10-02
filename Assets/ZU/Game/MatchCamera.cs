@@ -22,6 +22,14 @@ namespace ZU.Game
 
         public void Sync(MatchRunner r)
         {
+            Place(r);
+            // the effects' camera shake (slams, stomps, explosions near you): a small random turn, fading with the budget
+            float k = Fx.MatchFx.Current != null ? Fx.MatchFx.Current.Shake : 0;
+            if (k > 0.002f) transform.rotation *= Quaternion.Euler((Random.value - 0.5f) * k * 6, (Random.value - 0.5f) * k * 6, 0);
+        }
+
+        void Place(MatchRunner r)
+        {
             var me = r.Player;
             if (me != null)
             {

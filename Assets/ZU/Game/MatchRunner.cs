@@ -55,6 +55,7 @@ namespace ZU.Game
             controls = new PlayerControls();
             cam = MatchCamera.Ensure(this);
             Audio.MatchAudio.Attach(this);
+            Fx.MatchFx.Attach(this);
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
             else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
