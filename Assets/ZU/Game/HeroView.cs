@@ -51,6 +51,7 @@ namespace ZU.Game
         ZuDynamics dyn;
         HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
         ProcAnimator proc; AnimState state; // the procedural layer (TS Animator.ts) and what it reads
+        CharacterLook look;                 // rim light, stealth / rebirth / hologram looks, shield bubble, barrier
         Actor actor; double syncT; float syncDt; Vector3 drawPos; IViewHost host;
         Vector3 baseScale = Vector3.one; float? downYaw;
         bool wasAlive = true;
@@ -75,6 +76,7 @@ namespace ZU.Game
             v.anim = go.GetComponentInChildren<Animator>();
             if (v.anim != null) { v.anim.runtimeAnimatorController = e.controller != null ? e.controller : lib.baseController; v.anim.applyRootMotion = false; }
             v.rends = go.GetComponentsInChildren<Renderer>(true);
+            v.look = new CharacterLook(parent, v.rends, a, Fx.MatchFx.Current?.Additive);      // (the body only: before the props)
             v.dyn = go.GetComponent<ZuDynamics>();       // hair and cloth (HeroImport puts it on the prefab)
             if (v.dyn != null) v.dyn.overrideVelocity = true;
             // the held weapons (HeldProps), finger grips (Fingers) and the procedural animator bind to the bind pose: before the
@@ -101,8 +103,9 @@ namespace ZU.Game
         {
             double t = r.SimTime;
             bool firstPerson = a == r.Player && !r.ThirdPerson;
-            bool hidden = a.Has("stealth", t) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", t);
-            bool show = !(firstPerson || hidden) && (a.alive || t - a.deathAt < BODY_SECS);
+            // (stealth is a look, not a hide: allies see a ghost, enemies a shimmer - CharacterLook)
+            bool show = !firstPerson && (a.alive || t - a.deathAt < BODY_SECS);
+            hiddenFoe = a.Has("stealth", t) && r.Player != null && a.team != r.Player.team && !a.Has("revealed", t);
             foreach (var x in rends) if (x != null) x.enabled = show;
             actor = a; syncT = t; syncDt = Time.deltaTime; shown = show; host = r;
             drawPos = r.DrawPos(a);
@@ -140,7 +143,7 @@ namespace ZU.Game
             if (c.hitAt > seenHit) { seenHit = c.hitAt; if (t - c.hitAt < 0.2 && a.alive) anim.SetTrigger(Hit); }
         }
 
-        bool shown;
+        bool shown, hiddenFoe;
         /// <summary>after the Animator (ProcDriver, order -100): the procedural pose over the clips, then the performance layer on
         /// the root (TS CharacterView: squash and stretch about the feet, the whole-body tilt about the hips, knocked flat about
         /// the feet along the push)</summary>
@@ -211,11 +214,14 @@ namespace ZU.Game
                     var o = proc != null && actor.alive ? proc.gunOrbit[i] : null;
                     held.orbit[i] = o.HasValue ? (ProcAnimator.M(o.Value.p), ProcAnimator.M(o.Value.z), ProcAnimator.M(o.Value.y), o.Value.w) : ((Vector3, Vector3, Vector3, float)?)null;
                 }
-                held.Place(); held.UpdateState(actor, syncT, shown);
+                held.Place(); held.UpdateState(actor, syncT, shown && !hiddenFoe);      // a cloaked enemy's weapon goes with it
                 if (!actor.alive) held.HideTwoHanded();      // the ragdoll throws the body; the hammer / axe don't ride its hands
             }
             if (fingers != null && shown) fingers.Drive(actor, syncT, syncDt, false);
+            look?.Update(actor, host, syncT, drawPos, shown);
         }
+
+        void OnDestroy() => look?.Dispose();
     }
 
     /// <summary>runs the hero's procedural animator after the Animator and before AbilityFx (-50) / HeroView (0) / ZuDynamics (500)</summary>

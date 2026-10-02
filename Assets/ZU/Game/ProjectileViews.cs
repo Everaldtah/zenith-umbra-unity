@@ -50,7 +50,7 @@ namespace ZU.Game
 
         // ------------------------------------------------------------------------------------------------ building blocks
         /// <summary>the TS sphere (radius 1, 12 x 8) with white vertex colours, which ZU/FxAdditive multiplies in</summary>
-        static Mesh Sphere()
+        internal static Mesh Sphere()
         {
             if (sphere != null) return sphere;
             var v = new List<Vector3>(); var n = new List<Vector3>(); var c = new List<Color>(); var tri = new List<int>();
