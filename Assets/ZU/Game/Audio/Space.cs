@@ -53,6 +53,10 @@ namespace ZU.Game.Audio
         /// <summary>distances (m) to the nearest wall in front / right / behind / left of the listener; Infinity = open</summary>
         public static void SetReflections(float[] d) { for (int i = 0; i < 4 && i < d.Length; i++) walls[i] = d[i]; }
 
+        /// <summary>the zone's live values (AudioKit.Diag)</summary>
+        public static string Diag() => zone == null ? "reverb: none" :
+            $"reverb: indoor {indoor:0.00} decay {zone.decayTime:0.00}s room {zone.room}mB roomHF {zone.roomHF}mB refl {zone.reflections}mB @{zone.reflectionsDelay * 1000:0}ms";
+
         static int MB(float linear) => Mathf.RoundToInt(Mathf.Clamp(2000 * Mathf.Log10(Mathf.Max(1e-5f, linear)), -10000, 0));    // linear gain -> millibels
 
         internal static void Tick(float dt)

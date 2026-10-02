@@ -328,6 +328,27 @@ namespace ZU.Game.Audio
         public static void StopAllLoops() { foreach (var k in new List<string>(loops.Keys)) StopLoop(k); }
         public static void StopAll() { foreach (var v in pool) { v.src.Stop(); v.until = 0; v.loopKey = null; } loops.Clear(); }
 
+        /// <summary>a readout of the mix for checks from the CLI: the ducks, what's playing per bus, each voice line's filter
+        /// chain, the reverb zone, and the output level</summary>
+        public static string Diag()
+        {
+            Ensure();
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"sfxDuck {sfxDuck:0.00} ambDuck {ambDuck:0.00} duck {(Time.unscaledTime < duckUntil ? duckAmount : 0):0.00}; ");
+            var n = new Dictionary<Bus, int>();
+            foreach (var v in pool) if (v.src.isPlaying) n[v.bus] = (n.TryGetValue(v.bus, out var k) ? k : 0) + 1;
+            foreach (var kv in n) sb.Append($"{kv.Key} {kv.Value} ");
+            sb.Append($"loops {loops.Count}; ");
+            foreach (var v in pool)
+                if (v.src.isPlaying && v.cat == "voice")
+                    sb.Append($"[{v.src.clip?.name} vol {v.src.volume:0.00} 3d {v.src.spatialBlend:0} lp {v.lp.cutoffFrequency:0} hp {(v.hp.enabled ? v.hp.cutoffFrequency.ToString("0") : "off")} drive {(v.drive.enabled ? "on" : "off")}] ");
+            sb.Append(Space.Diag());
+            var buf = new float[1024]; AudioListener.GetOutputData(buf, 0);
+            double sum = 0, peak = 0; foreach (var x in buf) { sum += x * x; peak = Math.Max(peak, Math.Abs(x)); }
+            sb.Append($" out rms {Math.Sqrt(sum / buf.Length):0.000} peak {peak:0.000}");
+            return sb.ToString();
+        }
+
         // ------------------------------------------------------------------------------------------------ per frame
         /// <summary>the buses, ducks, fades and loop gains applied to every voice (AudioKitDriver, every frame)</summary>
         internal static void Tick(float dt)
