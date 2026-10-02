@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ZU.Game.Audio;
 using ZU.Game.UI;
+using UnityEngine.UIElements;
 using ZU.Sim;
 
 namespace ZU.Game.UI.Toolkit
@@ -17,6 +18,8 @@ namespace ZU.Game.UI.Toolkit
         PauseView pause;
         UltViewerView ult;
         int cues;                   // director cues already shown
+        VisualElement labPanel;     // the AI Test Lab's live report (aitest)
+        float labNext, labNextMap = -1;
         float fpsAvg;
         Career.CareerTracker career;
         double lastSimT;
@@ -52,6 +55,7 @@ namespace ZU.Game.UI.Toolkit
             career = cm != null && r.Player != null ? new Career.CareerTracker(cm, r.mapId) : null;
             LastRecord = null;
             lastSimT = r.World?.time ?? 0;
+            if (r.mode == "aitest") { labPanel = U.Div("lab", ui.HudLayer); }
             StartCoroutine(LoadingView.Warm());
         }
 
@@ -95,7 +99,12 @@ namespace ZU.Game.UI.Toolkit
         }
 
         void OnSettings(ZuSettings s) => hud.ApplySettings(s);
-        void OnEvent(MatchRunner runner, SimEvent e) { if (runner == r && r.World != null) hud.Event(e, r.Player, r.World.time); }
+        void OnEvent(MatchRunner runner, SimEvent e)
+        {
+            if (runner != r || r.World == null) return;
+            hud.Event(e, r.Player, r.World.time);
+            if (labPanel != null) AiLab.OnEvent(e);
+        }
         static void Sfx(string id) { try { if (AudioKit.Has(id)) AudioKit.Play(id, null); } catch (System.Exception) { /* no bank */ } }
 
         void LateUpdate()
@@ -140,6 +149,15 @@ namespace ZU.Game.UI.Toolkit
             if (!want && armory.open) armory.Hide();
             armory.Update();
             pause.Update(r);
+            // the AI Test Lab: the checks every frame, the panel twice a second, a map capped at 4 minutes, then the next map
+            if (labPanel != null)
+            {
+                AiLab.Frame(w, Time.deltaTime);
+                if (Time.unscaledTime >= labNext) { labNext = Time.unscaledTime + 0.5f; AiLab.Render(labPanel); }
+                if (string.IsNullOrEmpty(w.winner) && w.time > 240) w.End(w.point.progress["zenith"] >= w.point.progress["umbra"] ? "zenith" : "umbra");
+                if (!string.IsNullOrEmpty(w.winner) && labNextMap < 0) { AiLab.EndMap(w, r.Match?.bots); AiLab.Render(labPanel); labNextMap = Time.unscaledTime + 2.5f; }
+                if (labNextMap > 0 && Time.unscaledTime >= labNextMap) { labNextMap = float.MaxValue; MatchSettings.Start(AiLab.NextMap(), "", "aitest", r.botSkill, true); }
+            }
             // the campaign's boss intros: the title card when a colossus arrives
             if (w.director is ZU.Sim.Director dir)
                 for (; cues < dir.events.Count; cues++)

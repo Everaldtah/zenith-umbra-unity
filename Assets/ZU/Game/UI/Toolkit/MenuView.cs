@@ -397,7 +397,7 @@ namespace ZU.Game.UI.Toolkit
             }
             var bar = Bar(s);
             U.Btn("BACK", null, Title, bar);
-            U.Btn(mode == "aitest" ? "RUN ALL MAPS" : "WATCH", "primary go", Launch, bar);
+            U.Btn(mode == "aitest" ? "RUN ALL MAPS" : "WATCH", "primary go", () => { if (mode == "aitest") AiLab.Begin(MapId); Launch(); }, bar);
         }
 
         // ================================================================ launch

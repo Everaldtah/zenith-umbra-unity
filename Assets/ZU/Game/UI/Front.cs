@@ -49,7 +49,7 @@ namespace ZU.Game.UI
             bool over = r.World != null && !string.IsNullOrEmpty(r.World.winner);
             if (over && !recorded) { recorded = true; Record(r); overAt = Time.unscaledTime; }
             // the end plays out before the result screen (the TS waits 3.5 s, 2.5 s in the campaign)
-            if (over && !Paused && Time.unscaledTime - overAt >= (r.mode == "campaign" ? 2.5f : 3.5f)) Set(true);
+            if (over && !Paused && r.mode != "aitest" && Time.unscaledTime - overAt >= (r.mode == "campaign" ? 2.5f : 3.5f)) Set(true);
             if (kb != null && kb.escapeKey.wasPressedThisFrame && !over && !(EscTaken?.Invoke() ?? false)) Set(!Paused);
         }
 

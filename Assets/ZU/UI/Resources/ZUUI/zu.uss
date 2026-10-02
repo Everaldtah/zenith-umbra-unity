@@ -586,3 +586,13 @@
 .cine-boss .cb-b { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 96px; text-shadow: 0 0 30px rgba(255, 255, 255, 0.4); -unity-text-align: upper-center; }
 .cine-boss .cb-t { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 20px; color: #eee; letter-spacing: 5px; -unity-text-align: upper-center; }
 .cine-boss .cb-w { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 16px; color: #ffd76a; margin-top: 8px; -unity-text-align: upper-center; }
+
+/* ---------------- AI Test Lab panel (style.css .lab) */
+.lab { position: absolute; right: 10px; top: 110px; width: 470px; background-color: rgba(10, 14, 24, 0.78); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 10px 14px; font-size: 13px; }
+.lab .lab-h4 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 15px; margin-bottom: 6px; }
+.lab .lab-s { font-size: 13px; margin: 2px 0; }
+.lab .lab-t { margin: 6px 0; }
+.lab .lab-tr { flex-direction: row; }
+.lab .lab-td { flex-grow: 1; flex-basis: 0; padding: 1px 4px; font-size: 12px; }
+.lab .th .lab-td { opacity: 0.7; }
+.lab .lab-maps { opacity: 0.8; font-size: 12px; }
