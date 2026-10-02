@@ -60,6 +60,9 @@ namespace ZU.Sim
         /// <summary>per-tick scratch values</summary>
         public Dictionary<string, double> sv = new Dictionary<string, double> { ["puppetPaths"] = 0 };
         public IDirector director;
+        /// <summary>online host: lag compensation - moves everyone else back to where a remote shooter saw them while that
+        /// shooter's weapons and abilities run; returns the undo (ZU.Net FastHost)</summary>
+        public Func<Actor, Action> rewind;
         /// <summary>Stadium mode: rounds, the Armory, cash (null in every other mode)</summary>
         public Stadium stadium;
         public WorldStats stats = new WorldStats();

@@ -179,6 +179,7 @@ namespace ZU.Sim
             bool stunned = a.Has("stun", t) || a.Has("reborn", t);       // (the reborn can't fight until their guard ends)
             if (!stunned && !a.Has("phased", t))
             {
+                var undo = !string.IsNullOrEmpty(a.netId) && rewind != null ? rewind(a) : null;
                 Weapons.UpdateWeapons(this, a, dt);
                 // Crescent Warpath: a click drops her out of the flight where she is
                 if (a.forced?.kind == "tide" && (Pressed(a, "fire") || Pressed(a, "alt")) && t - a.Sv("tideT0", t) > Abilities.TIDE_HOLD) a.forced.until = t;
@@ -197,6 +198,7 @@ namespace ZU.Sim
                     var S = a.def.secondary;
                     if (S.IsAbility && !S.hold && Pressed(a, "alt")) Abilities.CastAbility(this, a, S.id, "alt");
                 }
+                undo?.Invoke();
             }
             else { a.barrier.up = false; a.beamOn = false; a.flameOn = false; a.charging = false; }
             var i = a.input;

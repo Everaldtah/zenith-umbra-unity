@@ -62,6 +62,53 @@ namespace ZU.Sim
             return m;
         }
 
+        /// <summary>a seat in an online match: a hero, a side, and who plays it ("local" = this machine, a peer id, "" = AI)</summary>
+        public class OnlineSlot { public string hero, team, netId; }
+
+        /// <summary>
+        /// Online match (the host's world): the humans' heroes, and AI for every seat still empty - each side is filled to
+        /// five (one tank, two damage, two support; roles the humans already cover are skipped, a side never fields the same
+        /// hero twice). Few people online = a mostly-AI match; every extra player replaces a bot.
+        /// </summary>
+        public static Match CreateOnlineMatch(string mapId, string mode, List<OnlineSlot> slots, double skill = 0.7, Func<double> rnd = null, ILevel level = null, INav nav = null)
+        {
+            rnd ??= Rng.Random;
+            var D = GameData.Current;
+            var world = new World(D.Map[mapId], mode, true, null, level);
+            nav ??= new BoxNav((BoxLevel)world.level);
+            world.nav = nav;
+            var m = new Match { world = world, nav = nav };
+            var HEROES = RosterFor(true);
+            var seats = new List<(HeroDef def, OnlineSlot slot)>();
+            foreach (var team in new[] { "zenith", "umbra" })
+            {
+                var humans = slots.Where(s => s.team == team && D.Hero.TryGetValue(s.hero, out var h) && h.team == team).Take(5).ToList();
+                var used = new HashSet<string>(humans.Select(s => s.hero));
+                foreach (var s in humans) seats.Add((D.Hero[s.hero], s));
+                var need = new Dictionary<string, int> { ["tank"] = 1, ["dps"] = 2, ["support"] = 2 };
+                foreach (var s in humans) need[D.Hero[s.hero].role]--;
+                int open = 5 - humans.Count;
+                foreach (var role in new[] { "tank", "support", "dps" })
+                {
+                    var pool = HEROES.Where(h => h.team == team && h.role == role && !used.Contains(h.id)).ToList();
+                    for (int i = pool.Count - 1; i > 0; i--) { int j = (int)Math.Floor(rnd() * (i + 1)); (pool[i], pool[j]) = (pool[j], pool[i]); }
+                    foreach (var h in pool.Take(Math.Max(0, Math.Min(open, need[role])))) { seats.Add((h, null)); used.Add(h.id); open--; }
+                }
+                // a side whose humans doubled up on a role still gets five: any hero left
+                foreach (var h in HEROES.Where(h => h.team == team && !used.Contains(h.id)).Take(open).ToList()) { seats.Add((h, null)); used.Add(h.id); }
+            }
+            // the roster order keeps spawn slots and the scoreboard stable
+            seats = seats.OrderBy(s => HEROES.IndexOf(s.def)).ToList();
+            foreach (var (def, slot) in seats)
+            {
+                var a = world.AddHero(def.id);
+                if (slot?.netId == "local") { a.isPlayer = true; m.player = a; continue; }
+                if (!string.IsNullOrEmpty(slot?.netId)) { a.netId = slot.netId; continue; }
+                var b = new Bot(world, a, nav, skill); a.controller = b; m.bots.Add(b);
+            }
+            return m;
+        }
+
         public static List<HeroDef> RosterFor(bool full) => GameData.Current.Heroes.Where(h => full || !h.full).ToList();
 
         /// <summary>Role queue, the 5v5 way: one tank, two supports, two damage per side (a random pick where a team has more).</summary>
