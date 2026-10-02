@@ -80,6 +80,9 @@ namespace ZU.Game.Fx
         public static UltShowcase Current { get; private set; }
         /// <summary>false: the UI draws the overlay itself and this IMGUI one stays off</summary>
         public static bool DrawImgui = true;
+        /// <summary>the UI's say on whether the pointer is over one of its controls (a drag that starts there never orbits);
+        /// null = no UI of its own</summary>
+        public static System.Func<bool> PointerOverUi;
         public Actor Hero => hero;
         public string HeroId => hero?.baseDef.id;
         /// <summary>the replay bar: 1 until the ult is cast, then the share of the showing time left</summary>
@@ -260,7 +263,7 @@ namespace ZU.Game.Fx
             // orbit / zoom (the gallery bench never takes the pointer lock)
             if (mouse == null || PauseMenu.Paused) { drag = null; return; }
             float mx = mouse.position.ReadValue().x;
-            if (mouse.leftButton.wasPressedThisFrame && !overUi) drag = mx;
+            if (mouse.leftButton.wasPressedThisFrame && !overUi && !(PointerOverUi?.Invoke() ?? false)) drag = mx;
             if (!mouse.leftButton.isPressed) drag = null;
             if (drag.HasValue) { orbit -= (mx - drag.Value) * 0.006f; drag = mx; }
             float wheel = mouse.scroll.ReadValue().y;
