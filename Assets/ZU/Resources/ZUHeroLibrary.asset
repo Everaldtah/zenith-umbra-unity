@@ -17,3 +17,48 @@ MonoBehaviour:
   - id: kaien
     prefab: {fileID: 4952271329938285546, guid: 532b32d7ca4c49d4598c9f7a2a49bdd8, type: 3}
     controller: {fileID: 0}
+  - id: enra
+    prefab: {fileID: 1651683659102567843, guid: d1a711991dffea54a9cf999de185fa23, type: 3}
+    controller: {fileID: 0}
+  - id: gantetsu
+    prefab: {fileID: 3611153617037084078, guid: 9264e76c8183686458dd60105899bdc1, type: 3}
+    controller: {fileID: 0}
+  - id: gorgoth
+    prefab: {fileID: 4667034420566630158, guid: a31e75d27192c5f45a85dad29163c529, type: 3}
+    controller: {fileID: 0}
+  - id: haruto
+    prefab: {fileID: 2488839701910894167, guid: 9e6e5fbded8392646aa4f85e0d27a514, type: 3}
+    controller: {fileID: 0}
+  - id: hayate
+    prefab: {fileID: 1262124867092181570, guid: e280143a0d102e940b9ce397b45d71c6, type: 3}
+    controller: {fileID: 0}
+  - id: hex
+    prefab: {fileID: 8968689413354096249, guid: 13eaa04dab229e54cbf563eca68bac33, type: 3}
+    controller: {fileID: 0}
+  - id: hibiki
+    prefab: {fileID: 9075909628513757932, guid: d66eeba9110c29646a5bbba3e0905a37, type: 3}
+    controller: {fileID: 0}
+  - id: kagemaru
+    prefab: {fileID: 1723419060395572853, guid: 0f38ee77b9ecbcd4fa74f634ecec1a37, type: 3}
+    controller: {fileID: 0}
+  - id: mirei
+    prefab: {fileID: 3163684052495843851, guid: a29bca3e9ccb191449c0dadfa87a10b0, type: 3}
+    controller: {fileID: 0}
+  - id: nocturne
+    prefab: {fileID: 7829461442680061783, guid: 0a00f0a3dd4d1284b971f05152a32d78, type: 3}
+    controller: {fileID: 0}
+  - id: raijin
+    prefab: {fileID: 7701995186569310372, guid: d72149bb552e7b745bb5f0361354ca9f, type: 3}
+    controller: {fileID: 0}
+  - id: seiran
+    prefab: {fileID: 5802513839451403804, guid: cf4cdc9d5a41a9a4e81770901bcb419d, type: 3}
+    controller: {fileID: 0}
+  - id: tenkai
+    prefab: {fileID: 1752535483335744798, guid: 77ade9d8ea03d01419243277ba73ea84, type: 3}
+    controller: {fileID: 0}
+  - id: tomoe
+    prefab: {fileID: 2858574863380927081, guid: a488281151d1dfa40b0245231730da05, type: 3}
+    controller: {fileID: 0}
+  - id: yuzu
+    prefab: {fileID: 8628907205663678560, guid: 7826a95cc3b2d994dbee6d8145449d80, type: 3}
+    controller: {fileID: 0}
