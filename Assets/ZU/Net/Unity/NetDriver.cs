@@ -16,6 +16,7 @@ namespace ZU.Net.Unity
         static OnlineSession session;
         static CoopSession coop;
         readonly ConcurrentQueue<Action> posted = new ConcurrentQueue<Action>();
+        static int mainThread = -1;
 
         /// <summary>the name other players see (the front end sets it from the player's profile)</summary>
         public static string PlayerName = "Vanguard";
@@ -25,6 +26,7 @@ namespace ZU.Net.Unity
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Boot()
         {
+            mainThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
             NetConfig.Load = k => PlayerPrefs.HasKey(k) ? PlayerPrefs.GetString(k) : null;
             NetConfig.Save = (k, v) => { PlayerPrefs.SetString(k, v ?? ""); PlayerPrefs.Save(); };
             PeerLink.RtcFactory = ice => new RtcPeer(Instance, ice);
@@ -74,8 +76,14 @@ namespace ZU.Net.Unity
             coop?.Close(); coop = null;
         }
 
-        /// <summary>run on the main thread, in the next Update (WebRTC callbacks)</summary>
-        public void Post(Action a) => posted.Enqueue(a);
+        /// <summary>run on the main thread: at once when already on it (com.unity.webrtc delivers its callbacks there, once a
+        /// frame - waiting for the next Update would add a frame to every message and inflate the measured RTT), else in
+        /// the next Update</summary>
+        public void Post(Action a)
+        {
+            if (System.Threading.Thread.CurrentThread.ManagedThreadId == mainThread) { try { a(); } catch (Exception e) { Debug.LogException(e); } }
+            else posted.Enqueue(a);
+        }
 
         void Update()
         {
