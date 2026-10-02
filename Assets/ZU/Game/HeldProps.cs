@@ -246,7 +246,7 @@ namespace ZU.Game
         ProcProps.Amp amp; ProcProps.Skate[] skates;
         /// <summary>the lower body's yaw off the facing (the animator's hipYaw, model space, TS frame): the skates point with the legs</summary>
         public float feetYaw;
-        readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
+        MaterialPropertyBlock mpb;          // (made on first use: a MonoBehaviour may not create Unity objects in a field initializer)
         bool bladeGlowOn;
         static Mesh cone;
 
@@ -331,6 +331,7 @@ namespace ZU.Game
         /// wind-up), Hayate's drawn nodachi burning with the koi-dragon's violet through the Dragon Gate</summary>
         public void UpdateDetails(Actor a, double t)
         {
+            mpb ??= new MaterialPropertyBlock();
             if (flame != null)
             {
                 double age = t - a.anim.attackAt;
