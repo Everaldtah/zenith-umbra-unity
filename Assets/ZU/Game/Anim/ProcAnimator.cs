@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using ZU.Game.FirstPerson;
+using ZU.Game.Fx;
 
 namespace ZU.Game.Anim
 {
@@ -141,42 +142,14 @@ namespace ZU.Game.Anim
                 -0.08f * Mathf.Max(0, 1 - Mathf.Abs(p - 0.16f) / 0.12f) + 0.1f * Mathf.Max(0, 1 - Mathf.Abs(p - 0.4f) / 0.2f));
         }
 
-        // Enra's Hellfire Chains (TS ChainBlades.ts timelines)
-        public const float CB_WIND = 0.15f, CB_ARC = 0.25f, CB_SWING = 0.62f, CB_THROW = 0.6f, CB_REACH = 5, CB_THROW_REACH = 7.5f;
-        const float CB_THROW_OUT = 0.08f, CB_THROW_HIT = 0.25f, CB_THROW_BACK = 0.34f;
-        static float Ez(float u) { u = Mathf.Min(1, Mathf.Max(0, u)); return u * u * (3 - 2 * u); }
-        public static float SwingExt(float t)
-        {
-            if (t < 0) return 0;
-            if (t < CB_WIND) return 0.12f * Ez(t / CB_WIND);
-            if (t < CB_WIND + CB_ARC) { float u = (t - CB_WIND) / CB_ARC; return 0.12f + 0.88f * Ez(u / 0.45f); }
-            if (t < CB_SWING) return 1 - Ez((t - CB_WIND - CB_ARC) / (CB_SWING - CB_WIND - CB_ARC));
-            return 0;
-        }
-        static float SwingArc(float t) => t < CB_WIND ? 0 : t < CB_WIND + CB_ARC ? Ez((t - CB_WIND) / CB_ARC) : 1;
-        static float SwingPhi(float t, float side)
-        {
-            float phi0 = side * 1.9f, phi1 = -side * 1.25f, a = SwingArc(t);
-            float lead = t < CB_WIND + CB_ARC ? -side * 0.3f * Mathf.Sin(a * Mathf.PI) : 0;
-            if (t >= CB_WIND + CB_ARC) { float u = Ez((t - CB_WIND - CB_ARC) / (CB_SWING - CB_WIND - CB_ARC)); return phi1 + (-side * 0.5f - phi1) * u; }
-            return phi0 + (phi1 - phi0) * a + lead;
-        }
-        public static float ThrowExt(float t)
-        {
-            if (t < CB_THROW_OUT) return 0;
-            if (t < CB_THROW_HIT) return Ez((t - CB_THROW_OUT) / (CB_THROW_HIT - CB_THROW_OUT));
-            if (t < CB_THROW_BACK) return 1;
-            if (t < CB_THROW) return 1 - Ez((t - CB_THROW_BACK) / (CB_THROW - CB_THROW_BACK));
-            return 0;
-        }
-        static float ThrowSpin(float t)
-        {
-            if (t < CB_THROW_OUT) return 0;
-            if (t < CB_THROW_HIT) return (t - CB_THROW_OUT) / (CB_THROW_HIT - CB_THROW_OUT);
-            if (t < CB_THROW_BACK) return 1;
-            if (t < CB_THROW) return 1 + (t - CB_THROW_BACK) / (CB_THROW - CB_THROW_BACK);
-            return 0;
-        }
+        // Enra's Hellfire Chains: the timelines live in ChainBlades (shared with the chain view and first person), as in the TS
+        const float CB_WIND = ChainBlades.CB_WIND, CB_ARC = ChainBlades.CB_ARC, CB_SWING = ChainBlades.CB_SWING, CB_THROW = ChainBlades.CB_THROW;
+        const float CB_REACH = ChainBlades.CB_REACH, CB_THROW_REACH = ChainBlades.CB_THROW_REACH;
+        static float SwingExt(float t) => ChainBlades.SwingExt(t);
+        static float SwingArc(float t) => ChainBlades.SwingArc(t);
+        static float SwingPhi(float t, float side) => ChainBlades.SwingPhi(t, side);
+        static float ThrowExt(float t) => ChainBlades.ThrowExt(t);
+        static float ThrowSpin(float t) => ChainBlades.ThrowSpin(t);
 
         // ------------------------------------------------------------------------------------------------ rig
         sealed class Rest { public Quaternion q; public Vector3 p, dir; }
