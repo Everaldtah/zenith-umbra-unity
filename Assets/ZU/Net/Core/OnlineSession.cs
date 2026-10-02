@@ -65,7 +65,17 @@ namespace ZU.Net
         public Action<string> OnNotice;
         public Action<string, JObject> OnNetMessage { get; set; }
         public Action<string, byte[]> OnNetBinary { get; set; }
-        public readonly string name;
+        public string name { get; private set; }
+        /// <summary>the name other players see: on the node, in your seat, in a custom game's line</summary>
+        public void SetName(string n)
+        {
+            n = string.IsNullOrWhiteSpace(n) ? "Vanguard" : n.Trim();
+            if (n.Length > 20) n = n.Substring(0, 20);
+            name = n; lobby.SetName(n);
+            var me = MySeat; if (me != null) me.name = n;
+            if (Role == "host" && Phase == Phase.Assemble) PushRoster();
+            OnChange?.Invoke();
+        }
         readonly Func<ProfileInfo> profile;
         JToken profCard; long profAt;
         /// <summary>a queue join / leave waiting for the next poll to carry it</summary>

@@ -40,6 +40,13 @@ namespace ZU.Net
             lobby.Connect();
         }
         public string Me => lobby.id;
+        /// <summary>the name other players see (on the node and in the squad)</summary>
+        public void SetName(string n)
+        {
+            n = string.IsNullOrWhiteSpace(n) ? "Vanguard" : n.Trim();
+            lobby.SetName(n);
+            var me = Squad.FirstOrDefault(x => x.id == Me); if (me != null) { me.name = lobby.me.name; EmitSquad(); }
+        }
         public IEnumerable<Presence> Squads() => lobby.players.Values.Where(p => p.status == "squad");
 
         /// <summary>every frame: the lobby and the links</summary>
