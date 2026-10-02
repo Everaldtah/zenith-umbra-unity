@@ -41,7 +41,7 @@ namespace ZU.Game
             ZuData.Get();
             Rng.Seed((uint)System.Environment.TickCount);
             Match = Setup.CreateMatch(mapId, mode, string.IsNullOrEmpty(playerHero) ? null : playerHero, botSkill);
-            level = LevelView.Build(World.map, transform);
+            level = LevelView.Build(World.map, transform, World.level);
             projViews = new ProjectileViews(transform);
             controls = new PlayerControls();
             cam = MatchCamera.Ensure(this);

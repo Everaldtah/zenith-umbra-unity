@@ -30,6 +30,7 @@ namespace ZU.EditorTools
             m.importBlendShapes = true;
             m.importCameras = false; m.importLights = false;
             if (assetPath.Contains("/Heroes/")) { m.importAnimation = false; m.animationType = ModelImporterAnimationType.Generic; }
+            if (assetPath.Contains("/Props/")) { m.importAnimation = false; m.animationType = ModelImporterAnimationType.None; }
         }
         void OnPreprocessTexture()
         {
@@ -68,7 +69,7 @@ namespace ZU.EditorTools
             if (!avatar.isValid || !avatar.isHuman) return "avatar lost validity when saved: " + avPath;
 
             // ---- materials
-            var mat1 = MakeMaterial($"{d}/{id}_lod1_tex", $"{d}/{id}_lod1.mat");
+            var mat1 = MakeMaterial($"{d}/{id}_lod1_tex", $"{d}/{id}_lod1.mat", lod0 != null ? 1024 : 2048);   // LOD1 is only seen far off when an HD LOD0 exists
             var mat0 = lod0 != null ? MakeMaterial($"{d}/{id}_lod0_tex", $"{d}/{id}_lod0.mat") : null;
 
             // ---- the prefab: the game rig + Animator, the HD mesh rebound onto its bones as LOD0
@@ -128,12 +129,12 @@ namespace ZU.EditorTools
 
         /// <summary>a URP Lit material from a folder of baked maps: base colour, normal, and the glTF metal-roughness map
         /// converted to URP's mask layout (R metallic, A smoothness)</summary>
-        static Material MakeMaterial(string texDir, string matPath)
+        internal static Material MakeMaterial(string texDir, string matPath, int maskMax = 2048)
         {
             var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
             if (mat == null) { mat = new Material(Shader.Find("Universal Render Pipeline/Lit")); AssetDatabase.CreateAsset(mat, matPath); }
             if (!AssetDatabase.IsValidFolder(texDir)) return mat;
-            var files = Directory.GetFiles(texDir, "*.png").Select(f => f.Replace('\\', '/')).ToArray();
+            var files = Directory.GetFiles(texDir).Where(f => f.EndsWith(".png") || f.EndsWith(".jpg")).Select(f => f.Replace('\\', '/')).ToArray();
             string F(params string[] keys) => files.FirstOrDefault(f => keys.Any(k => Path.GetFileNameWithoutExtension(f).ToLowerInvariant().Contains(k)) && !f.EndsWith("_urpmask.png"));
             var baseTex = F("basecolor", "base_color", "albedo", "diffuse");
             var normal = F("normal");
@@ -142,7 +143,7 @@ namespace ZU.EditorTools
             if (normal != null) { mat.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(normal)); mat.EnableKeyword("_NORMALMAP"); mat.SetFloat("_BumpScale", 1); }
             if (rm != null)
             {
-                var mask = ToUrpMask(rm);
+                var mask = ToUrpMask(rm, maskMax);
                 if (mask != null) { mat.SetTexture("_MetallicGlossMap", mask); mat.EnableKeyword("_METALLICSPECGLOSSMAP"); mat.SetFloat("_Smoothness", 1); mat.SetFloat("_Metallic", 1); }
             }
             EditorUtility.SetDirty(mat);
@@ -150,14 +151,28 @@ namespace ZU.EditorTools
         }
 
         /// <summary>glTF ORM/RM (G = roughness, B = metallic) -> URP (R = metallic, A = smoothness = 1 - roughness)</summary>
-        static Texture2D ToUrpMask(string rmPath)
+        static Texture2D ToUrpMask(string rmPath, int maxSize)
         {
             string outPath = rmPath.Substring(0, rmPath.Length - 4) + "_urpmask.png";
             var src = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);
             if (!src.LoadImage(File.ReadAllBytes(rmPath))) return null;
             var px = src.GetPixels32();
             for (int i = 0; i < px.Length; i++) { var c = px[i]; px[i] = new Color32(c.b, 0, 0, (byte)(255 - c.g)); }
-            var dst = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false, true);
+            // metallic / smoothness at up to maxSize (2048 = half a 4K albedo, as games pack them; 1024 for the distance LOD): a quarter of the pixels to store,
+            // nothing visible lost - box-filtered 2x steps
+            int w = src.width, h = src.height;
+            while (w > maxSize && h > 1 && (w & 1) == 0 && (h & 1) == 0)
+            {
+                int w2 = w / 2, h2 = h / 2; var half = new Color32[w2 * h2];
+                for (int y = 0; y < h2; y++)
+                    for (int x = 0; x < w2; x++)
+                    {
+                        Color32 a = px[(2 * y) * w + 2 * x], b = px[(2 * y) * w + 2 * x + 1], c = px[(2 * y + 1) * w + 2 * x], d = px[(2 * y + 1) * w + 2 * x + 1];
+                        half[y * w2 + x] = new Color32((byte)((a.r + b.r + c.r + d.r + 2) / 4), 0, 0, (byte)((a.a + b.a + c.a + d.a + 2) / 4));
+                    }
+                px = half; w = w2; h = h2;
+            }
+            var dst = new Texture2D(w, h, TextureFormat.RGBA32, false, true);
             dst.SetPixels32(px); dst.Apply();
             File.WriteAllBytes(outPath, dst.EncodeToPNG());
             Object.DestroyImmediate(src); Object.DestroyImmediate(dst);

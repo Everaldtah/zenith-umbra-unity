@@ -34,11 +34,14 @@ namespace ZU.Game
             return m;
         }
 
-        public static LevelView Build(MapDef map, Transform parent)
+        ILevel level;
+
+        public static LevelView Build(MapDef map, Transform parent, ILevel level = null)
         {
             var go = new GameObject("Level " + map.id);
             go.transform.SetParent(parent, false);
             var v = go.AddComponent<LevelView>();
+            v.level = level;
             v.Make(map);
             return v;
         }
@@ -51,7 +54,7 @@ namespace ZU.Game
             foreach (var b in map.boxes ?? new List<Box>()) Block(b, solid, map, null);
             foreach (var b in map.decor ?? new List<Box>()) Block(b, deco, map, null, collider: false);
             var props = new GameObject("Props").transform; props.SetParent(transform, false);
-            foreach (var p in map.props ?? new List<Prop>()) PropStandIn(p, props, map);
+            foreach (var p in map.props ?? new List<Prop>()) Prop(p, props, map);
             // the objective: the capture point ring (Control) - the payload route is drawn by the payload view
             if (map.objective != "push" && map.point != null && map.point.Length == 3)
             {
@@ -126,12 +129,26 @@ namespace ZU.Game
             return go;
         }
 
-        void PropStandIn(Prop p, Transform parent, MapDef map)
+        /// <summary>a prop as the TS MapScene places it: on the ground under it, turned by `rot`, `s` metres tall - the imported
+        /// model (Resources/ZUProps, normalised to 1 m) when there is one, else a stand-in post</summary>
+        void Prop(Prop p, Transform parent, MapDef map)
         {
-            double s = p.s ?? 2, r = p.solid ?? s * 0.25;
+            double s = p.s ?? 2, r = p.solid ?? 0.5;
+            double ground = level != null ? level.GroundAt(p.x, p.z, 60) : 0;
+            double y = p.y ?? System.Math.Max(0, double.IsFinite(ground) ? ground : 0);
+            var prefab = Resources.Load<GameObject>("ZUProps/" + p.id);
+            if (prefab != null)
+            {
+                var m = Instantiate(prefab, parent, false);
+                m.name = p.id;
+                m.transform.localPosition = Conv.U(p.x, y, p.z);
+                m.transform.localRotation = Conv.Yaw(p.rot ?? 0);
+                m.transform.localScale = Vector3.one * (float)s;
+                return;
+            }
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            go.name = p.id; go.transform.SetParent(parent, false);
-            double y = p.y ?? 0;
+            go.name = p.id + " (stand-in)"; go.transform.SetParent(parent, false);
+            Destroy(go.GetComponent<Collider>());
             go.transform.localPosition = Conv.U(p.x, y + s * 0.45, p.z);
             go.transform.localRotation = Conv.Yaw(p.rot ?? 0);
             go.transform.localScale = new Vector3((float)(r * 2), (float)(s * 0.45), (float)(r * 2));

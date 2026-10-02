@@ -32,6 +32,39 @@ def upright(arm):
     print('  upright:', arm.name, 'was up', tuple(round(v, 2) for v in up_world))
     return True
 
+def image_roles():
+    """What each image does in the glTF materials, from the node graph: walk forward from every Image Texture node to the
+    first shader socket it reaches - basecolor, normal, rm (metallic / roughness), emissive or occlusion."""
+    roles = {}
+    def walk(sock, depth=0):
+        if depth > 6:
+            return None
+        for link in sock.links:
+            n, inp = link.to_node, link.to_socket.name.lower()
+            if n.type == 'BSDF_PRINCIPLED':
+                if inp == 'base color': return 'basecolor'
+                if inp in ('metallic', 'roughness'): return 'rm'
+                if inp.startswith('emission'): return 'emissive'
+                if inp == 'alpha': return 'basecolor'
+                if inp == 'normal': return 'normal'
+            if n.type == 'NORMAL_MAP': return 'normal'
+            if n.type == 'GROUP' and 'occlusion' in inp: return 'occlusion'
+            for out in n.outputs:
+                r = walk(out, depth + 1)
+                if r: return r
+        return None
+    for m in bpy.data.materials:
+        if not m.use_nodes:
+            continue
+        for n in m.node_tree.nodes:
+            if n.type == 'TEX_IMAGE' and n.image is not None and n.image.name not in roles:
+                for out in n.outputs:
+                    r = walk(out)
+                    if r:
+                        roles[n.image.name] = r
+                        break
+    return roles
+
 def convert(src, dst, mode):
     reset()
     bpy.ops.import_scene.gltf(filepath=src, bone_heuristic='TEMPERANCE', guess_original_bind_pose=False)
@@ -56,9 +89,20 @@ def convert(src, dst, mode):
         # the name says, so tools/blender/fix_textures.py re-encodes them as real PNGs afterwards
         tex_dir = os.path.splitext(dst)[0] + '_tex'
         os.makedirs(tex_dir, exist_ok=True)
+        roles = image_roles()
+        base = os.path.splitext(os.path.basename(dst))[0]
+        used = set()
         for img in bpy.data.images:
             if img.packed_file or img.has_data:
                 name = bpy.path.clean_name(img.name)
+                role = roles.get(img.name)
+                if role and role not in name.lower():
+                    # generic names (Image_0, Image_1) say nothing; ZU.Editor finds the maps by their role in the name
+                    name = f'{base}_{role}'
+                    k = 2
+                    while name in used:
+                        name = f'{base}_{role}{k}'; k += 1
+                used.add(name)
                 img.filepath_raw = os.path.join(tex_dir, name + '.png')
                 img.file_format = 'PNG'
                 try:
