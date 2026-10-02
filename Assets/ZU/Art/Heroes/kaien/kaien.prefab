@@ -1728,6 +1728,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1540202779823969822}
   - component: {fileID: 130870953524878419}
+  - component: {fileID: 2928536626063725183}
   m_Layer: 0
   m_Name: kaien
   m_TagString: Untagged
@@ -1775,6 +1776,27 @@ LODGroup:
     - renderer: {fileID: 3397874845470804177}
   m_Enabled: 1
   m_GlobalIlluminationLOD: 0
+--- !u!114 &2928536626063725183
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4952271329938285546}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fba9bc6972ba0cb45a0748ea053ed71b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ZU.Dynamics::ZU.Dynamics.ZuDynamics
+  heroId: kaien
+  quality: 0
+  grounded: 1
+  useGround: 1
+  colliderScale: 1
+  particleRadiusFrac: 0.008
+  measuredRadii: []
+  overrideVelocity: 0
+  velocity: {x: 0, y: 0, z: 0}
 --- !u!1 &5006823325791490587
 GameObject:
   m_ObjectHideFlags: 0

@@ -2,4 +2,5 @@
   <Project Path="ZU.Sim.csproj" />
   <Project Path="ZU.Editor.csproj" />
   <Project Path="ZU.Game.csproj" />
+  <Project Path="ZU.Dynamics.csproj" />
 </Solution>

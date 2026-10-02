@@ -97,10 +97,23 @@ namespace ZU.Game
             var bottom = new Vector3[4]; var top = new Vector3[4];
             for (int i = 0; i < 4; i++) { bottom[i] = Conv.U(c[i]); top[i] = Conv.U(c[i].x, Top(c[i]), c[i].z); }
             var verts = new List<Vector3>(); var tris = new List<int>();
+            var mid = Vector3.zero; for (int i = 0; i < 4; i++) mid += (bottom[i] + top[i]) / 8;
+            // one face per quad, wound to face away from the wedge's centre (the X mirror flips handedness, so the winding
+            // is decided by geometry, not by the corner order). Faces of their own vertices: hard edges, true normals.
             void Quad(Vector3 a, Vector3 bb, Vector3 cc, Vector3 d)
             {
-                int n = verts.Count; verts.Add(a); verts.Add(bb); verts.Add(cc); verts.Add(d);
-                tris.AddRange(new[] { n, n + 1, n + 2, n, n + 2, n + 3, n, n + 2, n + 1, n, n + 3, n + 2 });   // both faces: winding after the mirror is not worth reasoning about here
+                var n = Vector3.Cross(bb - a, cc - a) + Vector3.Cross(cc - a, d - a);
+                if (n.sqrMagnitude < 1e-10f) return;                         // the zero-height end of a ramp
+                bool outward = Vector3.Dot(n, (a + bb + cc + d) / 4 - mid) > 0;
+                var q = new[] { a, bb, cc, d };
+                void Tri(int i, int j, int l)
+                {
+                    if (Vector3.Cross(q[j] - q[i], q[l] - q[i]).sqrMagnitude < 1e-10f) return;   // a ramp's side is a triangle
+                    int k = verts.Count; verts.Add(q[i]);
+                    if (outward) { verts.Add(q[j]); verts.Add(q[l]); } else { verts.Add(q[l]); verts.Add(q[j]); }
+                    tris.Add(k); tris.Add(k + 1); tris.Add(k + 2);
+                }
+                Tri(0, 1, 2); Tri(0, 2, 3);
             }
             Quad(top[0], top[1], top[2], top[3]);
             Quad(bottom[0], bottom[3], bottom[2], bottom[1]);

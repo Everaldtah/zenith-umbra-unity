@@ -2,6 +2,7 @@
 // velocity into the 8-way locomotion blend, grounded / air / fly / stun / dead states, and one-shot triggers from the
 // sim's animation cues (Actor.anim: attackAt, castAt, hitAt, jumpAt, landAt) - interpolated between simulation steps.
 using UnityEngine;
+using ZU.Dynamics;
 using ZU.Sim;
 
 namespace ZU.Game
@@ -24,6 +25,8 @@ namespace ZU.Game
     {
         Animator anim;
         Renderer[] rends;
+        ZuDynamics dyn;
+        bool wasAlive = true;
         double seenAttack = -9, seenCast = -9, seenHit = -9, seenJump = -9, seenLand = -9;
         Vector3 lastPos; bool hasLast;
         Vector2 vel;            // smoothed local velocity for the blend tree
@@ -40,7 +43,8 @@ namespace ZU.Game
             v.anim = go.GetComponentInChildren<Animator>();
             if (v.anim != null) { v.anim.runtimeAnimatorController = e.controller != null ? e.controller : lib.baseController; v.anim.applyRootMotion = false; }
             v.rends = go.GetComponentsInChildren<Renderer>(true);
-            // hair / cloth dynamics attach here once ZU.Dynamics lands (ZuDynamics on the rig root)
+            v.dyn = go.GetComponent<ZuDynamics>();       // hair and cloth (HeroImport puts it on the prefab)
+            if (v.dyn != null) v.dyn.overrideVelocity = true;
             return v;
         }
 
@@ -53,6 +57,15 @@ namespace ZU.Game
             foreach (var x in rends) if (x != null) x.enabled = show;
             var pos = r.DrawPos(a);
             transform.SetPositionAndRotation(pos, Conv.Yaw(a.yaw));
+            if (dyn != null)
+            {
+                // the sim's velocity and footing; a respawn snaps the chains to the new pose instead of whipping them across
+                // the map; nobody sees a hidden hero's hair, so it isn't simulated
+                dyn.velocity = Conv.U(a.vel); dyn.grounded = a.grounded;
+                if (a.alive && !wasAlive) dyn.Teleport();
+                dyn.quality = show ? ZuDynamics.QualityMode.Auto : ZuDynamics.QualityMode.Off;
+            }
+            wasAlive = a.alive;
             if (anim == null) return;
             // local velocity (Unity space), smoothed: the sim's velocity is what the legs should be doing
             var wv = Conv.U(a.vel);

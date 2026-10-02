@@ -110,6 +110,9 @@ namespace ZU.EditorTools
             foreach (var r in r1) { r.sharedMesh.RecalculateBounds(); b1.Encapsulate(r.bounds); }
             float h = b1.size.y, want = (float)def.height;
             if (h > 0.01f) rig.transform.localScale *= want / h;
+            // hair and cloth: the solver binds to the chains (hair_*, skirt_*, cape_*, sleeve_*) in this bind pose on spawn
+            var dyn = root.AddComponent<ZU.Dynamics.ZuDynamics>();
+            dyn.heroId = id;
             string prefabPath = $"{d}/{id}.prefab";
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             Object.DestroyImmediate(root);
@@ -118,7 +121,9 @@ namespace ZU.EditorTools
             AssetDatabase.ImportAsset(prefabPath, ImportAssetOptions.ForceUpdate);
             var check = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath).GetComponentInChildren<Animator>(true);
             if (check == null || check.avatar == null) return prefabPath + ": saved, but its Animator has no avatar";
-            return $"{prefabPath}: avatar {report}; LOD0 {(r0.Length > 0 ? $"{r0.Length} renderer(s), {rebound} bones rebound, {unmatched} unmatched" : "none")}; height {h:0.00} -> {want:0.00} m";
+            int chains = new[] { "hair_B", "hair_L", "hair_R", "hair_T", "skirt_F", "skirt_L", "skirt_B", "skirt_R", "cape_B", "sleeve_L", "sleeve_R" }
+                .Count(pf => bones.ContainsKey(pf + "_1") && bones.ContainsKey(pf + "_2"));
+            return $"{prefabPath}: avatar {report}; LOD0 {(r0.Length > 0 ? $"{r0.Length} renderer(s), {rebound} bones rebound, {unmatched} unmatched" : "none")}; height {h:0.00} -> {want:0.00} m; {chains} dynamic chain(s)";
         }
 
         /// <summary>a URP Lit material from a folder of baked maps: base colour, normal, and the glTF metal-roughness map

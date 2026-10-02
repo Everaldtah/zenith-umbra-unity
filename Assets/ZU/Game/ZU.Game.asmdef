@@ -3,6 +3,7 @@
   "rootNamespace": "ZU.Game",
   "references": [
     "ZU.Sim",
+    "ZU.Dynamics",
     "Unity.InputSystem",
     "Unity.RenderPipelines.Universal.Runtime",
     "Unity.RenderPipelines.Core.Runtime"

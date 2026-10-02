@@ -4,6 +4,7 @@
   "references": [
     "ZU.Sim",
     "ZU.Game",
+    "ZU.Dynamics",
     "Unity.Pipeline",
     "Unity.Pipeline.Attributes",
     "Unity.RenderPipelines.Universal.Runtime"

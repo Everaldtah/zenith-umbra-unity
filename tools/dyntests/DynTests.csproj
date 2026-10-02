@@ -1,0 +1,25 @@
+<!-- Behaviour tests for the hair / cloth solver core (Assets/ZU/Dynamics/Core), run outside Unity with the .NET SDK
+     bundled in the editor. Links the real Unity.Mathematics (a pure managed module DLL) and the core sources; no Burst, no
+     UnityEngine. Build + run: run.ps1 next to this file. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>ZU.Dynamics.Tests</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0649;CS0414;CS0169</NoWarn>
+    <Optimize>true</Optimize>
+    <UnityManaged>C:\Program Files\Unity\Hub\Editor\6000.6.4f1\Editor\Data\Managed</UnityManaged>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/ZU/Dynamics/Core/**/*.cs" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="$(UnityManaged)\UnityEngine\UnityEngine.MathematicsModule.dll" />
+  </ItemGroup>
+</Project>
