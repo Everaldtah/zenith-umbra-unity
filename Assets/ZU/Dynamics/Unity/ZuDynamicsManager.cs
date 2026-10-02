@@ -52,7 +52,7 @@ namespace ZU.Dynamics
             instances.Add(d); dirty = true;
             if (runner == null)
             {
-                var go = new GameObject("ZuDynamicsManager") { hideFlags = HideFlags.HideAndDontSave };
+                var go = new GameObject("ZuDynamicsManager") { hideFlags = HideFlags.HideInHierarchy };   // (not DontSave: exiting play mode must destroy it and dispose the arrays)
                 Object.DontDestroyOnLoad(go);
                 runner = go.AddComponent<Runner>();
             }

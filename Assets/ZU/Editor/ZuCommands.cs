@@ -24,7 +24,7 @@ namespace ZU.EditorTools
                    $"scene {EditorSceneManager.GetActiveScene().path}; playing {EditorApplication.isPlaying}";
         }
 
-        [CliCommand("zu_match_scene", "Create (or rebuild) the match scene for a map, a hero and a mode, save it, and make it the first build scene")]
+        [CliCommand("zu_match_scene", "Create (or rebuild) the match scene for a map, a hero and a mode (the editor / CLI default; the app's menu overrides it) and save it")]
         public static string MatchSceneCmd(
             [CliArg("map", "map id (hanabi, cloudstep, kagura, lantern, starfall, foundry, mile, gulch, training)")] string map = "hanabi",
             [CliArg("hero", "the local player's hero id; empty = spectate the bots")] string hero = "raijin",
@@ -44,9 +44,7 @@ namespace ZU.EditorTools
             r.mapId = map; r.playerHero = hero ?? ""; r.mode = mode; r.thirdPerson = third; r.autopilot = autopilot;
             System.IO.Directory.CreateDirectory("Assets/ZU/Scenes");
             EditorSceneManager.SaveScene(scene, MatchScene);
-            var list = EditorBuildSettings.scenes.Where(s => s.path != MatchScene).ToList();
-            list.Insert(0, new EditorBuildSettingsScene(MatchScene, true));
-            EditorBuildSettings.scenes = list.ToArray();
+            AppSetup.OrderScenes();   // Menu (when it exists) first, then Match
             return $"saved {MatchScene}: map {map}, hero {(string.IsNullOrEmpty(hero) ? "(spectate)" : hero)}, mode {mode}, {(third ? "third" : "first")} person{(autopilot ? ", autopilot" : "")}";
         }
     }

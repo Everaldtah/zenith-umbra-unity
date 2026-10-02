@@ -3,6 +3,7 @@
 // Views draw between the last two simulation steps (render interpolation), so motion is smooth at any frame rate.
 using System.Collections.Generic;
 using UnityEngine;
+using ZU.Game.UI;
 using ZU.Sim;
 
 namespace ZU.Game
@@ -38,6 +39,14 @@ namespace ZU.Game
 
         void Start()
         {
+            // the main menu's choice (the scene's own fields are the editor / CLI default)
+            if (MatchSettings.Pending)
+            {
+                mapId = MatchSettings.Map; playerHero = MatchSettings.Hero; mode = MatchSettings.Mode;
+                botSkill = MatchSettings.Skill; thirdPerson = MatchSettings.Third; autopilot = MatchSettings.Autopilot;
+                MatchSettings.Pending = false;
+            }
+            PauseMenu.Reset();
             ZuData.Get();
             Rng.Seed((uint)System.Environment.TickCount);
             Match = Setup.CreateMatch(mapId, mode, string.IsNullOrEmpty(playerHero) ? null : playerHero, botSkill);
@@ -45,6 +54,7 @@ namespace ZU.Game
             projViews = new ProjectileViews(transform);
             controls = new PlayerControls();
             cam = MatchCamera.Ensure(this);
+            Audio.MatchAudio.Attach(this);
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
             else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
@@ -53,7 +63,8 @@ namespace ZU.Game
         void Update()
         {
             if (World == null) return;
-            if (!autopilot) controls.Read(Player, World);
+            PauseMenu.Update(this);
+            if (!autopilot && !PauseMenu.Paused) controls.Read(Player, World);
             acc += Time.deltaTime;
             int steps = 0;
             while (acc >= DT && steps < 16)
@@ -100,6 +111,6 @@ namespace ZU.Game
             cam.Sync(this);
         }
 
-        void OnGUI() => Hud.Draw(this);
+        void OnGUI() { Hud.Draw(this); PauseMenu.Draw(this); }
     }
 }
