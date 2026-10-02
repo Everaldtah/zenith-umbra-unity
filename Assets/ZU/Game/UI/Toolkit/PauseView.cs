@@ -17,7 +17,8 @@ namespace ZU.Game.UI.Toolkit
         readonly VisualElement host;
         VisualElement screen;
         OptionsView options;
-        string shown = "";              // "" | pause | results | options
+        MenuView swapMenu;
+        string shown = "";              // "" | pause | results | options | swap
 
         public PauseView(VisualElement parent) { host = parent; }
 
@@ -29,6 +30,12 @@ namespace ZU.Game.UI.Toolkit
             bool over = !string.IsNullOrEmpty(w.winner);
             if (!PauseMenu.Paused) { if (shown != "") Close(); return; }
             if (shown == "options") { options?.Update(); return; }
+            if (shown == "swap")
+            {
+                var kb = UnityEngine.InputSystem.Keyboard.current;
+                if (kb != null && kb.escapeKey.wasPressedThisFrame) { swapMenu?.Close(); swapMenu = null; Pause(r); }
+                return;
+            }
             if (over) { if (shown != "results") Results(r); }
             else if (shown != "pause") Pause(r);
         }
@@ -36,6 +43,7 @@ namespace ZU.Game.UI.Toolkit
         void Close()
         {
             options?.Close(); options = null;
+            swapMenu?.Close(); swapMenu = null;
             screen?.RemoveFromHierarchy(); screen = null; shown = "";
         }
 
@@ -55,7 +63,7 @@ namespace ZU.Game.UI.Toolkit
             U.Txt("PAUSED", "p-h2", s);
             var b = U.Div("btns", s);
             U.Btn("RESUME", "primary", PauseMenu.Resume, b);
-            // (SWITCH HERO in the Training Grounds needs a mid-match hero swap the Unity match doesn't have yet)
+            if (r.World?.mode == "training") U.Btn("SWITCH HERO", null, () => Swap(r), b);
             U.Btn("SETTINGS", null, () => Settings(r), b);
             U.Btn("QUIT TO MENU", null, () => { MatchUi.Current?.RecordCareer("none"); ToMenu("title"); }, b);
             U.Txt("Click the game to capture the mouse · Esc pauses", "tips", s);
@@ -69,7 +77,22 @@ namespace ZU.Game.UI.Toolkit
         }
 
         /// <summary>Esc while a screen over the pause is open goes back to the pause (or cancels a rebind)</summary>
-        public bool TakeEsc() => shown == "options";
+        public bool TakeEsc() => shown == "options" || shown == "swap";
+
+        /// <summary>the Training Grounds' hero select over the paused match (Menu.ts heroSelect(swap)): SWITCH swaps the
+        /// hero in place and resumes</summary>
+        public void Swap(MatchRunner r)
+        {
+            shown = "swap";
+            screen?.RemoveFromHierarchy(); screen = null;
+            if (r.Player != null) MatchSettings.Hero = r.Player.baseDef.id;
+            swapMenu = MenuView.OpenSwap(host, id =>
+            {
+                swapMenu?.Close(); swapMenu = null; shown = "";
+                if (r.SwapHero(id)) MatchSettings.Hero = id;
+                PauseMenu.Resume();
+            }, () => { swapMenu?.Close(); swapMenu = null; Pause(r); });
+        }
 
         static void ToMenu(string where)
         {

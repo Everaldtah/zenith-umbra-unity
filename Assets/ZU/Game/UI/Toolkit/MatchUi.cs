@@ -132,6 +132,12 @@ namespace ZU.Game.UI.Toolkit
                 r.thirdPerson = !r.thirdPerson;
                 s.view = r.thirdPerson ? "third" : "first"; ZuSettings.Save(s);
             }
+            // H (or its rebinding) in the Training Grounds: pause on the hero select
+            if (!PauseMenu.Paused && w.mode == "training" && r.Player != null && Keys.Pressed(ZuSettings.BindsFor(s, r.Player.def.id, "swap")))
+            {
+                PauseMenu.Pause();
+                pause.Swap(r);
+            }
             bool board = !PauseMenu.Paused && Keys.Held(ZuSettings.BindsFor(s, r.Player?.def.id, "score"));
             hud.Update(w, r.Player, Camera.main, w.time, s.video.perfStats != "off" ? fpsAvg : 0, board, r.Player == null ? "SPECTATING · Esc menu" : "");
             if (s.video.perfStats == "advanced")

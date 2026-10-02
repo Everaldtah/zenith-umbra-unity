@@ -31,6 +31,7 @@ namespace ZU.Game.UI.Toolkit
         readonly List<MapDef> playMaps;
         string mode = "quickplay";
         IVisualElementScheduledItem timer;
+        Action<string> swapPick; Action swapBack;         // hero select over a Training Grounds match (SWITCH HERO)
 
         MenuView(VisualElement parent)
         {
@@ -54,6 +55,15 @@ namespace ZU.Game.UI.Toolkit
             else if (to == "campaign") m.Campaign();
             else if (to.StartsWith("viewer:")) m.Viewer(to.Substring(7));
             else m.Title();
+            return m;
+        }
+
+        /// <summary>hero select over a running Training Grounds match: SWITCH picks, BACK returns to the pause</summary>
+        public static MenuView OpenSwap(VisualElement parent, Action<string> pick, Action back)
+        {
+            var m = new MenuView(parent) { mode = "training", swapPick = pick, swapBack = back };
+            MenuState.Queue = null;
+            m.HeroSelect(swap: true);
             return m;
         }
 
@@ -317,7 +327,7 @@ namespace ZU.Game.UI.Toolkit
             return hd;
         }
 
-        public void HeroSelect(bool browse = false)
+        public void HeroSelect(bool browse = false, bool swap = false)
         {
             string q = MenuState.Queue;
             bool RoleOk(HeroDef x) => q == null || MenuState.Role == "flex" || (MenuState.ROLE_HERO.TryGetValue(MenuState.Role, out var hr) && x.role == hr);
@@ -353,7 +363,7 @@ namespace ZU.Game.UI.Toolkit
             var bar = Bar(s);
             if (q != null) U.Txt($"{MenuState.QUEUE_NAME[q]} · {MenuState.ROLE_NAME[MenuState.Role]}{(q == "practice" ? " · " + (DIFFS.FirstOrDefault(x => Math.Abs(x.v - MenuState.Diff) < 0.01).name ?? "") : "")}", "qtag", bar);
             DropdownField mapSel = null, diffSel = null;
-            if (!browse && mode != "training" && q == null)
+            if (!swap && !browse && mode != "training" && q == null)
             {
                 var ml = U.Div("bar-label", bar); U.Txt("MAP", "bl", ml);
                 var names = playMaps.Select(m => m.name).ToList();
@@ -364,12 +374,13 @@ namespace ZU.Game.UI.Toolkit
                 int di = Array.IndexOf(dv, dv.OrderBy(v => Math.Abs(v - cur)).First());
                 diffSel = new DropdownField(new List<string> { "Cadet", "Vanguard", "Eclipse" }, di); diffSel.AddToClassList("bsel"); al.Add(diffSel);
             }
-            U.Btn("BACK", null, () => { if (q != null) QueueSelect(q); else Title(); }, bar);
+            U.Btn("BACK", null, () => { if (swap) swapBack?.Invoke(); else if (q != null) QueueSelect(q); else Title(); }, bar);
             if (!browse)
             {
-                string go = q != null && q != "practice" ? "FIND MATCH" : mode == "training" ? "ENTER TRAINING" : mode == "stadium" ? "ENTER STADIUM" : "START MATCH";
+                string go = swap ? "SWITCH" : q != null && q != "practice" ? "FIND MATCH" : mode == "training" ? "ENTER TRAINING" : mode == "stadium" ? "ENTER STADIUM" : "START MATCH";
                 U.Btn(go, "primary go", () =>
                 {
+                    if (swap) { swapPick?.Invoke(HeroId); return; }
                     if (q != null && q != "practice") { FindMatch(); return; }
                     if (q == "practice") { MapId = MenuState.MapChoice == "random" ? MenuState.RandomMap(d).id : MenuState.MapChoice; }
                     if (mapSel != null) MapId = playMaps[Math.Max(0, mapSel.index)].id;
