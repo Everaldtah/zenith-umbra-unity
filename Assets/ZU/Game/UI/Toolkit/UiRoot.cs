@@ -22,6 +22,9 @@ namespace ZU.Game.UI.Toolkit
         public VisualElement OverlayLayer { get; private set; }
         public IPanel Panel => Root?.panel;
 
+        /// <summary>the panel if it exists (teardown code must not create one)</summary>
+        public static UiRoot Existing => inst;
+
         /// <summary>called every frame (LateUpdate) - screens that animate or follow the simulation hook in here</summary>
         public event System.Action Tick;
 

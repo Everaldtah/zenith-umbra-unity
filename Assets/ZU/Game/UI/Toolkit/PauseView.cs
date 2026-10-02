@@ -3,6 +3,7 @@
 // (emblems, the progress bar, the modifiers, PROMOTED / DEMOTED) - with play again, change hero and main menu. The
 // pause state itself (Esc, the cursor, the career record) is PauseMenu in Front.cs.
 using System;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 using ZU.Game.UI;
@@ -56,7 +57,7 @@ namespace ZU.Game.UI.Toolkit
             U.Btn("RESUME", "primary", PauseMenu.Resume, b);
             // (SWITCH HERO in the Training Grounds needs a mid-match hero swap the Unity match doesn't have yet)
             U.Btn("SETTINGS", null, () => Settings(r), b);
-            U.Btn("QUIT TO MENU", null, () => ToMenu("title"), b);
+            U.Btn("QUIT TO MENU", null, () => { MatchUi.Current?.RecordCareer("none"); ToMenu("title"); }, b);
             U.Txt("Click the game to capture the mouse · Esc pauses", "tips", s);
         }
 
@@ -99,7 +100,15 @@ namespace ZU.Game.UI.Toolkit
             // Stadium: the round score and what you built
             var S = w.stadium;
             if (S != null) U.Txt($"STADIUM · {S.wins["zenith"]} - {S.wins["umbra"]} in rounds{(me != null ? $" · {me.items.Count} items, {me.powers.Count} powers" : "")}", "sres", s);
+            ProgressBlock(s);
+            // the campaign: a won level opens the next; back to the campaign menu
+            if (r.mode == "campaign" && me != null && w.winner == me.team)
+            {
+                var ids = ZuData.Get().Campaign.levels.Select(j => (string)j["id"]).ToList();
+                int i = ids.IndexOf(r.mapId); if (i >= 0) MenuView.Unlock(i + 1);
+            }
             var b = U.Div("btns", s);
+            if (r.mode == "campaign") { U.Btn("CONTINUE", "primary", () => ToMenu("campaign"), b); U.Btn("MAIN MENU", null, () => ToMenu("title"), b); return; }
             U.Btn("PLAY AGAIN", "primary", () => Again(r), b);
             U.Btn("CHANGE HERO", null, () => ToMenu("heroes"), b);      // keeps Normal / Stadium
             U.Btn("MAIN MENU", null, () => ToMenu("title"), b);
@@ -126,10 +135,48 @@ namespace ZU.Game.UI.Toolkit
                 var c = Career.Ranks.Load();
                 U.Txt($"Quick Play record {c.qp.wins}W - {c.qp.games - c.qp.wins}L", "qp", s);
             }
+            ProgressBlock(s);
             var b = U.Div("btns", s);
             U.Btn(q == "practice" ? "PLAY AGAIN" : "QUEUE AGAIN", "primary", () => { if (q == "practice") Again(r); else ToMenu("find"); }, b);
             U.Btn("CHANGE HERO", null, () => ToMenu("heroes"), b);
             U.Btn("MAIN MENU", null, () => ToMenu("title"), b);
+        }
+
+        /// <summary>hero level-ups and Hero Skill Rating changes (OnlineUI.progressHtml)</summary>
+        static void ProgressBlock(VisualElement s)
+        {
+            var rec = MatchUi.LastRecord; if (rec == null) return;
+            var d = ZuData.Get(); var p = Career.CareerProfile.Load();
+            var lv = rec.levels.Where(l => l.xp > 0).ToList();
+            var sr = rec.hsr.Where(h => h.qualified || h.after.placed >= Career.CareerProfile.HSR_PLACEMENTS).ToList();
+            if (lv.Count == 0 && sr.Count == 0) return;
+            var box = U.Div("progress", s);
+            if (sr.Count > 0)
+            {
+                var srs = U.Div("srs", box);
+                foreach (var h in sr)
+                {
+                    var def = d.Def(h.hero); bool placed = h.after.placed >= Career.CareerProfile.HSR_PLACEMENTS;
+                    var row = U.Div("srch", srs);
+                    if (placed) row.Add(Emblem(Career.CareerProfile.HsrToRating(h.after.sr), 99, 34));
+                    U.Txt(def?.name ?? h.hero, "pg-b", row).style.color = U.Hex(def?.color ?? "#ffffff");
+                    string sign = h.delta >= 0 ? "+" : "", dc = h.delta >= 0 ? "#5cffa7" : "#ff5d7a";
+                    U.Txt(placed ? $"HERO SR {U.N(h.after.sr)} <color={dc}>{sign}{h.delta:0}</color>{(h.placedNow ? " \u00b7 PLACED" : "")}" : $"HERO PLACEMENT {h.after.placed}/{Career.CareerProfile.HSR_PLACEMENTS}", "pg-s", row);
+                }
+            }
+            if (lv.Count > 0)
+            {
+                var lvs = U.Div("lvs", box);
+                foreach (var l in lv)
+                {
+                    var def = d.Def(l.hero); var v = Career.CareerProfile.HeroLevel(p.xp.TryGetValue(l.hero, out var x) ? x : 0);
+                    var row = U.Div("lvup", lvs);
+                    U.Pic("portrait_" + l.hero, "lv-img", row);
+                    U.Txt(def?.name ?? l.hero, "pg-b", row).style.color = U.Hex(def?.color ?? "#ffffff");
+                    U.Txt((l.to > l.from ? $"LEVEL UP {l.from} \u2192 {l.to}" : $"Level {l.to}") + $" \u00b7 +{l.xp:0} XP", "pg-s", row);
+                    var bar = U.Div("lv-bar", row); var fill = U.Div("lv-fill", bar); fill.style.width = new Length((float)v.pct, LengthUnit.Percent);
+                }
+            }
         }
 
         /// <summary>a rank emblem (Menu.ts emblem): the tier colour once placed, grey with a ? before</summary>

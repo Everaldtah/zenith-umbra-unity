@@ -16,10 +16,15 @@ namespace ZU.Game.UI.Toolkit
         ArmoryView armory;
         PauseView pause;
         float fpsAvg;
+        Career.CareerTracker career;
+        double lastSimT;
+        public static MatchUi Current { get; private set; }
+        /// <summary>the finished match's hero levels and Hero SR changes (the results screens show them)</summary>
+        public static Career.RecordResult LastRecord { get; private set; }
 
         public static MatchUi Attach(MatchRunner runner)
         {
-            var m = runner.gameObject.AddComponent<MatchUi>();
+            var m = Current = runner.gameObject.AddComponent<MatchUi>();
             m.r = runner;
             m.Build();
             return m;
@@ -39,18 +44,50 @@ namespace ZU.Game.UI.Toolkit
             PauseMenu.EscTaken = () => pause.TakeEsc();
             ZButton.Sfx = id => Sfx(id);
             SettingsApply.Apply(ZuSettings.Current);
+            // the Career Profile follows the local player (spectating, the AI lab and the Ult Viewer record nothing)
+            string cm = Career.CareerProfile.ModeOf(r.mode);
+            career = cm != null && r.Player != null ? new Career.CareerTracker(cm, r.mapId) : null;
+            LastRecord = null;
+            lastSimT = r.World?.time ?? 0;
             StartCoroutine(LoadingView.Warm());
+        }
+
+        /// <summary>the match into the Career Profile (TS recordCareerMatch): "win" / "loss" / "draw" at the end, "none"
+        /// when it is left early (its time still counts)</summary>
+        public void RecordCareer(string result)
+        {
+            if (career == null || r.World == null) return;
+            var t = career; career = null;
+            var w = r.World; var me = r.Player;
+            string score = null;
+            if (me != null)
+            {
+                string us = me.team, them = us == "zenith" ? "umbra" : "zenith";
+                score = w.rules == "push" ? $"{System.Math.Round(w.push.best[us])}m - {System.Math.Round(w.push.best[them])}m" : w.rules == "control" ? $"{w.control.wins[us]} - {w.control.wins[them]}" : null;
+            }
+            var sum = t.Finish(w, me, result, t.mode == "competitive" || t.mode == "quickplay" ? MatchSettings.Opp : (double?)null, score);
+            if (sum.heroes.Count == 0) return;
+            var p = Career.CareerProfile.Load();
+            var ranks = Career.Ranks.Load();
+            LastRecord = Career.CareerProfile.RecordMatch(p, sum, hero =>
+            {
+                var role = ZU.Sim.Data.GameData.Current?.Def(hero)?.role;
+                return role != null && ranks.roles.TryGetValue(role == "dps" ? "damage" : role, out var rr) ? rr.rating : 1800;
+            });
+            Career.CareerProfile.Save(p);
         }
 
         void OnDestroy()
         {
+            RecordCareer("none");
+            if (Current == this) Current = null;
             EventSink.OnEvent -= OnEvent;
             ZuSettings.Changed -= OnSettings;
             PauseMenu.EscTaken = null;
             hud?.root.RemoveFromHierarchy();
             armory?.Hide();
-            var ui = UiRoot.Get();
-            ui.HudLayer.Clear(); ui.MenuLayer.Clear();
+            var ui = UiRoot.Existing;            // (no new panel while the app quits)
+            if (ui != null) { ui.HudLayer.Clear(); ui.MenuLayer.Clear(); }
         }
 
         void OnSettings(ZuSettings s) => hud.ApplySettings(s);
@@ -61,6 +98,11 @@ namespace ZU.Game.UI.Toolkit
         {
             var w = r.World; if (w == null) return;
             var s = ZuSettings.Current;
+            // the career clock runs on simulation time (pauses don't count); the result is recorded once it is decided
+            career?.Frame(w, r.Player, w.time - lastSimT);
+            lastSimT = w.time;
+            if (career != null && !string.IsNullOrEmpty(w.winner))
+                RecordCareer(r.Player == null ? "none" : w.winner == r.Player.team ? "win" : "loss");
             float dt = Time.unscaledDeltaTime;
             if (dt > 0) fpsAvg = fpsAvg <= 0 ? 1 / dt : Mathf.Lerp(fpsAvg, 1 / dt, 0.05f);
             // F8 (or its rebinding): off -> simple -> advanced
