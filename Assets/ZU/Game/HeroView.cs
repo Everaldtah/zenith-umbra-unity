@@ -51,6 +51,9 @@ namespace ZU.Game
         ZuDynamics dyn;
         HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
         ProcAnimator proc; AnimState state; // the procedural layer (TS Animator.ts) and what it reads
+        Anim.ClipLayer clips;               // the clip layer (TS ClipLayer.ts): a PlayableGraph on the Animator, in place of the controller
+        /// <summary>the hero's clip layer (null: the Mecanim controller drives the Animator) - ProcAnimator updates it and reads its pose</summary>
+        public Anim.ClipLayer Clips => clips;
         CharacterLook look;                 // rim light, stealth / rebirth / hologram looks, shield bubble, barrier, jets
         Transform footL, footR;
         Actor actor; double syncT; float syncDt; Vector3 drawPos; IViewHost host;
@@ -78,6 +81,9 @@ namespace ZU.Game
             v.baseScale = go.transform.localScale;
             v.anim = go.GetComponentInChildren<Animator>();
             if (v.anim != null) { v.anim.runtimeAnimatorController = e.controller != null ? e.controller : lib.baseController; v.anim.applyRootMotion = false; }
+            // the clip layer replaces the controller once ProcAnimator reads it (ClipLayer.Use) and the clips are baked
+            var clipLib = Anim.ClipLayer.Use && v.anim != null && v.anim.isHuman ? Anim.ClipLibrary.Get() : null;
+            if (clipLib != null) { v.anim.runtimeAnimatorController = null; v.clips = new Anim.ClipLayer(v.anim, clipLib, a.id, a.def.id); }
             v.rends = go.GetComponentsInChildren<Renderer>(true);
             v.look = new CharacterLook(parent, v.rends, a, Fx.MatchFx.Current?.Additive);      // (the body only: before the props)
             v.dyn = go.GetComponent<ZuDynamics>();       // hair and cloth (HeroImport puts it on the prefab)
@@ -125,7 +131,7 @@ namespace ZU.Game
                 dyn.quality = show ? ZuDynamics.QualityMode.Auto : ZuDynamics.QualityMode.Off;
             }
             wasAlive = a.alive;
-            if (anim == null) return;
+            if (anim == null || clips != null) return;           // (the clip layer is driven from ProcAnimator, not by parameters)
             // local velocity (Unity space), smoothed: the sim's velocity is what the legs should be doing
             var wv = Conv.U(a.vel);
             var local = Quaternion.Inverse(transform.rotation) * wv;
@@ -231,7 +237,7 @@ namespace ZU.Game
             else if (look != null && proc != null) look.Jets(actor, footL, footR, shown);
         }
 
-        void OnDestroy() => look?.Dispose();
+        void OnDestroy() { look?.Dispose(); clips?.Dispose(); }
     }
 
     /// <summary>runs the hero's procedural animator after the Animator and before AbilityFx (-50) / HeroView (0) / ZuDynamics (500)</summary>
