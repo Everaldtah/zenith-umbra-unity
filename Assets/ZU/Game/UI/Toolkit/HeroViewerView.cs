@@ -1,24 +1,23 @@
 // Hero viewer (src/client/HeroViewer.ts): a studio-lit turntable for every hero, villain, pilot and campaign model,
 // with animation states (treadmill locomotion so the legs and the hair / cloth springs can be inspected), the skins
 // locker, the kit, and the way into the Ult Viewer. The studio renders into a texture the stage shows (its own camera
-// and lights, built when the viewer opens and gone when it closes); the model's Animator gets the same parameters the
-// match's HeroView drives.
+// and lights, built when the viewer opens and gone when it closes). As in the TS, a real Actor is driven through the
+// match's own character view (ActorViews: the Animator, the procedural layer, held weapons, hair and cloth), with this
+// screen as its IViewHost.
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UIElements;
+using ZU.Sim;
 using ZU.Sim.Data;
 
 namespace ZU.Game.UI.Toolkit
 {
-    public sealed class HeroViewerView
+    public sealed class HeroViewerView : IViewHost
     {
         static readonly string[] MODES = { "idle", "walk", "run", "strafe", "back", "attack", "alt", "melee", "shift", "e", "ult", "jump", "fly", "swoop", "descend", "superjump", "hit" };
-        static readonly int VelX = Animator.StringToHash("VelX"), VelZ = Animator.StringToHash("VelZ"), Speed = Animator.StringToHash("Speed"), VelY = Animator.StringToHash("VelY"),
-            Grounded = Animator.StringToHash("Grounded"), Dead = Animator.StringToHash("Dead"), Fly = Animator.StringToHash("Fly"), Jump = Animator.StringToHash("Jump"),
-            Land = Animator.StringToHash("Land"), Shoot = Animator.StringToHash("Shoot"), Cast = Animator.StringToHash("Cast"), Melee = Animator.StringToHash("Melee"), Hit = Animator.StringToHash("Hit");
 
         readonly VisualElement el, stage, skins, info, vname, list;
         readonly Label clipHint;
@@ -36,9 +35,10 @@ namespace ZU.Game.UI.Toolkit
         GameObject studio, model;
         Camera cam;
         RenderTexture rt;
-        Animator anim;
+        Actor actor;
+        IActorView view;
         Transform ring;
-        Bounds fit; float fitAge;
+        float fMin, fMax = 1.8f, fRad = 0.5f, fitAge;
         string skinShown;
 
         HeroViewerView(VisualElement parent, Action onClose)
@@ -191,32 +191,38 @@ namespace ZU.Game.UI.Toolkit
             SetMode("idle");
         }
 
+        /// <summary>a preview's model skin (null: the equipped one) - ActorViews.SkinModel asks this first</summary>
+        public static (Actor actor, string model)? Preview;
+        /// <summary>the skin hook the front end installs: the viewer's preview, else the hero's equipped skin</summary>
+        public static string SkinModelFor(Actor a) => Preview.HasValue && Preview.Value.actor == a ? Preview.Value.model : EquippedSkinModel(a.baseDef.id);
+
         void ShowModel(string skinId)
         {
             if (model != null) UnityEngine.Object.Destroy(model);
-            model = null; anim = null; fitAge = 0;
-            var lib = HeroLibrary.Get();
-            string modelId = id;
-            var sk = SkinsFor(id).FirstOrDefault(s => s.id == skinId);
-            if (sk != null && !string.IsNullOrEmpty(sk.model) && lib?.Find(sk.model) != null) modelId = sk.model;     // model skins (Hibiki's Bassline Armor)
-            var e = lib?.Find(modelId);
+            model = null; view = null; fitAge = 0;
             skinShown = skinId;
-            if (e == null) { U.Set(clipHint, "model not imported yet"); return; }
-            model = UnityEngine.Object.Instantiate(e.prefab, studio.transform);
-            model.transform.localPosition = Vector3.zero;
-            anim = model.GetComponentInChildren<Animator>();
-            if (anim != null) { anim.runtimeAnimatorController = e.controller != null ? e.controller : lib.baseController; anim.applyRootMotion = false; anim.SetBool(Grounded, true); }
             var def = all[id];
+            var a = actor = new Actor(def, def.team ?? "zenith") { isPlayer = true, grounded = true };
+            var sk = SkinsFor(id).FirstOrDefault(s => s.id == skinId);
+            Preview = (a, sk != null && !string.IsNullOrEmpty(sk.model) ? sk.model : null);
+            view = ActorViews.Create(a, studio.transform);
+            model = (view as Component)?.gameObject;
             ring.localScale = Vector3.one * Mathf.Max(1, (float)def.radius * 1.6f);
-            U.Set(clipHint, "");
+            U.Set(clipHint, HeroLibrary.Get()?.Find(def.id) == null && (sk?.model == null) ? "model not imported yet" : "");
         }
 
         void SetMode(string m)
         {
             mode = m; t = 0;
+            if (actor != null) { actor.scale = 1; actor.Clear("titan"); }
             foreach (var b in stage.Query<VisualElement>(className: "va").ToList()) U.Toggle(b, "on", b.userData as string == m);
-            if (anim != null) { anim.SetBool(Fly, false); anim.SetBool(Grounded, true); anim.SetFloat(VelY, 0); }
         }
+
+        // IViewHost: the turntable's clock, nobody's first-person view, the actor kept on the stage
+        public double SimTime => t;
+        public Actor Player => null;
+        public bool ThirdPerson => true;
+        public Vector3 DrawPos(Actor a) => studio.transform.position + new Vector3(0, (float)a.pos.y, 0);
 
         // ------------------------------------------------------------------ skins
         List<Skin> SkinsFor(string heroId) => d.Skins.TryGetValue(heroId, out var l) ? l : new List<Skin>();
@@ -269,15 +275,13 @@ namespace ZU.Game.UI.Toolkit
 
         static void Sfx(string s) { try { if (Audio.AudioKit.Has(s)) Audio.AudioKit.Play(s, null); } catch (Exception) { /* no bank */ } }
 
-        /// <summary>the Ult Viewer (Fx/UltShowcase on the ability-visuals branch: found by name so this compiles before it merges)</summary>
+        /// <summary>the Ult Viewer: the hero's ultimate played for real on the Proving Grounds (Fx/UltShowcase)</summary>
         void OpenUlt(string heroId)
         {
-            var type = Type.GetType("ZU.Game.Fx.UltShowcase, ZU.Game");
-            var open = type?.GetMethod("Open", new[] { typeof(string) });
-            if (open == null) { U.Set(clipHint, "the Ult Viewer isn't in this build yet"); return; }
             Sfx("ui_click");
             Dispose();
-            open.Invoke(null, new object[] { heroId });
+            MenuState.ReturnTo = "viewer:" + heroId;
+            Fx.UltShowcase.Open(heroId);
         }
 
         // ------------------------------------------------------------------ frame
@@ -287,18 +291,27 @@ namespace ZU.Game.UI.Toolkit
             float dt = Mathf.Min(0.05f, Time.unscaledDeltaTime);
             t += dt;
             if (auto) yaw += dt * 0.35f;
-            if (anim != null) Drive(dt);
+            if (actor != null) { Drive(dt); view?.Sync(this, actor); }
             // camera orbit around the model, the distance fitted to the posed bounds (the whole body in frame, feet clear of
             // the animation buttons along the bottom of the stage)
+            // posed bounds, re-measured when the model swaps and settled after the first frames, stored at scale 1 (the frame
+            // multiplies by the actor's scale: Tenkai-Oh's giant preview)
+            var o = studio.transform.position;
+            float ks = actor != null ? (float)actor.scale : 1;
             if (model != null && fitAge < 0.6f)
             {
                 fitAge += dt;
                 var rs = model.GetComponentsInChildren<Renderer>();
-                if (rs.Length > 0) { var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds); fit = b; }
+                if (rs.Length > 0)
+                {
+                    var b = rs[0].bounds; foreach (var r in rs) b.Encapsulate(r.bounds);
+                    float gy = DrawPos(actor).y;
+                    fMin = Mathf.Min(0, b.min.y - gy) / ks; fMax = (b.max.y - gy) / ks;
+                    fRad = Mathf.Max(0.3f, Mathf.Max(Mathf.Max(Mathf.Abs(b.min.x - o.x), Mathf.Abs(b.max.x - o.x)), Mathf.Max(Mathf.Abs(b.min.z - o.z), Mathf.Abs(b.max.z - o.z)))) / ks;
+                    ring.localScale = Vector3.one * Mathf.Max(1, Mathf.Max((float)actor.def.radius * 1.6f, fRad * 0.8f));
+                }
             }
-            var o = studio.transform.position;
-            float minY = Mathf.Min(0, fit.min.y - o.y), maxY = Mathf.Max(0.5f, fit.max.y - o.y);
-            float rad = Mathf.Max(0.3f, Mathf.Max(fit.extents.x, fit.extents.z));
+            float minY = fMin * ks, maxY = Mathf.Max(0.5f, fMax * ks), rad = fRad * ks;
             float tanH = Mathf.Tan(cam.fieldOfView * Mathf.Deg2Rad / 2), fh = maxY - minY;
             float fitR = Mathf.Max(fh / 0.74f, 2.25f * rad / Mathf.Max(0.5f, cam.aspect)) / (2 * tanH) + rad * 0.5f;
             float R = Mathf.Max(2.4f, fitR) * zoom, vh = 2 * tanH * Mathf.Max(2.4f, fitR);
@@ -310,49 +323,95 @@ namespace ZU.Game.UI.Toolkit
             var pos = new Vector3(Mathf.Sin(yaw) * Mathf.Cos(tilt) * R, focus + Mathf.Sin(tilt) * R, Mathf.Cos(yaw) * Mathf.Cos(tilt) * R);
             cam.transform.position = o + pos;
             cam.transform.LookAt(o + new Vector3(0, focus, 0));
-            if (model != null) model.transform.localPosition = new Vector3(0, air ? 1.2f + Mathf.Sin(t * 1.5f) * 0.2f : mode == "jump" ? Mathf.Sin(t % 1.2f / 1.2f * Mathf.PI) * 1.4f : 0, 0);
-            if (anim != null && anim.runtimeAnimatorController != null)
+            // which clip drives the body (the clip library) - or procedural
+            var an = model != null ? model.GetComponentInChildren<Animator>() : null;
+            if (an != null && an.runtimeAnimatorController != null)
             {
-                var ci = anim.GetCurrentAnimatorClipInfo(0);
-                U.Set(clipHint, ci.Length > 0 && ci[0].clip != null ? "clip: " + ci[0].clip.name : "");
+                var ci = an.GetCurrentAnimatorClipInfo(0);
+                U.Set(clipHint, ci.Length > 0 && ci[0].clip != null ? "clip: " + ci[0].clip.name : "procedural (no clip for this state)");
             }
         }
 
-        /// <summary>the animation state as the match's HeroView would set it for an actor doing this (a treadmill: the
-        /// actor moves, the stage keeps it centred)</summary>
+        /// <summary>the actor state for the chosen animation (HeroViewer.ts frame): a treadmill - the actor walks, the stage
+        /// keeps it centred; the cues (attack / cast / hit / jump / land) fire on the animation's own beat</summary>
         void Drive(float dt)
         {
-            var def = all[id];
-            float sp = (float)def.speed;
-            float speed = mode == "walk" ? sp * 0.45f : mode == "run" || mode == "fly" || mode == "strafe" || mode == "back" ? sp : 0;
-            var v = mode == "strafe" ? new Vector2(speed, 0) : mode == "back" ? new Vector2(0, -speed) : new Vector2(0, speed);
-            anim.SetFloat(VelX, v.x); anim.SetFloat(VelZ, v.y); anim.SetFloat(Speed, v.magnitude);
-            bool air = mode == "jump" || mode == "fly" || mode == "swoop" || mode == "descend" || mode == "superjump";
-            anim.SetBool(Grounded, !air);
-            anim.SetBool(Fly, mode == "fly" || mode == "swoop" || mode == "descend");
-            anim.SetBool(Dead, false);
-            bool Every(float s) => t % s < dt;
-            float swing = def.primary != null && def.primary.sweep ? 0.75f : 0.6f;
-            switch (mode)
+            var a = actor; var def = a.def; string m = mode; double T = t;
+            double speed = m == "walk" ? def.speed * 0.45 : m == "run" || m == "fly" || m == "strafe" || m == "back" ? def.speed : 0;
+            a.yaw = 0; a.input.yaw = 0; a.pitch = 0;
+            // strafe: sideways to the character's left; back: backpedal (the 8-way blend space)
+            a.vel = m == "strafe" ? new V3(speed, 0, 0) : m == "back" ? new V3(0, 0, -speed) : new V3(0, 0, speed);
+            a.pos.x += a.vel.x * dt; a.pos.z += a.vel.z * dt;
+            a.grounded = m != "jump" && m != "fly" && m != "swoop" && m != "descend" && m != "superjump";
+            a.flying = m == "fly" && (def.frame == "flyer" || def.frame == "drone" || def.jets.HasValue);
+            // angelic flight previews (Mirei): a guardian-angel swoop that flares to a stop, the slow descent, a superjump into it
+            a.Clear("swoop"); a.Clear("swoopflare"); a.Clear("angelglide"); a.Clear("superjump");
+            if (m == "swoop")
             {
-                case "attack": if (Every(swing)) anim.SetTrigger(def.primary?.kind == "melee" ? Melee : Shoot); break;
-                case "alt": if (Every(1.1f)) anim.SetTrigger(Shoot); break;
-                case "melee": if (Every(0.9f)) anim.SetTrigger(Melee); break;
-                case "shift": if (Every(1.4f)) anim.SetTrigger(Cast); break;
-                case "e": if (Every(1.6f)) anim.SetTrigger(Cast); break;
-                case "ult": if (Every(1.6f)) anim.SetTrigger(Cast); break;
-                case "hit": if (Every(0.8f)) anim.SetTrigger(Hit); break;
-                case "jump":
-                {
-                    float p = t % 1.2f / 1.2f;
-                    anim.SetFloat(VelY, Mathf.Cos(p * Mathf.PI) * 6);
-                    if (p < dt / 1.2f) anim.SetTrigger(Jump);
-                    if (p > 0.97f) { anim.SetBool(Grounded, true); anim.SetTrigger(Land); }
-                    break;
-                }
-                case "superjump": anim.SetFloat(VelY, t % 2.2f < 0.77f ? 12 : -2.2f); break;
-                case "descend": anim.SetFloat(VelY, -2.2f); break;
+                double p = T % 1.8 / 1.8;
+                a.pos.y = 1.2;
+                if (p < 0.8) { a.Set("swoop", T, 0.1); a.sv["swoopProg"] = p / 0.8; a.vel = new V3(0, 0, 13 + p * 10); }
+                else { a.st["swoopflare"] = T + 0.4 - (p - 0.8) * 1.8; a.vel = new V3(0, 1, 4); }
             }
+            else if (m == "descend") { a.Set("angelglide", T, 0.2); a.vel = new V3(Math.Sin(T * 0.7) * 1.2, -2.2, 1); a.pos.y = 1.4; }
+            else if (m == "superjump")
+            {
+                double p = T % 2.2 / 2.2;
+                if (p < 0.35) { a.Set("superjump", T, 0.2); a.vel = new V3(0, 17 * (1 - p / 0.35) + 2, 0); a.pos.y = 0.3 + p * 4; }
+                else { a.Set("angelglide", T, 0.2); a.vel = new V3(0, -2.2, 0.6); a.pos.y = 1.7 - (p - 0.35) * 1.2; }
+            }
+            if (m == "jump")
+            {
+                double p = T % 1.2 / 1.2;
+                a.pos.y = Math.Sin(p * Math.PI) * 1.4; a.vel.y = Math.Cos(p * Math.PI) * 6; a.grounded = p > 0.97;
+                if (p < 0.05) a.anim.jumpAt = T; if (p > 0.97) a.anim.landAt = T;
+            }
+            else if (m == "fly") { a.pos.y = 1.2 + Math.Sin(T * 1.5) * 0.2; a.vel.y = Math.Cos(T * 1.5) * 0.3; }
+            else if (m != "swoop" && m != "descend" && m != "superjump") a.pos.y = 0;
+            double swingEvery = def.primary != null && def.primary.sweep ? Anim.ProcAnimator.SWING_TIME + 0.1 : 0.6;
+            bool Beat(double every) => T % every < dt;
+            if (def.dualGuns)
+            {
+                bool firing = m == "attack" || m == "alt";
+                a.sv["spin1"] = Math.Max(0, Math.Min(1, a.Sv("spin1") + (m == "attack" ? dt / 0.35 : -dt / 0.8)));
+                a.sv["spin2"] = Math.Max(0, Math.Min(1, a.Sv("spin2") + (firing ? dt / 0.35 : -dt / 0.8)));
+                if (firing && Beat(1.0 / 16)) { if (m == "attack") a.anim.fireL = T; a.anim.fireR = T; a.anim.attackAt = T; a.anim.attackKind = "primary"; }
+            }
+            else if (m == "attack" && Beat(swingEvery)) { a.anim.attackAt = T; a.anim.attackKind = "primary"; a.anim.attackSide = -a.anim.attackSide; }
+            if (m == "melee" && Beat(0.9)) { a.anim.attackAt = T; a.anim.attackKind = "punch"; }
+            // abilities: plays the cast (Tenkai-Oh: Dawn Charge pose on SHIFT, the overhead Solar Shatter slam on E)
+            if (m == "shift")
+            {
+                if (def.ability1?.id == "dawncharge") a.forced = new Forced { vx = 0, vy = 0, vz = 0, until = 1e9, kind = "dawncharge" };
+                else if (Beat(1.4)) { a.anim.castAt = T; a.anim.castId = def.ability1?.id ?? ""; }
+            }
+            else if (a.forced?.kind == "dawncharge") a.forced = null;
+            if (m == "e" && Beat(1.6)) { a.anim.castAt = T; a.anim.castId = def.ability2?.id ?? ""; }
+            // the deflects hold a guard stance while they last (Raijin's Thunder Parry, Hayate's Mirror Water)
+            bool Guard(SlotDef x) => x != null && (x.id == "parry" || x.id == "mirrorwater");
+            if ((m == "e" && Guard(def.ability2)) || (m == "shift" && Guard(def.ability1))) a.Set("parry", T, 0.2);
+            if (m == "cast" && Beat(1.4)) a.anim.castAt = T;
+            if (m == "ult")
+            {
+                // Tenkai-Oh previews the giant form; everyone else plays their ult cast
+                if (def.ult?.id == "colossus") { a.Set("titan", T, 9999); a.scale += (World.TITAN_SCALE - a.scale) * Math.Min(1, dt * 2.6); }
+                // Tomoe: the Crescent Warpath flight, looped - the 1.2 s twirl, a hop for the arc, a beat on the ground
+                else if (def.ult?.id == "tide")
+                {
+                    double u = T % 2.6, dur = 1.2; bool fly = u < dur;
+                    a.forced = fly ? new Forced { vx = 0, vy = 0, vz = 0, until = 1e9, kind = "tide", ignoreGravity = true } : null;
+                    if (fly) { a.sv["tideT0"] = T - u; a.sv["tideDur"] = dur; a.sv["tideApex"] = 3; a.Set("tideult", T, 0.2); a.vel = new V3(0, 4 * 3 * (1 - 2 * u / dur) / dur, 20 / dur); a.pos.y = 4 * 0.9 * (u / dur) * (1 - u / dur); a.grounded = false; }
+                    else { a.sv.Remove("tideT0"); a.grounded = true; }
+                }
+                else if (Beat(1.6)) { a.anim.castAt = T; a.anim.castId = def.ult?.id ?? ""; }
+            }
+            else if (a.forced?.kind == "tide") a.forced = null;
+            if (m == "alt" && !def.dualGuns && Beat(1.1)) { a.anim.attackAt = T; a.anim.attackKind = "secondary"; }
+            // SHIFT for Gantetsu: the Tachiai Rush (head down, guns tucked)
+            if (m == "shift" && def.ability1?.id == "tachiai") { a.Set("tachiai", T, 0.1); a.vel = new V3(0, 0, def.speed * 1.85); }
+            else a.Clear("tachiai");
+            if (m == "hit" && Beat(0.8)) a.anim.hitAt = T;
+            a.charging = false; a.beamOn = false;
         }
 
         void Close() { Dispose(); onClose?.Invoke(); }
@@ -362,7 +421,7 @@ namespace ZU.Game.UI.Toolkit
         {
             var ui = UiRoot.Existing; if (ui != null) ui.Tick -= Frame;
             if (studio != null) UnityEngine.Object.Destroy(studio);
-            studio = null; model = null; anim = null;
+            studio = null; model = null; view = null; actor = null; Preview = null;
             if (rt != null) { rt.Release(); UnityEngine.Object.Destroy(rt); rt = null; }
             el.RemoveFromHierarchy();
         }

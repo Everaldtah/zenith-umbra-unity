@@ -76,6 +76,8 @@ namespace ZU.Game.UI.Toolkit
             if (sheet != null) Root.styleSheets.Add(sheet);
             else Debug.LogWarning("[ZU UI] Resources/ZUUI/zu.uss is missing - the front end draws unstyled");
             HudLayer = Layer("hud-layer"); MenuLayer = Layer("menu-layer"); OverlayLayer = Layer("overlay-layer");
+            // the skins chosen in the Hero Viewer dress the heroes in a match (model skins: Hibiki's Bassline Armor)
+            ActorViews.SkinModel = HeroViewerView.SkinModelFor;
         }
 
         VisualElement Layer(string cls)

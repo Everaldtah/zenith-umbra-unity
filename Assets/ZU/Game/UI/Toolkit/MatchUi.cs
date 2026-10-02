@@ -15,6 +15,7 @@ namespace ZU.Game.UI.Toolkit
         HudView hud;
         ArmoryView armory;
         PauseView pause;
+        UltViewerView ult;
         float fpsAvg;
         Career.CareerTracker career;
         double lastSimT;
@@ -41,7 +42,8 @@ namespace ZU.Game.UI.Toolkit
             pause = new PauseView(ui.MenuLayer);
             EventSink.OnEvent += OnEvent;
             ZuSettings.Changed += OnSettings;
-            PauseMenu.EscTaken = () => pause.TakeEsc();
+            // Options over the pause takes Esc back to the pause; in the Ult Viewer Esc goes back to the Hero Viewer
+            PauseMenu.EscTaken = () => pause.TakeEsc() || Fx.UltShowcase.Current != null;
             ZButton.Sfx = id => Sfx(id);
             SettingsApply.Apply(ZuSettings.Current);
             // the Career Profile follows the local player (spectating, the AI lab and the Ult Viewer record nothing)
@@ -86,6 +88,7 @@ namespace ZU.Game.UI.Toolkit
             PauseMenu.EscTaken = null;
             hud?.root.RemoveFromHierarchy();
             armory?.Hide();
+            ult?.Close(); ult = null;
             var ui = UiRoot.Existing;            // (no new panel while the app quits)
             if (ui != null) { ui.HudLayer.Clear(); ui.MenuLayer.Clear(); }
         }
@@ -129,6 +132,11 @@ namespace ZU.Game.UI.Toolkit
             if (!want && armory.open) armory.Hide();
             armory.Update();
             pause.Update(r);
+            // the Ult Viewer's overlay while the showcase runs (the HUD's objective bar steps aside for it)
+            var sc = Fx.UltShowcase.Current;
+            if (sc != null && sc.Hero != null && ult == null) { ult = new UltViewerView(UiRoot.Get().MenuLayer, sc); U.Toggle(hud.root, "ultsc-on", true); }
+            if (sc == null && ult != null) { ult.Close(); ult = null; U.Toggle(hud.root, "ultsc-on", false); }
+            ult?.Update();
         }
     }
 }
