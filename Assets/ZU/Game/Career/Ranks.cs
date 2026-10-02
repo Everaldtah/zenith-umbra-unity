@@ -26,6 +26,11 @@ namespace ZU.Game.Career
         public QuickPlayRank qp = new QuickPlayRank();
         public List<MatchLog> history = new List<MatchLog>();
         public Dictionary<string, double> best = new Dictionary<string, double>();
+        /// <summary>online play against other players (TS Career.online / oqp / obest): its own role ranks and Quick Play
+        /// rating - matches against AI lobbies don't move them</summary>
+        public Dictionary<string, RoleRank> online = new Dictionary<string, RoleRank> { ["tank"] = new RoleRank(), ["damage"] = new RoleRank(), ["support"] = new RoleRank() };
+        public QuickPlayRank oqp = new QuickPlayRank();
+        public Dictionary<string, double> obest = new Dictionary<string, double>();
     }
 
     public struct RankView { public int tier, division; public double pct; public string name, label; public Color color; public bool placed; }
@@ -113,18 +118,33 @@ namespace ZU.Game.Career
             };
         }
 
-        /// <summary>Quick Play: only a hidden matchmaking rating moves</summary>
-        public static void ApplyQuickPlay(CareerData c, bool won, double opp)
+        /// <summary>Quick Play: only a hidden matchmaking rating moves (online = the online Quick Play rating)</summary>
+        public static void ApplyQuickPlay(CareerData c, bool won, double opp, bool online = false)
         {
-            c.qp.mmr = Math.Max(0, Math.Min(TOP, c.qp.mmr + 24 * ((won ? 1 : 0) - Expected(c.qp.mmr, opp))));
-            c.qp.games++; if (won) c.qp.wins++;
+            var q = online ? c.oqp : c.qp;
+            q.mmr = Math.Max(0, Math.Min(TOP, q.mmr + 24 * ((won ? 1 : 0) - Expected(q.mmr, opp))));
+            q.games++; if (won) q.wins++;
         }
 
         // ------------------------------------------------------------------------------------------------ the store
         static string PathOf => System.IO.Path.Combine(Application.persistentDataPath, "career-v1.json");
         public static CareerData Load()
         {
-            try { if (File.Exists(PathOf)) { var c = JsonConvert.DeserializeObject<CareerData>(File.ReadAllText(PathOf)); if (c?.roles != null) return c; } }
+            try
+            {
+                if (File.Exists(PathOf))
+                {
+                    var c = JsonConvert.DeserializeObject<CareerData>(File.ReadAllText(PathOf));
+                    if (c?.roles != null)
+                    {
+                        // saves from before online play: its tables start fresh
+                        c.online ??= new Dictionary<string, RoleRank>();
+                        foreach (var r in new[] { "tank", "damage", "support" }) if (!c.online.ContainsKey(r)) c.online[r] = new RoleRank();
+                        c.oqp ??= new QuickPlayRank(); c.obest ??= new Dictionary<string, double>();
+                        return c;
+                    }
+                }
+            }
             catch { /* a damaged profile starts fresh */ }
             return new CareerData();
         }
