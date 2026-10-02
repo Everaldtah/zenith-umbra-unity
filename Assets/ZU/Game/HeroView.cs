@@ -193,6 +193,7 @@ namespace ZU.Game
                     held.orbit[i] = o.HasValue ? (ProcAnimator.M(o.Value.p), ProcAnimator.M(o.Value.z), ProcAnimator.M(o.Value.y), o.Value.w) : ((Vector3, Vector3, Vector3, float)?)null;
                 }
                 held.Place(); held.UpdateState(actor, syncT, shown);
+                if (!actor.alive) held.HideTwoHanded();      // the ragdoll throws the body; the hammer / axe don't ride its hands
             }
             if (fingers != null && shown) fingers.Drive(actor, syncT, syncDt, false);
         }

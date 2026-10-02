@@ -230,6 +230,8 @@ namespace ZU.Game
             foreach (var b in bracers) if (b != null) foreach (var r in b.GetComponentsInChildren<Renderer>(true)) r.enabled = show;
         }
         static void Show(Renderer[] rs, bool on) { if (rs == null) return; foreach (var r in rs) if (r != null) r.enabled = on; }
+        /// <summary>a ragdoll death (TS CharacterView.deathRagdoll): the two-handed weapon leaves the body, the slung one hides</summary>
+        public void HideTwoHanded() { Show(propRends, false); Show(backRends, false); }
 
         bool propPlaced;
         /// <summary>the two-handed prop along a grip (model space): the pommel 10% of the haft behind `pos`, the haft along `dir`,
