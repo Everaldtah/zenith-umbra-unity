@@ -14,6 +14,10 @@ namespace ZU.Game.Fx
         public float LodScale = 1;
         readonly Transform root;
         readonly Material add;
+        /// <summary>the shared additive material (ZU/FxAdditive): tint per renderer with _BaseColor in a property block</summary>
+        public Material Additive => add;
+        /// <summary>the FX root (persistent effect objects parent here)</summary>
+        public Transform Root => root;
 
         public FxKit(Transform parent)
         {
@@ -276,7 +280,12 @@ namespace ZU.Game.Fx
         }
 
         // ---------------------------------------------------------------------------------------------- meshes
-        static void Orient(Transform t, Vector3 a, Vector3 b, float w)
+        /// <summary>the TS beamGeo: an open radius-1 tube from z = 0 to z = 1 (Orient stretches it a -> b)</summary>
+        public static Mesh BeamMesh => beamMesh ??= Tube(1, 1, 8);
+        /// <summary>the TS ringGeo: an annulus 0.92..1 in the XZ plane (normal +Y)</summary>
+        public static Mesh RingMesh => ringMesh ??= Annulus(0.92f, 1f, 64, 0, Mathf.PI * 2);
+
+        public static void Orient(Transform t, Vector3 a, Vector3 b, float w)
         {
             var d = b - a; float l = Mathf.Max(0.01f, d.magnitude);
             t.SetPositionAndRotation(a, Quaternion.LookRotation(d / l));

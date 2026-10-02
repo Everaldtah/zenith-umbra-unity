@@ -11,13 +11,25 @@ namespace ZU.Game
 
     public static class ActorViews
     {
+        /// <summary>the model a hero's equipped skin wears (a model skin such as Hibiki's Bassline Armor -> "hibiki_armor"), or
+        /// null; the front end sets it once skins can be chosen</summary>
+        public static System.Func<Actor, string> SkinModel;
+
         /// <summary>the hero's model when the library has it, else the prototype capsule</summary>
         public static IActorView Create(Actor a, Transform parent)
         {
             var lib = HeroLibrary.Get();
-            var e = lib != null ? lib.Find(a.def.id) : null;
+            var e = lib != null ? lib.Find(ModelId(a, lib)) : null;
             if (e != null) return HeroView.Create(a, e, lib, parent);
             return ActorView.Create(a, parent);
+        }
+
+        /// <summary>TS CharacterView.modelIdFor: a summon wears its own form (def.model: Enra's effigy -> enra_susanoo), a model
+        /// skin swaps the whole body, otherwise the hero's own id</summary>
+        static string ModelId(Actor a, HeroLibrary lib)
+        {
+            var d = a.def; var skin = SkinModel?.Invoke(a);
+            return d.model != null && lib.Find(d.model) != null ? d.model : skin != null && lib.Find(skin) != null ? skin : d.id;
         }
     }
 

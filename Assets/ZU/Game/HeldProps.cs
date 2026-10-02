@@ -135,7 +135,8 @@ namespace ZU.Game
             return h;
         }
 
-        static GameObject Load(string id, string alt)
+        /// <summary>a fitted Tripo prop (HeldImport's Resources/ZUProps/held_&lt;id&gt;), or its alt, or null when neither is in the build</summary>
+        public static GameObject Load(string id, string alt)
         {
             var pf = Resources.Load<GameObject>("ZUProps/held_" + id);
             if (pf == null && alt != null) pf = Resources.Load<GameObject>("ZUProps/held_" + alt);
