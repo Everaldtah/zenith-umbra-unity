@@ -21,7 +21,7 @@ namespace ZU.Game.Fx
 
         sealed class Extra
         {
-            public GameObject view; public Animator anim; public Renderer body;
+            public GameObject view; public Animator anim; public Renderer body; public HeroView hv;
             public Dictionary<string, Transform> bones;
             public Eyelids lids; public EyeGlow glow;
             public Ragdoll ragdoll; public bool ragdollDone;
@@ -63,7 +63,7 @@ namespace ZU.Game.Fx
             if (extras.TryGetValue(a.id, out var x) && x.view != null) return x;
             var view = viewOf(a);
             if (view == null) return null;
-            x = new Extra { view = view, anim = view.GetComponentInChildren<Animator>(true), body = view.GetComponentInChildren<SkinnedMeshRenderer>(true) };
+            x = new Extra { view = view, anim = view.GetComponentInChildren<Animator>(true), body = view.GetComponentInChildren<SkinnedMeshRenderer>(true), hv = view.GetComponent<HeroView>() };
             x.bones = new Dictionary<string, Transform>();
             foreach (var t in view.GetComponentsInChildren<Transform>(true)) if (!x.bones.ContainsKey(t.name)) x.bones[t.name] = t;
             // blinking: lids over the painted eyes the rigger found on the face; masked heroes: the sockets glow instead
@@ -94,14 +94,14 @@ namespace ZU.Game.Fx
                 if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;      // (the puppets are the swarm's)
                 var x = Bind(a);
                 if (x == null) continue;
-                // TS-PARITY: the lids and the glow follow the body's renderer, not its stealth fade - in the TS they are made after
-                // collectMats() gathers the materials that fade (and the glow is a Sprite, never collected), so a cloaked hero's
-                // blink and a masked hero's eye glow stay at full strength (on the user's list of TS bugs)
+                // the lids and the glow follow the body's renderer and fade with it (a cloaked hero: allies 0.35, enemies 0.25
+                // seen / 0.04 not - HeroView.BodyAlpha; fixed in both games)
                 bool shown = x.body != null && x.body.enabled;
+                float alpha = x.hv != null ? x.hv.BodyAlpha : 1;
                 if (!a.alive) DeathRagdoll(w, a, x, time, dt);
                 else if (x.ragdoll != null || x.ragdollDone) { x.ragdoll = null; x.ragdollDone = false; x.frozen = null; }   // back to life: the Animator takes the skeleton back
-                x.lids?.Update(time, (float)a.anim.hitAt, !a.alive, shown);
-                x.glow?.Update(time, (float)a.anim.castAt, (float)a.anim.hitAt, !a.alive, shown);
+                x.lids?.Update(time, (float)a.anim.hitAt, !a.alive, shown, alpha);
+                x.glow?.Update(time, (float)a.anim.castAt, (float)a.anim.hitAt, !a.alive, shown, alpha);
             }
             // views that went away (a hero swapped out, the match rebuilt)
             List<int> gone = null;

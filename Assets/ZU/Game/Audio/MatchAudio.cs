@@ -20,6 +20,7 @@ namespace ZU.Game.Audio
         // (the TS keeps this on a.sv.wasLowAt; nothing in the simulation reads it, so it stays on the audio side here)
         readonly Dictionary<int, double> wasLowAt = new Dictionary<int, double>();
         readonly Dictionary<string, object> obj = new Dictionary<string, object>();
+        readonly Dictionary<int, bool> aliveSeen = new Dictionary<int, bool>();
         int objMine;
         float tSlow, lastHitSnd = -1;
         bool ultWasReady;
@@ -233,6 +234,14 @@ namespace ZU.Game.Audio
                 Stimuli(w, a, rel);
             }
             AudioKit.EndFrame();
+            // the player's own 'respawn' line as they come back to life - checked over every hero, the dead included (the
+            // stimuli above only see the living, so they never saw the change; fixed in both games)
+            foreach (var a in w.actors)
+            {
+                bool was = aliveSeen.TryGetValue(a.id, out var al) ? al : a.alive;
+                if (a.alive && !was && RelOf(a) == Rel.Self) VoiceLines.Say(a, "respawn", "chatter");
+                aliveSeen[a.id] = a.alive;
+            }
             Objective(w, me);
         }
 
@@ -288,9 +297,6 @@ namespace ZU.Game.Audio
             double healedAt = a.Sv("healedAt", 0), lowAt = wasLowAt.TryGetValue(a.id, out var wl) ? wl : -99;
             if (healedAt != 0 && t - healedAt < 0.1 && a.Health / a.MaxHp > 0.8 && lowAt > t - 6) { wasLowAt[a.id] = -99; VoiceLines.Say(a, "thanks", "chatter"); }
             if (cur.low) wasLowAt[a.id] = t;
-            // TS-PARITY: the stimuli only run for living heroes (Frame skips the dead), so p.alive is always true and the TS
-            // never says this; ported as it is
-            if (rel == Rel.Self && cur.alive && !p.alive) VoiceLines.Say(a, "respawn", "chatter");
             prev[a.id] = cur;
         }
 

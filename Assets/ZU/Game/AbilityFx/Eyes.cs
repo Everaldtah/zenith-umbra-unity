@@ -49,6 +49,8 @@ namespace ZU.Game.Fx
         readonly List<Renderer> rends = new List<Renderer>();
         readonly List<float> sy = new List<float>();
         readonly List<Object> owned = new List<Object>();
+        readonly List<Material> mats = new List<Material>();
+        float shownAlpha = 1;
         float next = 1 + Random.value * 4;
         float blinkAt = -9;
         bool dbl;
@@ -102,7 +104,7 @@ namespace ZU.Game.Fx
                 mat.SetVector("_EmissionColor", new Vector4(emissive, emissive, emissive, 1)); mat.SetFloat("_EmitFromBase", 1);
                 mat.SetFloat("_Roughness", 0.72f); mat.SetFloat("_Metalness", 0.04f);
                 mat.SetFloat("_OffsetFactor", -4); mat.SetFloat("_OffsetUnits", -4); mat.SetFloat("_Cull", 2);
-                owned.Add(map); owned.Add(mat);
+                owned.Add(map); owned.Add(mat); mats.Add(mat);
                 var lid = new GameObject("eyelid");
                 lid.AddComponent<MeshFilter>().sharedMesh = LidMesh();
                 var mr = lid.AddComponent<MeshRenderer>(); mr.sharedMaterial = mat; mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -134,10 +136,23 @@ namespace ZU.Game.Fx
             return c;
         }
 
-        /// <summary>shown: whether the hero's body is drawn this frame</summary>
-        public void Update(float time, float hitAt, bool dead, bool shown)
+        /// <summary>shown: whether the hero's body is drawn this frame; alpha: how opaque it is (a cloaked hero fades)</summary>
+        public void Update(float time, float hitAt, bool dead, bool shown, float alpha = 1)
         {
             float c = Closed(time, hitAt, dead);
+            if (alpha != shownAlpha)
+            {
+                // see-through while the body is (TS: the body's materials go transparent, without depth write)
+                shownAlpha = alpha; bool fade = alpha < 0.999f;
+                foreach (var m in mats)
+                {
+                    m.SetFloat("_SrcBlend", fade ? (float)UnityEngine.Rendering.BlendMode.SrcAlpha : (float)UnityEngine.Rendering.BlendMode.One);
+                    m.SetFloat("_DstBlend", fade ? (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha : (float)UnityEngine.Rendering.BlendMode.Zero);
+                    m.SetFloat("_ZWrite", fade ? 0 : 1);
+                    m.renderQueue = fade ? 3000 : -1;
+                    var bc = m.GetColor("_BaseColor"); bc.a = alpha; m.SetColor("_BaseColor", bc);
+                }
+            }
             for (int i = 0; i < lids.Count; i++)
             {
                 rends[i].enabled = shown && c > 0.03f;
@@ -203,7 +218,8 @@ namespace ZU.Game.Fx
             }
         }
 
-        public void Update(float time, float castAt, float hitAt, bool dead, bool shown)
+        /// <summary>alpha: how opaque the body is drawn - the glow fades with a cloaked hero, and is gone when nearly invisible</summary>
+        public void Update(float time, float castAt, float hitAt, bool dead, bool shown, float alpha = 1)
         {
             if (castAt > lastCast) { lastCast = castAt; flare = 1; }
             if (hitAt > lastHit) { lastHit = hitAt; flare = Mathf.Max(flare, 0.5f); }
@@ -216,8 +232,8 @@ namespace ZU.Game.Fx
                 float s = s0[i] * (0.9f + 0.35f * k);
                 sp.localScale = Vector3.one * s;
                 if (cam != null) sp.rotation = cam.transform.rotation;           // a sprite: square to the screen
-                rends[i].GetPropertyBlock(mpb); mpb.SetColor("_BaseColor", new Color(1, 1, 1, Mathf.Min(1, k))); rends[i].SetPropertyBlock(mpb);
-                rends[i].enabled = shown && k > 0.01f;
+                rends[i].GetPropertyBlock(mpb); mpb.SetColor("_BaseColor", new Color(1, 1, 1, Mathf.Min(1, k) * alpha)); rends[i].SetPropertyBlock(mpb);
+                rends[i].enabled = shown && k > 0.01f && alpha > 0.05f;
             }
         }
 

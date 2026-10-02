@@ -3,7 +3,8 @@
 // (the TS instanceColor, which multiplies the diffuse colour only); emission = _EmissionColor, times the albedo texture when
 // _EmitFromBase is 1 (the lids' emissiveMap = map). Lighting: the main light with its shadows plus the ambient probe, a
 // soft roughness-driven highlight; two-sided (back faces flip their normal). _OffsetFactor / _OffsetUnits = the TS
-// polygonOffset (the lids sit on the face without z-fighting). Instancing on; casts shadows.
+// polygonOffset (the lids sit on the face without z-fighting). _SrcBlend / _DstBlend / _ZWrite let a material fade
+// (_BaseColor.a: the lids of a cloaked hero). Instancing on; casts shadows.
 Shader "ZU/AbilityLit"
 {
     Properties
@@ -19,6 +20,9 @@ Shader "ZU/AbilityLit"
         _OffsetFactor("Offset factor", Float) = 0
         _OffsetUnits("Offset units", Float) = 0
         [Enum(UnityEngine.Rendering.CullMode)] _Cull("Cull", Float) = 0
+        [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend("Src blend", Float) = 1
+        [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend("Dst blend", Float) = 0
+        _ZWrite("Depth write", Float) = 1
     }
     SubShader
     {
@@ -29,7 +33,7 @@ Shader "ZU/AbilityLit"
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseMap_ST;
             float4 _BaseColor, _EmissionColor;
-            float _VertexColors, _EmitFromBase, _Roughness, _Metalness, _OffsetFactor, _OffsetUnits, _Cull;
+            float _VertexColors, _EmitFromBase, _Roughness, _Metalness, _OffsetFactor, _OffsetUnits, _Cull, _SrcBlend, _DstBlend, _ZWrite;
         CBUFFER_END
         UNITY_INSTANCING_BUFFER_START(Props)
             UNITY_DEFINE_INSTANCED_PROP(float4, _Tint)
@@ -42,6 +46,8 @@ Shader "ZU/AbilityLit"
             Tags { "LightMode" = "UniversalForward" }
             Cull [_Cull]
             Offset [_OffsetFactor], [_OffsetUnits]
+            Blend [_SrcBlend] [_DstBlend]
+            ZWrite [_ZWrite]
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -88,7 +94,7 @@ Shader "ZU/AbilityLit"
                 float3 emit = _EmissionColor.rgb * lerp(float3(1, 1, 1), tex.rgb, _EmitFromBase);
                 float3 c = diffuse + spec + emit;
                 c = MixFog(c, i.fog);
-                return half4(c, 1);
+                return half4(c, i.color.a);              // (opaque unless the material is faded: _BaseColor.a with alpha blending)
             }
             ENDHLSL
         }
