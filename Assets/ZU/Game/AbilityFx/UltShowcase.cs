@@ -72,8 +72,26 @@ namespace ZU.Game.Fx
             pending = null;
             var s = r.gameObject.AddComponent<UltShowcase>();
             s.Stage(r);
-            return s;
+            return Current = s;
         }
+
+        // ------------------------------------------------------------------ for the UI (the TS overlay's state and buttons)
+        /// <summary>the showcase running now (null outside the Ult Viewer)</summary>
+        public static UltShowcase Current { get; private set; }
+        /// <summary>false: the UI draws the overlay itself and this IMGUI one stays off</summary>
+        public static bool DrawImgui = true;
+        /// <summary>the UI's say on whether the pointer is over one of its controls (a drag that starts there never orbits);
+        /// null = no UI of its own</summary>
+        public static System.Func<bool> PointerOverUi;
+        public Actor Hero => hero;
+        public string HeroId => hero?.baseDef.id;
+        /// <summary>the replay bar: 1 until the ult is cast, then the share of the showing time left</summary>
+        public float Progress => barLeft;
+        public bool SlowMo { get => Time.timeScale < 1; set => Time.timeScale = value ? 0.35f : 1; }
+        public void Replay() => Act("replay");
+        /// <summary>switch hero: a fresh Ult Viewer on another hero</summary>
+        public void Pick(string id) { if (id != HeroId) { Time.timeScale = 1; Open(id); } }
+        public void Back() => Act("back");
 
         MatchRunner runner;
         World w;
@@ -245,7 +263,7 @@ namespace ZU.Game.Fx
             // orbit / zoom (the gallery bench never takes the pointer lock)
             if (mouse == null || PauseMenu.Paused) { drag = null; return; }
             float mx = mouse.position.ReadValue().x;
-            if (mouse.leftButton.wasPressedThisFrame && !overUi) drag = mx;
+            if (mouse.leftButton.wasPressedThisFrame && !overUi && !(PointerOverUi?.Invoke() ?? false)) drag = mx;
             if (!mouse.leftButton.isPressed) drag = null;
             if (drag.HasValue) { orbit -= (mx - drag.Value) * 0.006f; drag = mx; }
             float wheel = mouse.scroll.ReadValue().y;
@@ -263,7 +281,7 @@ namespace ZU.Game.Fx
         GUIStyle small, title, body, btn;
         void OnGUI()
         {
-            if (hero == null) return;
+            if (hero == null || !DrawImgui) { overUi = false; return; }
             // a 1080p virtual canvas, like the HUD
             float s = Screen.height / 1080f;
             GUI.matrix = Matrix4x4.Scale(new Vector3(s, s, 1));
@@ -306,6 +324,6 @@ namespace ZU.Game.Fx
             GUI.matrix = Matrix4x4.identity;
         }
 
-        void OnDestroy() { if (Time.timeScale < 1) Time.timeScale = 1; }
+        void OnDestroy() { if (Time.timeScale < 1) Time.timeScale = 1; if (Current == this) Current = null; }
     }
 }

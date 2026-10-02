@@ -1,6 +1,7 @@
 // The parts of the TS render/CharacterView.ts this slice owns, hung on each hero's view without touching HeroView:
 //  - the blinking lids / masked eye glow (CharacterView: `lids`, `eyeGlow`), from the eye data measured on the model;
-//  - the ragdoll death (CharacterView.deathRagdoll / endRagdoll): thrown by the killing blow, sinking before the respawn.
+//  - the ragdoll death (CharacterView.deathRagdoll / endRagdoll): thrown by the killing blow, sinking before the respawn;
+//  - Enra's chain blades (CharacterView.updateChains): ChainBladeView, attached here, runs after HeldRig.
 // A hero's view is found by ViewOf (default: the HeroView child of the match named "<def> #<id> (<team>)", as
 // ActorViews.Create names it; MatchRunner can hand its own lookup in). Runs in AbilityFx's LateUpdate: after the Animator,
 // before HeroView's LateUpdate (held weapons, fingers) and the hair / cloth solver (ZuDynamics, order 500).
@@ -73,6 +74,8 @@ namespace ZU.Game.Fx
                 if (eyes != null && eyes.Length == 2) x.lids = new Eyelids(model, head, eyes, BRIGHT_SUITS.Contains(a.def.id) ? 0.04f : 0.16f);
                 if (glow != null && glow.Length == 2) x.glow = new EyeGlow(model, head, glow, a.def.glow);
             }
+            // Enra's Hellfire Chains: the chain, yoke, fire and trail beside HeldRig's blades
+            if (Held.For(a.def.id)?.chains == true) ChainBladeView.Attach(view, a, r);
             extras[a.id] = x;
             return x;
         }
