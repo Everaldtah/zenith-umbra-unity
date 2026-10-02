@@ -284,6 +284,8 @@ namespace ZU.Game.Fx
         public static Mesh BeamMesh => beamMesh ??= Tube(1, 1, 8);
         /// <summary>the TS ringGeo: an annulus 0.92..1 in the XZ plane (normal +Y)</summary>
         public static Mesh RingMesh => ringMesh ??= Annulus(0.92f, 1f, 64, 0, Mathf.PI * 2);
+        /// <summary>an open cone along +Z: apex at z = 0, radius 1 at z = 1 (flames, thrusters)</summary>
+        public static Mesh ConeMesh => coneMesh ??= Tube(0, 1, 24);
 
         public static void Orient(Transform t, Vector3 a, Vector3 b, float w)
         {

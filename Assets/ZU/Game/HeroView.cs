@@ -51,7 +51,8 @@ namespace ZU.Game
         ZuDynamics dyn;
         HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
         ProcAnimator proc; AnimState state; // the procedural layer (TS Animator.ts) and what it reads
-        CharacterLook look;                 // rim light, stealth / rebirth / hologram looks, shield bubble, barrier
+        CharacterLook look;                 // rim light, stealth / rebirth / hologram looks, shield bubble, barrier, jets
+        Transform footL, footR;
         Actor actor; double syncT; float syncDt; Vector3 drawPos; IViewHost host;
         Vector3 baseScale = Vector3.one; float? downYaw;
         bool wasAlive = true;
@@ -84,6 +85,7 @@ namespace ZU.Game
             var rig = new FirstPerson.RigPose(go.transform);
             v.held = HeldRig.Attach(go, rig, a.def);
             v.fingers = Fingers.Build(go.transform);
+            v.footL = rig.B("foot_L"); v.footR = rig.B("foot_R");
             if (v.anim != null)
             {
                 var p = new ProcAnimator(rig);
@@ -221,6 +223,8 @@ namespace ZU.Game
             }
             if (fingers != null && shown) fingers.Drive(actor, syncT, syncDt, false);
             look?.Update(actor, host, syncT, drawPos, shown);
+            if (look != null && held != null) look.Jets(actor, held.rig.B("foot_L"), held.rig.B("foot_R"), shown);
+            else if (look != null && proc != null) look.Jets(actor, footL, footR, shown);
         }
 
         void OnDestroy() => look?.Dispose();

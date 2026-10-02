@@ -29,6 +29,7 @@ namespace ZU.Game
         readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
         readonly Transform shield, barrier; readonly MeshRenderer shieldR, barrierR;
         readonly Color holoCol; readonly bool holo;
+        readonly Transform[] jets; readonly MeshRenderer[] jetR;    // foot thrusters (heroes with jets: Tenkai-Oh)
 
         public CharacterLook(Transform matchRoot, IEnumerable<Renderer> bodyRenderers, Actor a, Material additive)
         {
@@ -47,6 +48,11 @@ namespace ZU.Game
             {
                 shield = Part("shield bubble", matchRoot, ProjectileViews.Sphere(), additive, out shieldR);
                 shield.gameObject.SetActive(false);
+            }
+            if ((a.def.jets ?? 0) != 0 && additive != null)
+            {
+                jets = new Transform[2]; jetR = new MeshRenderer[2];
+                for (int i = 0; i < 2; i++) { jets[i] = Part("jet", matchRoot, Fx.FxKit.ConeMesh, additive, out jetR[i]); jets[i].gameObject.SetActive(false); }
             }
             if (a.barrier.max > 0)
             {
@@ -82,7 +88,30 @@ namespace ZU.Game
             return m;
         }
 
-        public void Dispose() { if (shield != null) Object.Destroy(shield.gameObject); if (barrier != null) Object.Destroy(barrier.gameObject); }
+        public void Dispose()
+        {
+            if (shield != null) Object.Destroy(shield.gameObject); if (barrier != null) Object.Destroy(barrier.gameObject);
+            if (jets != null) foreach (var j in jets) if (j != null) Object.Destroy(j.gameObject);
+        }
+
+        /// <summary>foot thrusters (TS CharacterView jets): flame cones under the soles while flying, base at the sole and the tip
+        /// pointing down, flickering, longer with jump held</summary>
+        public void Jets(Actor a, Transform footL, Transform footR, bool shown)
+        {
+            if (jets == null) return;
+            bool on = shown && a.alive && a.flying && (a.def.jets ?? 0) != 0;
+            for (int i = 0; i < 2; i++)
+            {
+                var b = i == 0 ? footL : footR;
+                jets[i].gameObject.SetActive(on && b != null);
+                if (!on || b == null) continue;
+                float s = (float)a.scale, k = s * (0.9f + Random.value * 0.25f) * (a.input.jumpHeld ? 1.5f : 1) * 1.1f;
+                // ConeGeometry(0.16, 1) with its base at the sole: the cone's apex k below it, +Z (apex -> base) pointing up
+                jets[i].SetPositionAndRotation(b.position + Vector3.down * k, Quaternion.LookRotation(Vector3.up));
+                jets[i].localScale = new Vector3(0.16f * s, 0.16f * s, k);
+                jetR[i].GetPropertyBlock(mpb); var c = Conv.Hex("#ffb347"); c.a = 0.75f; mpb.SetColor("_BaseColor", c); jetR[i].SetPropertyBlock(mpb);
+            }
+        }
 
         /// <summary>each frame after the pose: `shown` = the body is drawn at all (not the local player in first person)</summary>
         public void Update(Actor a, IViewHost host, double t, Vector3 drawPos, bool shown)
