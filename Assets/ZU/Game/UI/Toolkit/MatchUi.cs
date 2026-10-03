@@ -75,7 +75,7 @@ namespace ZU.Game.UI.Toolkit
         /// <summary>roleRating: where an unplaced hero's Hero SR starts (the role's rank: online ranks for online matches)</summary>
         public void RecordCareer(string result, System.Func<string, double> roleRating)
         {
-            if (career == null || r.World == null) return;
+            if (career == null || r.World == null || UiTour.Active) return;
             var t = career; career = null;
             var w = r.World; var me = r.Player;
             string score = null;
@@ -154,7 +154,7 @@ namespace ZU.Game.UI.Toolkit
                 PauseMenu.Pause();
                 pause.Swap(r);
             }
-            bool board = !PauseMenu.Paused && Keys.Held(ZuSettings.BindsFor(s, r.Player?.def.id, "score"));
+            bool board = !PauseMenu.Paused && (Keys.Held(ZuSettings.BindsFor(s, r.Player?.def.id, "score")) || UiTour.ForceBoard);
             hud.Update(w, r.Player, Camera.main, w.time, s.video.perfStats != "off" ? fpsAvg : 0, board, r.Player == null ? "SPECTATING · Esc menu" : "");
             if (s.video.perfStats == "advanced")
                 hud.Perf(new[]

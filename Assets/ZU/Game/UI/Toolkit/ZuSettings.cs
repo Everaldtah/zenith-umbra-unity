@@ -219,10 +219,14 @@ namespace ZU.Game.UI.Toolkit
         }
         static bool IsNum(JToken t) => t.Type == JTokenType.Integer || t.Type == JTokenType.Float;
 
+        /// <summary>the UI tour runs on the defaults (the TS tour clears localStorage) and saves nothing</summary>
+        public static void TourDefaults() => current = Defaults();
+
         public static void Save(ZuSettings s)
         {
             s.volume = s.sound.master;
             current = s;
+            if (UiTour.Active) { Changed?.Invoke(s); return; }
             try { File.WriteAllText(FilePath, JsonConvert.SerializeObject(s, Formatting.Indented)); }
             catch (Exception e) { Debug.LogWarning("[ZU] settings not saved: " + e.Message); }
             Changed?.Invoke(s);

@@ -26,7 +26,11 @@ namespace ZU.Game.UI.Toolkit
         readonly GameData d = ZuData.Get();
         ProfileData p;
 
-        CareerView(VisualElement parent, Action back) { this.back = back; el = U.Div("cp", parent, pick: true); Render(); }
+        CareerView(VisualElement parent, Action back) { this.back = back; el = U.Div("cp", parent, pick: true); Current = this; Render(); }
+        /// <summary>the Career Profile on screen (the UI tour switches its tabs)</summary>
+        public static CareerView Current { get; private set; }
+        public void SetTab(string t) { tab = t; Render(); }
+        public void Close() { el.RemoveFromHierarchy(); if (Current == this) Current = null; back?.Invoke(); }
         public static CareerView Open(VisualElement parent, Action back) => new CareerView(parent, back);
 
         string Nm(string id) => d.Def(id)?.name ?? id;
