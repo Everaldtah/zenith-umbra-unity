@@ -387,6 +387,7 @@ namespace ZU.Game.Audio
         static string preset;
         static int warm;
         static List<string> warmIds;
+        static float nextLog = 30;
         /// <summary>the buses, ducks, fades and loop gains applied to every voice (AudioKitDriver, every frame)</summary>
         internal static void Tick(float dt)
         {
@@ -397,6 +398,13 @@ namespace ZU.Game.Audio
                 listener = UnityEngine.Object.FindAnyObjectByType<AudioListener>();
                 if (listener != null) MasterBus.On(listener);
                 preset = null;
+            }
+            // a line in Player.log every 30 s while sound plays: the smoke test's evidence (crackle = clips/clicks > 0)
+            if (now >= nextLog && MasterBus.Live != null)
+            {
+                nextLog = now + 30;
+                var m = MasterBus.Live.Chain;
+                if (m.Frames > 0) Debug.Log($"[ZU] audio: voices {Voices}, {m.Readout()}");
             }
             var mix = Mix?.mix ?? "default";
             if (mix != preset && MasterBus.Live != null) { preset = mix; MasterBus.Live.Chain.SetPreset(mix); }
