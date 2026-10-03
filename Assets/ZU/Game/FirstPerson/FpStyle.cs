@@ -42,9 +42,9 @@ namespace ZU.Game.FirstPerson
         public static readonly Dictionary<string, FpStyle> TABLE = new Dictionary<string, FpStyle>
         {
             { "raijin", With(S(Grip.Katana, 0.21f, -0.21f, 0.44f, -0.17f, -0.24f, 0.42f, 0), s => { s.clip = 0.14f; s.keep = 0.97f; }) },
-            // the bow held left of the reticle and canted (an archer's first-person read), sized down for the viewmodel; the
-            // string hand rests on the nocked arrow beside the grip (Hanzo's ready pose)
-            { "yuzu", With(S(Grip.Bow, 0.06f, -0.24f, 0.1f, -0.03f, -0.18f, 0.5f, 0), s => { s.clip = 0.12f; s.gunScale = 0.8f; }) },
+            // the bow flat and two-handed in the bottom-right quadrant, the crossbow hunter's hold (FirstPersonView.Archer.cs
+            // keys every moment; these are its rest targets, which place the rig)
+            { "yuzu", With(S(Grip.Bow, 0.15f, -0.17f, 0.18f, 0.14f, -0.19f, 0.45f, 0), s => { s.clip = 0.12f; s.gunScale = 0.8f; }) },
             // the wide kimono sleeves are squeezed into slim tubes for the viewmodel (they'd fill the screen), hands well forward
             { "kaien", With(S(Grip.Caster, 0.21f, -0.2f, 0.44f, -0.21f, -0.17f, 0.46f, 0.03f), s => { s.keep = 0.97f; s.squeeze = 0.12f; }) },
             { "mirei", S(Grip.Caster, 0.22f, -0.2f, 0.42f, -0.19f, -0.24f, 0.4f, 0.02f) },
@@ -66,9 +66,10 @@ namespace ZU.Game.FirstPerson
             { "tomoe", With(S(Grip.Shotgun, 0.21f, -0.2f, 0.44f, -0.24f, -0.24f, 0.38f, 0.1f), s => { s.push = 0.04f; s.keep = 0.97f; s.drape = 0.5f; }) },
             // koi-scale shuriken flicked from the chest (the scarf is cut out: it wraps the neck, not the arms)
             { "hayate", With(S(Grip.Kunai, 0.17f, -0.17f, 0.4f, -0.17f, -0.18f, 0.4f, 0), s => { s.keep = 0.9f; }) },
-            // the Riverbow in the left hand, the draw hand on the right; his robe sleeves squeezed to slim tubes and the
-            // quiver over his shoulder clipped, so the bow arm doesn't wall off the view
-            { "seiran", With(S(Grip.Bow, 0.06f, -0.24f, 0.1f, -0.03f, -0.18f, 0.5f, 0), s => { s.keep = 0.9f; s.squeeze = 0.16f; s.clip = 0.14f; s.gunScale = 0.8f; }) },
+            // the Riverbow rolled nearly flat across the bottom, the fist low at the centre, the string hand below the frame on
+            // the nocked arrow (the bow archer's ready pose; FirstPersonView.Archer.cs keys every moment); his robe sleeves
+            // squeezed to slim tubes and the quiver over his shoulder clipped, so the bow arm doesn't wall off the view
+            { "seiran", With(S(Grip.Bow, -0.03f, -0.24f, 0.24f, -0.04f, -0.215f, 0.5f, 0), s => { s.keep = 0.9f; s.squeeze = 0.16f; s.clip = 0.14f; s.gunScale = 0.8f; }) },
         };
         static FpStyle With(FpStyle s, System.Action<FpStyle> f) { f(s); return s; }
         public static FpStyle For(string heroId) => TABLE.TryGetValue(heroId, out var s) ? s : DEFAULT;

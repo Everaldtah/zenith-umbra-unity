@@ -156,6 +156,7 @@ namespace ZU.Game.FirstPerson
             if (held != null) { held.gunScale = style.gunScale; foreach (var rd in held.Renderers()) { rd.gameObject.layer = LAYER; rd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; } }
             fingers = Fingers.Build(model.transform);
             if (!string.IsNullOrEmpty(style.gauntlets)) LoadGauntlets();
+            if (Archer) ArcherBuild();
             overlay.nearClipPlane = Mathf.Max(0.02f, style.clip);
             // state
             playing = ""; oneShot = null; equipped = false; swings = 0; idleSince = r.World.time; hasLast = false;
@@ -254,6 +255,8 @@ namespace ZU.Game.FirstPerson
             // Mirei's Stellar Rebirth: a procedural moment over her clips
             double rb = heroId == "mirei" && a.sv.TryGetValue("rebirthAt", out var rba) ? t - rba : 9;
             if (rb < 1.3) { procFrame = true; return; }
+            // the archers are keyed on gameplay (FirstPersonView.Archer.cs), not clipped
+            if (Archer) { procFrame = true; return; }
             // ---- 1. authored clips
             if (clipLen.Count > 0)
             {
@@ -336,7 +339,8 @@ namespace ZU.Game.FirstPerson
             if (procFrame) Proc(a, t, procNewAttack);
             else if (held != null) { if (held.prop != null) held.PlacePropAtRest(); held.Place(); }
             held?.UpdateState(a, t, true);
-            fingers?.Drive(a, t, dt, true);
+            if (fingers != null && Archer) { fingers.Set(0, arcGrips.L); fingers.Set(1, arcGrips.R); fingers.Update(dt, 22); }
+            else fingers?.Drive(a, t, dt, true);
             watch.Stop();
             costMs = Mathf.Lerp(costMs, (float)watch.Elapsed.TotalMilliseconds, 0.05f);
         }

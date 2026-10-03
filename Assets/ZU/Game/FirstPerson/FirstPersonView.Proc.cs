@@ -55,6 +55,7 @@ namespace ZU.Game.FirstPerson
         {
             float t = (float)tt;
             var S = style;
+            if (Archer) { ArcherProc(a, t); return; }
             // torso and legs at rest (the clips may have left them elsewhere)
             foreach (var n in BODY) rig.ResetBone(n);
             if (S.grip == Grip.Hammer && held != null && held.prop != null) { HammerProc(a, t); return; }
