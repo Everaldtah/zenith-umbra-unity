@@ -29,6 +29,8 @@ namespace ZU.Game.FirstPerson
         Transform pivot;                            // under the camera: the rig root sits at -eye in here, bob / sway on top
         GameObject model;
         RigPose rig; Animator anim; HeldRig held; Fingers fingers; FpStyle style;
+        /// <summary>the hero's dedicated first-person forearms + hands (FpArms), when published</summary>
+        FpArms arms;
         public string heroId { get; private set; }
         public bool active { get; private set; }
         /// <summary>the current action source: 'clip:fp_fire' or 'proc:fire' (captures / tests)</summary>
@@ -114,6 +116,7 @@ namespace ZU.Game.FirstPerson
         bool Build(Actor me)
         {
             if (model != null) { Destroy(model); model = null; }
+            arms = null;
             var lib = HeroLibrary.Get(); var e = lib != null ? lib.Find(me.def.id) : null;
             if (e == null) return false;
             heroId = me.def.id; style = FpStyle.For(heroId);
@@ -155,7 +158,17 @@ namespace ZU.Game.FirstPerson
             held = HeldRig.Attach(model, rig, me.def);
             if (held != null) { held.gunScale = style.gunScale; foreach (var rd in held.Renderers()) { rd.gameObject.layer = LAYER; rd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; } }
             fingers = Fingers.Build(model.transform);
+            // dedicated forearms + hands: the hero mesh keeps its upper arms, the fingers curl on the new hands
+            arms = FpArms.Load(heroId, model.transform, rig, LAYER);
+            if (arms != null)
+            {
+                foreach (var s in use) s.sharedMesh = ArmsMesh.For(heroId, s, style.keep, style.drape, style.squeeze, out _, true);
+                if (arms.fingers != null) fingers = arms.fingers;
+            }
             if (!string.IsNullOrEmpty(style.gauntlets)) LoadGauntlets();
+            archerOn = WantArcher;
+            if (archerOn) ArcherBuild();
+            else if (fpArrow != null) { Destroy(fpArrow.gameObject); fpArrow = null; }
             overlay.nearClipPlane = Mathf.Max(0.02f, style.clip);
             // state
             playing = ""; oneShot = null; equipped = false; swings = 0; idleSince = r.World.time; hasLast = false;
@@ -248,12 +261,15 @@ namespace ZU.Game.FirstPerson
             if (newAttack && c.attackKind != "punch") swings++;
             dipV += (-dip * 120 - dipV * 14) * dt; dip += dipV * dt;
             // aiming down the arrow (Freja's Take Aim): the bow comes up and a little to the right, rolled more upright
-            aimK += ((style.grip == Grip.Bow && a.Sv("zoom", 0) > 0 ? 1 : 0) - aimK) * Mathf.Min(1, dt * 14);
+            // (the keyed archers carry their own aim pose: FirstPersonView.Archer.cs)
+            aimK += ((style.grip == Grip.Bow && !Archer && a.Sv("zoom", 0) > 0 ? 1 : 0) - aimK) * Mathf.Min(1, dt * 14);
             if (held != null) { held.gunAim = null; held.bowCant = 0; held.bowTilt = 0; held.orbit[0] = held.orbit[1] = null; held.gunHide[0] = held.gunHide[1] = false; }
             procFrame = false; clipFrame = false; procT = t; procNewAttack = newAttack;
             // Mirei's Stellar Rebirth: a procedural moment over her clips
             double rb = heroId == "mirei" && a.sv.TryGetValue("rebirthAt", out var rba) ? t - rba : 9;
             if (rb < 1.3) { procFrame = true; return; }
+            // the archers are keyed on gameplay (FirstPersonView.Archer.cs), not clipped
+            if (Archer) { procFrame = true; return; }
             // ---- 1. authored clips
             if (clipLen.Count > 0)
             {
@@ -335,8 +351,13 @@ namespace ZU.Game.FirstPerson
             }
             if (procFrame) Proc(a, t, procNewAttack);
             else if (held != null) { if (held.prop != null) held.PlacePropAtRest(); held.Place(); }
+            // the dedicated forearms + hands follow the posed rig (clip or IK)
+            arms?.Drive();
             held?.UpdateState(a, t, true);
-            fingers?.Drive(a, t, dt, true);
+            // the props' live details as the world view has them (Tenkai-Oh's thruster flame, Hayate's nodachi glow, Hibiki's woofer)
+            held?.UpdateDetails(a, t);
+            if (fingers != null && Archer) { fingers.Set(0, arcGrips.L); fingers.Set(1, arcGrips.R); fingers.Update(dt, 22); }
+            else fingers?.Drive(a, t, dt, true);
             watch.Stop();
             costMs = Mathf.Lerp(costMs, (float)watch.Elapsed.TotalMilliseconds, 0.05f);
         }

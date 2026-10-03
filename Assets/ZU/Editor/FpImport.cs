@@ -75,6 +75,47 @@ namespace ZU.EditorTools
             return n + " FBX re-imported";
         }
 
+        const string ArmsDir = "Assets/ZU/Art/FPArms";
+
+        /// <summary>the dedicated first-person arms: Assets/ZU/Art/FPArms/<hero>/fp_arm_<hero>_L.fbx + _R.fbx (Tripo forearm + hand
+        /// meshes bound by tools/blender/fp_arm_bind.py; textures beside them) imported as Generic models without animation
+        /// (FpArms drives the bones from the hero rig), both sides put in one prefab, Resources/ZUFp/arms_<hero>.prefab</summary>
+        [CliCommand("zu_import_fp_arms", "Import the dedicated first-person arms (Assets/ZU/Art/FPArms/<hero>/fp_arm_<hero>_<L|R>.fbx) into Resources/ZUFp/arms_<hero>.prefab")]
+        public static string ImportArms([CliArg("id", "one hero id; empty = all")] string id = "")
+        {
+            if (!AssetDatabase.IsValidFolder(ArmsDir)) return "no " + ArmsDir;
+            Directory.CreateDirectory(Out);
+            var report = new System.Collections.Generic.List<string>();
+            foreach (var dir in Directory.GetDirectories(ArmsDir).Select(d => d.Replace('\\', '/')))
+            {
+                string hero = Path.GetFileName(dir);
+                if (!string.IsNullOrEmpty(id) && hero != id) continue;
+                var sides = new[] { "L", "R" }.Select(S => $"{dir}/fp_arm_{hero}_{S}.fbx").Where(File.Exists).ToList();
+                if (sides.Count == 0) { report.Add(hero + ": no fbx"); continue; }
+                foreach (var p in sides)
+                {
+                    var mi = (ModelImporter)AssetImporter.GetAtPath(p);
+                    mi.animationType = ModelImporterAnimationType.Generic; mi.avatarSetup = ModelImporterAvatarSetup.NoAvatar;
+                    mi.importAnimation = false; mi.importCameras = false; mi.importLights = false;
+                    mi.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
+                    mi.optimizeGameObjects = false;
+                    mi.SaveAndReimport();
+                }
+                var root = new GameObject("arms_" + hero);
+                foreach (var p in sides)
+                {
+                    var asset = AssetDatabase.LoadAssetAtPath<GameObject>(p);
+                    var inst = (GameObject)Object.Instantiate(asset, root.transform);
+                    inst.name = Path.GetFileNameWithoutExtension(p);
+                }
+                PrefabUtility.SaveAsPrefabAsset(root, $"{Out}/arms_{hero}.prefab");
+                Object.DestroyImmediate(root);
+                report.Add($"{hero}: {string.Join("+", sides.Select(s => s.Substring(s.Length - 5, 1)))}");
+            }
+            AssetDatabase.SaveAssets();
+            return "arms: " + string.Join(" | ", report);
+        }
+
         /// <summary>the base controller: a state per event name holding an empty placeholder clip of that name (the
         /// override swaps the hero's clip in), a Rate float as every state's speed multiplier</summary>
         static AnimatorController BuildController()

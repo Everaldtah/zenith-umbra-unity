@@ -11,28 +11,33 @@ namespace ZU.Game.FirstPerson
     public static class ArmsMesh
     {
         static readonly Regex ARM = new Regex(@"^(upperarm|forearm|hand|(thumb|index|middle|ring|pinky)\d)_[LR]$");
+        /// <summary>with dedicated first-person arms (FpArms) the hero's own mesh keeps only the upper arm and the elbow half of
+        /// the forearm: the dedicated forearm + hand take over from mid-forearm</summary>
+        static readonly Regex UPPER = new Regex(@"^(upperarm|forearm)_[LR]$");
         static readonly Dictionary<string, Mesh> cache = new Dictionary<string, Mesh>();
 
         public struct Stats { public int kept, total; }
 
         /// <summary>the arms-only copy of `smr.sharedMesh` for this hero (keep / drape / squeeze as the style says), from the cache</summary>
-        public static Mesh For(string key, SkinnedMeshRenderer smr, float keep, float drape, float squeeze, out Stats stats)
+        public static Mesh For(string key, SkinnedMeshRenderer smr, float keep, float drape, float squeeze, out Stats stats, bool upperOnly = false)
         {
             stats = default;
+            if (upperOnly) key += "_upper";
             if (cache.TryGetValue(key, out var m) && m != null) return m;
-            m = Build(smr, keep, drape, squeeze, out stats);
+            m = Build(smr, keep, drape, squeeze, out stats, upperOnly);
             m.name = key + "_arms";
             cache[key] = m;
             return m;
         }
 
-        public static Mesh Build(SkinnedMeshRenderer smr, float keep, float drape, float squeeze, out Stats stats)
+        public static Mesh Build(SkinnedMeshRenderer smr, float keep, float drape, float squeeze, out Stats stats, bool upperOnly = false)
         {
             var src = smr.sharedMesh;
             var bones = smr.bones;
             int nb = bones.Length;
             var arm = new bool[nb];
-            for (int i = 0; i < nb; i++) arm[i] = bones[i] != null && ARM.IsMatch(bones[i].name);
+            var rx = upperOnly ? UPPER : ARM;
+            for (int i = 0; i < nb; i++) arm[i] = bones[i] != null && rx.IsMatch(bones[i].name);
             var bw = src.boneWeights;                       // 4 influences per vertex (Tripo rigs)
             int n = src.vertexCount;
             var w = new float[n];
@@ -80,6 +85,27 @@ namespace ZU.Game.FirstPerson
                         float d = Vector3.Distance(p, c);
                         if (limit > 0 && d > limit) far[i] = true;
                         if (limitS > 0 && d > limitS) { pos[i] = c + (p - c) * (limitS / d); moved = true; }
+                    }
+                }
+            }
+            if (upperOnly)
+            {
+                // drop the wrist half of the forearm (vertices past 45% along forearm -> hand, by their heaviest bone)
+                var binds = src.bindposes;
+                foreach (var S in new[] { "L", "R" })
+                {
+                    int ifa = -1, ih = -1;
+                    for (int i = 0; i < nb; i++) { if (bones[i] == null) continue; if (bones[i].name == "forearm_" + S) ifa = i; else if (bones[i].name == "hand_" + S) ih = i; }
+                    if (ifa < 0 || ih < 0) continue;
+                    Vector3 a = binds[ifa].inverse.GetColumn(3), b = binds[ih].inverse.GetColumn(3), ab = b - a;
+                    for (int i = 0; i < n; i++)
+                    {
+                        var bw4 = bw[i]; int best = bw4.boneIndex0; float bwt = bw4.weight0;
+                        if (bw4.weight1 > bwt) { bwt = bw4.weight1; best = bw4.boneIndex1; }
+                        if (bw4.weight2 > bwt) { bwt = bw4.weight2; best = bw4.boneIndex2; }
+                        if (bw4.weight3 > bwt) { best = bw4.boneIndex3; }
+                        if (best != ifa && best != ih) continue;
+                        if (Vector3.Dot(pos[i] - a, ab) / Mathf.Max(1e-9f, ab.sqrMagnitude) > 0.45f) far[i] = true;
                     }
                 }
             }
