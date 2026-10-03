@@ -5,7 +5,8 @@
 // re-applies the last procedural root pose at the current draw position), so the body never lags its hitbox - just the
 // limbs re-pose a little less often where nobody can see the difference. The view gets the real time since its last update
 // when it does run (ClipLayer's inertialization and the gait phase integrate it; ProcAnimator clamps at 50 ms, the slowest
-// tier here is 42 ms). Updates are staggered so far heroes don't all land on the same frame.
+// tier here is 42 ms). Updates are staggered so far heroes don't all land on the same frame. The engine switch turns it
+// off too (-zu-engine=0 -> Perf.Enabled false = every view every frame, the TS `anim.enabled = this.on`), for A/B checks.
 using UnityEngine;
 
 namespace ZU.Engine
@@ -59,7 +60,8 @@ namespace ZU.Engine
         }
 
         /// <summary>
-        /// The dt to pose this view with this frame, or -1 to hold its pose.
+        /// The dt to pose this view with this frame, or -1 to hold its pose. Never held while the engine is off
+        /// (Perf.Enabled false, -zu-engine=0): the TS tied anim.enabled to the engine switch.
         /// </summary>
         /// <param name="feet">where the body is drawn (its root, at the feet)</param>
         /// <param name="height">the hero's height in metres (scale included)</param>
@@ -69,7 +71,7 @@ namespace ZU.Engine
             if (frame != Time.frameCount) Begin(Camera.main);
             if (dt <= 0) { Updated++; return dt; }                   // paused: nothing to accumulate
             s.acc += dt;
-            if (!enabled || always || s.acc + 1e-3f >= Interval(feet, height))
+            if (!enabled || !Perf.Enabled || always || s.acc + 1e-3f >= Interval(feet, height))
             {
                 // everything since its last update (a long frame still passes through whole, as before)
                 float d = Mathf.Min(s.acc, Mathf.Max(dt, 0.05f));

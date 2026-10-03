@@ -294,7 +294,7 @@ The Governor's lodBias ladder (1 -> 0.6) moves these thresholds together; it nev
 
 | Switch | Effect |
 |---|---|
-| `-zu-engine=0` (command line) | `Perf.Enabled = false`: `FrameDt = Time.deltaTime`, no quantizing, a plain vsync-or-target cap, no dynamic resolution, no Governor. The web `?engine=0`, for A/B checks. |
+| `-zu-engine=0` (command line) | `Perf.Enabled = false`: `FrameDt = Time.deltaTime`, no quantizing, a plain vsync-or-target cap, no dynamic resolution, no Governor, no animation LOD (every view every frame, the TS `anim.enabled = this.on`). The web `?engine=0`, for A/B checks. The sharpen pass still runs (a setting). |
 | `-zu-governor=0` | `Governor.Enabled = false`: no ladder, no memory actions; the readouts still run. |
 | `Perf.AllowAssetWrites` | default `!Application.isEditor`. In the Editor the URP asset is the project's file on disk, so renderScale / upscaler writes are skipped unless a test opts in. |
 
