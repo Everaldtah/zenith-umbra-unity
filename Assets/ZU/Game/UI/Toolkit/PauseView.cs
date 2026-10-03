@@ -52,7 +52,7 @@ namespace ZU.Game.UI.Toolkit
             screen?.RemoveFromHierarchy();
             screen = U.Div(cls, host, pick: true);
             // backdrop-filter: blur(6px) over the frozen frame
-            screen.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(6) });
+            if (Filters.Enabled) screen.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(6) });
             return screen;
         }
 

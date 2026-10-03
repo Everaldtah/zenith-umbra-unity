@@ -45,7 +45,12 @@ namespace ZU.Game.UI.Toolkit
 
         static PanelSettings MakePanel()
         {
-            var ps = ScriptableObject.CreateInstance<PanelSettings>();
+            // a PanelSettings ASSET (Resources/ZUUI/ZUPanel, made in the Editor) carries the runtime shaders a player needs -
+            // the colour-effect and blur filters, SDF text, sprites. CreateInstance leaves them null outside the Editor, and
+            // every filter then threw on each repaint and froze the menu (v0.2.0's player). A copy, so the asset stays as made.
+            var asset = Resources.Load<PanelSettings>("ZUUI/ZUPanel");
+            var ps = asset != null ? Object.Instantiate(asset) : ScriptableObject.CreateInstance<PanelSettings>();
+            Filters.Enabled = asset != null;                        // (no shaders, no filters: plain is better than frozen)
             ps.name = "ZU Panel";
             ps.scaleMode = PanelScaleMode.ScaleWithScreenSize;
             ps.referenceResolution = new Vector2Int(1920, 1080);
@@ -56,7 +61,8 @@ namespace ZU.Game.UI.Toolkit
             ps.themeStyleSheet = Resources.Load<ThemeStyleSheet>("ZUUI/ZUTheme");
             // a browser falls back to a system font for the arrows, triangles and symbols Orbitron and Rajdhani lack;
             // here that is a DejaVu subset (ZUSymbols-Bold) every text element can fall back to
-            var ts = ScriptableObject.CreateInstance<PanelTextSettings>();
+            var tsAsset = Resources.Load<PanelTextSettings>("ZUUI/ZUText");
+            var ts = tsAsset != null ? Object.Instantiate(tsAsset) : ScriptableObject.CreateInstance<PanelTextSettings>();
             var fallbacks = new List<FontAsset>();
             var sym = Resources.Load<Font>("ZUUI/Fonts/ZUSymbols-Bold");
             if (sym != null) { var fa = FontAsset.CreateFontAsset(sym); if (fa != null) fallbacks.Add(fa); }

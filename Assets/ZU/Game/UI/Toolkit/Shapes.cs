@@ -423,7 +423,13 @@ namespace ZU.Game.UI.Toolkit
     /// brightness for a silenced ability, saturate for hero cards, blur behind the pause menu, drop shadows (glows)</summary>
     public static class Filters
     {
-        public static void Set(VisualElement e, params FilterFunction[] f) => e.style.filter = f.Length == 0 ? new StyleList<FilterFunction>(StyleKeyword.None) : new StyleList<FilterFunction>(new List<FilterFunction>(f));
+        /// <summary>filters need the panel's runtime shaders (a PanelSettings asset); without them they're skipped</summary>
+        public static bool Enabled = true;
+        public static void Set(VisualElement e, params FilterFunction[] f)
+        {
+            if (!Enabled) return;
+            e.style.filter = f.Length == 0 ? new StyleList<FilterFunction>(StyleKeyword.None) : new StyleList<FilterFunction>(new List<FilterFunction>(f));
+        }
         public static FilterFunction Make(FilterFunctionType t, float v) { var f = new FilterFunction(t); f.AddParameter(new FilterParameter(v)); return f; }
         public static FilterFunction Grayscale(float v) => Make(FilterFunctionType.Grayscale, v);
         public static FilterFunction Blur(float px) => Make(FilterFunctionType.Blur, px);

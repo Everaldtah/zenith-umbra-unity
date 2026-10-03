@@ -26,7 +26,7 @@ namespace ZU.Game.UI.Toolkit
             var col = U.Div("ucol", el);
             var card = U.Div("ucard", col, pick: true);
             card.style.borderLeftColor = c;
-            card.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(4) });
+            if (Filters.Enabled) card.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(4) });
             U.Pic("portrait_" + h.id, "uc-img", card, "key_" + h.id);
             var tx = U.Div("uc-t", card);
             U.Txt($"ULT VIEWER · {U.Up(h.name)}", "uc-s", tx);
