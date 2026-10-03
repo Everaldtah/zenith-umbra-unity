@@ -28,6 +28,22 @@ namespace ZU.Game.Env
             public bool lit;                              // lit windows (dusk / night)
             public string[] trees = new string[0];
             public int treeCount = 220;
+            /// <summary>the Tripo building style (TripoEnv): the outer-world style, or the map's own for the maps on the
+            /// default theme (amatsu japan, kurogane, hangar industry, cathedral / rift gothic)</summary>
+            public string bstyle;
+            internal Transform tripo;                     // where the skyline's Tripo buildings go (null: procedural only)
+        }
+
+        static string BuildingStyle(MapDef map, Theme th)
+        {
+            switch (map.id)
+            {
+                case "amatsu": return "japan";
+                case "kurogane": return "kurogane";
+                case "hangar": return "industry";
+                case "cathedral": case "rift": return "gothic";
+                default: return th.style.ToString().ToLowerInvariant();
+            }
         }
 
         public static Theme For(MapDef map)
@@ -70,6 +86,9 @@ namespace ZU.Game.Env
             if (!th.clouds && !th.space) Terrain(map, th, root, mat, HeightAt, X, Z);
 
             var bins = new MeshBins();
+            // Tripo building models stand in for the procedural ones wherever the style has one of the archetype
+            th.bstyle = BuildingStyle(map, th);
+            th.tripo = new GameObject("Tripo Buildings").transform; th.tripo.SetParent(root, false);
             Skyline(th, rng, bins, X, Z, HeightAt, water);
             // the Tripo landscape set pieces for the map's style stand in for the procedural landmarks when there are any
             if (!Vistas(th, rng, root, X, Z, HeightAt, water)) Landmarks(map, th, rng, bins, X, Z, HeightAt);
@@ -375,28 +394,56 @@ namespace ZU.Game.Env
             var p = Vector3.zero;
             float w = size, d = size * (0.62f + (float)rng.NextDouble() * 0.25f);
             double pick = rng.NextDouble();
+            // a Tripo model of the archetype in the plot (b.Xf places it; `at` = local offset), else false: the procedural one
+            bool T(string arch, float wantH, float pw, float pd, float hMax, Vector3 at = default)
+            {
+                if (th.tripo == null) return false;
+                var piece = TripoEnv.Building(th.bstyle, arch, wantH, rng);
+                if (piece == null) return false;
+                TripoEnv.FitInside(piece, th.tripo, b.Xf.MultiplyPoint3x4(at), b.Xf.rotation.eulerAngles.y, pw, pd, hMax);
+                return true;
+            }
             switch (th.style)
             {
                 case Style.Japan:
-                    if (rng.NextDouble() < 0.035 && floors >= 3) { Buildings.Pagoda(b, p, size * 0.55f, 3 + rng.Next(3)); break; }
+                    if (rng.NextDouble() < 0.035 && floors >= 3)
+                    {
+                        int tiers = 3 + rng.Next(3);
+                        if (!T("pagoda", tiers * 5.5f, size * 0.8f, size * 0.8f, 40)) Buildings.Pagoda(b, p, size * 0.55f, tiers);
+                        break;
+                    }
                     string wall = pick < 0.36 ? "wall" : pick < 0.66 ? "plaster" : "planks";
                     string roof = rng.NextDouble() < 0.5 ? "roof" : "tiles";
-                    Buildings.Townhouse(b, rng, p, w, d, floors, th.lit, wall, roof);
+                    if (!T(floors <= 1 ? "storefront" : "townhouse", floors * 3.2f + 1.5f, w, d, floors * 3.2f + 4))
+                        Buildings.Townhouse(b, rng, p, w, d, floors, th.lit, wall, roof);
                     break;
                 case Style.West:
-                    if (pick < 0.08) Buildings.WaterTower(b, p, 2.2f + (float)rng.NextDouble());
-                    else Buildings.Storefront(b, rng, p, w * 0.8f, d, 1);
+                    if (pick < 0.08) { if (!T("watertower", 12, w * 0.5f, w * 0.5f, 14)) Buildings.WaterTower(b, p, 2.2f + (float)rng.NextDouble()); }
+                    else if (!T("storefront", 7, w * 0.8f, d, 10)) Buildings.Storefront(b, rng, p, w * 0.8f, d, 1);
                     break;
                 case Style.Industry:
-                    Buildings.Hall(b, rng, p, w * 1.4f, d * 1.2f, 6 + floors * 3.5f);
-                    if (pick < 0.05) Buildings.Chimney(b, p + new Vector3(w * 0.5f, 0, -d * 0.4f), 25 + floors * 9 + (float)rng.NextDouble() * 15, 1.4f + (float)rng.NextDouble());
-                    else if (pick < 0.16) Buildings.Tank(b, p + new Vector3(-w * 0.95f, 0, 0), 3.5f + (float)rng.NextDouble() * 3, 8 + (float)rng.NextDouble() * 8);
+                    if (!T("hall", 6 + floors * 3.5f, w * 1.4f, d * 1.2f, 9 + floors * 3.5f)) Buildings.Hall(b, rng, p, w * 1.4f, d * 1.2f, 6 + floors * 3.5f);
+                    if (pick < 0.05)
+                    {
+                        float ch = 25 + floors * 9 + (float)rng.NextDouble() * 15, cr = 1.4f + (float)rng.NextDouble();
+                        var at = p + new Vector3(w * 0.5f, 0, -d * 0.4f);
+                        if (!T("chimney", ch, cr * 3, cr * 3, ch, at)) Buildings.Chimney(b, at, ch, cr);
+                    }
+                    else if (pick < 0.16)
+                    {
+                        float tr = 3.5f + (float)rng.NextDouble() * 3, tht = 8 + (float)rng.NextDouble() * 8;
+                        var at = p + new Vector3(-w * 0.95f, 0, 0);
+                        if (!T("tank", tht, tr * 2, tr * 2, tht, at)) Buildings.Tank(b, at, tr, tht);
+                    }
                     break;
                 case Style.Observatory:
-                    if (pick < 0.55) Buildings.Townhouse(b, rng, p, w * 0.8f, d * 0.8f, Mathf.Min(floors, 2), false, pick < 0.3 ? "plaster" : "planks", "tiles");
+                    if (pick < 0.55 && !T("townhouse", 8, w * 0.8f, d * 0.8f, 10))
+                        Buildings.Townhouse(b, rng, p, w * 0.8f, d * 0.8f, Mathf.Min(floors, 2), false, pick < 0.3 ? "plaster" : "planks", "tiles");
                     break;
                 default:
-                    Buildings.Block(b, rng, p, w * 1.3f, d * 1.3f, Mathf.Max(2, floors));
+                    // the maps on the default theme in their own building style (kurogane towers, gothic houses, academy blocks)
+                    string arch = th.bstyle == "academy" || (th.bstyle == "kurogane" && pick < 0.4) ? "block" : "townhouse";
+                    if (!T(arch, Mathf.Max(2, floors) * 3.3f, w * 1.3f, d * 1.3f, 40)) Buildings.Block(b, rng, p, w * 1.3f, d * 1.3f, Mathf.Max(2, floors));
                     break;
             }
         }
@@ -405,37 +452,47 @@ namespace ZU.Game.Env
         static void Landmarks(MapDef map, Theme th, System.Random rng, MeshBins b, float X, float Z, System.Func<float, float, float> heightAt)
         {
             Vector3 OnGround(float x, float z) => new Vector3(x, heightAt(x, z) - 0.3f, z);
+            // a Tripo model of the archetype in place of the procedural landmark, turned to face the arena (false: none)
+            bool T(string arch, Vector3 at, float wantH, float w, float hMax)
+            {
+                var piece = th.tripo == null ? null : TripoEnv.Building(th.bstyle, arch, wantH, rng);
+                if (piece == null) return false;
+                TripoEnv.FitInside(piece, th.tripo, at, Mathf.Atan2(-at.x, -at.z) * Mathf.Rad2Deg, w, w, hMax);
+                return true;
+            }
+            void Pagoda(Vector3 at, float w, int tiers) { if (!T("pagoda", at, tiers * 5.5f, w * 1.4f, tiers * 7)) Buildings.Pagoda(b, at, w, tiers); }
             switch (map.id)
             {
                 case "hanabi":
                     Buildings.Castle(b, OnGround(-260, 210), 22);                       // across the bay, up the hill
-                    Buildings.Pagoda(b, OnGround(240, 230), 9, 5);
-                    Buildings.Pagoda(b, OnGround(-300, -150), 8, 3);
+                    Pagoda(OnGround(240, 230), 9, 5);
+                    Pagoda(OnGround(-300, -150), 8, 3);
                     break;
                 case "kagura":
-                    Buildings.Pagoda(b, OnGround(0, Z + 95), 11, 5);
+                    Pagoda(OnGround(0, Z + 95), 11, 5);
                     Buildings.Castle(b, OnGround(-X - 170, -Z - 160), 20);
                     break;
                 case "lantern":
                     Buildings.Castle(b, OnGround(X + 150, Z + 120), 24);
-                    Buildings.Pagoda(b, OnGround(-X - 90, Z + 70), 9, 5);
+                    Pagoda(OnGround(-X - 90, Z + 70), 9, 5);
                     break;
                 case "starfall":
                     // observatories on the nearer peaks
                     for (int i = 0; i < 5; i++)
                     {
                         float a = (float)(rng.NextDouble() * Mathf.PI * 2), r = 260 + (float)rng.NextDouble() * 260;
-                        Buildings.Observatory(b, OnGround(Mathf.Cos(a) * r, Mathf.Sin(a) * r), 7 + (float)rng.NextDouble() * 6);
+                        float s = 7 + (float)rng.NextDouble() * 6; var at = OnGround(Mathf.Cos(a) * r, Mathf.Sin(a) * r);
+                        if (!T("tower", at, s * 1.5f, s * 1.3f, s * 2)) Buildings.Observatory(b, at, s);
                     }
-                    Buildings.Observatory(b, OnGround(X + 70, 0), 14);
+                    { var at = OnGround(X + 70, 0); if (!T("tower", at, 21, 18, 28)) Buildings.Observatory(b, at, 14); }
                     break;
                 case "foundry":
-                    for (int i = 0; i < 6; i++) Buildings.Chimney(b, OnGround(-X - 60 + i * 14, Z + 75 + (i % 2) * 8), 55 + i * 4, 2.4f);
-                    for (int i = 0; i < 4; i++) Buildings.Tank(b, OnGround(X + 60, -Z - 30 + i * 16), 6, 14);
+                    for (int i = 0; i < 6; i++) { var at = OnGround(-X - 60 + i * 14, Z + 75 + (i % 2) * 8); float h = 55 + i * 4; if (!T("chimney", at, h, 7, h)) Buildings.Chimney(b, at, h, 2.4f); }
+                    for (int i = 0; i < 4; i++) { var at = OnGround(X + 60, -Z - 30 + i * 16); if (!T("tank", at, 14, 12, 14)) Buildings.Tank(b, at, 6, 14); }
                     break;
                 case "gulch":
                 case "mile":
-                    for (int i = 0; i < 3; i++) Buildings.WaterTower(b, OnGround(-X - 30 - i * 40, Z + 40 + i * 12), 3);
+                    for (int i = 0; i < 3; i++) { var at = OnGround(-X - 30 - i * 40, Z + 40 + i * 12); if (!T("watertower", at, 13, 8, 15)) Buildings.WaterTower(b, at, 3); }
                     break;
                 case "cloudstep":
                     Buildings.FloatingIsland(b, rng, new Vector3(0, 30, Z + 120), 24);
