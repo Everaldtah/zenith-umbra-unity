@@ -8,6 +8,8 @@
 //                         instead of a free-running limiter that lands on random vblanks (the TS deadline cap)
 //   URP's renderScale     = settings scale x dynamic scale (DynamicResolution follows the GPU's load only), with the
 //                         upscaling filter (FSR 1.0 below native, as the TS FsrPass) and its sharpness
+//   the sharpen pass      SetSharpen: the Options slider's native-scale image sharpening (SharpenPass, the TS Game.ts
+//                         SharpenShader) - a setting, not an optimisation, so it runs even with Enabled == false
 // Driven once per frame by PerfDriver (execution order -10000: before anything reads FrameDt), and it ticks the
 // Governor (bottleneck-directed quality ladder + memory pressure, no TS original) after the timing capture and the
 // dynamic resolution. Off with the command line -zu-engine=0 (the TS ?engine=0 / localStorage zu-engine=0) for A/B
@@ -39,12 +41,16 @@ namespace ZU.Engine
         public readonly int GovernorLevel, AnimUpdated, AnimHeld;
         public readonly float MemAvailMB;
         public readonly MemoryWatch.Pressure Pressure;
+        /// <summary>the native-scale sharpen pass runs this frame (slider &gt; 0, render scale &gt;= 0.99, shader loaded)</summary>
+        public readonly bool SharpenActive;
 
         public PerfStats(bool enabled, bool vsynced, bool timingSupported, float baseScale, float dynScale, float renderScale, string upscaler,
             double refreshHz, double budgetMs, double gpuMs, double gpuLast, double cpuMs, double cpuMainMs, double cpuRenderMs, double presentWaitMs,
             double frameMs, int targetFrameRate, int vSyncCount, float frameDt, float unscaledFrameDt,
-            Governor.Bottleneck bottleneck, int governorLevel, int animUpdated, int animHeld, float memAvailMB, MemoryWatch.Pressure pressure)
+            Governor.Bottleneck bottleneck, int governorLevel, int animUpdated, int animHeld, float memAvailMB, MemoryWatch.Pressure pressure,
+            bool sharpenActive)
         {
+            SharpenActive = sharpenActive;
             Enabled = enabled; VSynced = vsynced; TimingSupported = timingSupported;
             BaseScale = baseScale; DynScale = dynScale; RenderScale = renderScale; Upscaler = upscaler;
             RefreshHz = refreshHz; BudgetMs = budgetMs; GpuMs = gpuMs; GpuLast = gpuLast; CpuMs = cpuMs; CpuMainMs = cpuMainMs; CpuRenderMs = cpuRenderMs;
@@ -66,7 +72,7 @@ namespace ZU.Engine
         // SettingsApply still writes them itself, and a re-apply here would overwrite the player's cap with vsync)
         static bool inited, enabled = true, allowAssetWrites, dynOn, capVsync = true, capSet;
         static int capFps;
-        static float baseScale = 1, renderScale = 1, sharp = 0.9f;
+        static float baseScale = 1, renderScale = 1, sharp = 0.9f, sharpen;
         static Upscaler upMode = Upscaler.Auto;
         static string upActive = "off";
         static int appliedVSync = -1, appliedTarget = int.MinValue;
@@ -91,6 +97,11 @@ namespace ZU.Engine
         public static float RenderScale => renderScale;
         /// <summary>"off" (no resampling) | "linear" | "fsr" | "stp"</summary>
         public static string UpscalerActive => upActive;
+        /// <summary>the Image Sharpening slider as a fraction 0..1 (SetSharpen)</summary>
+        public static float Sharpen => sharpen;
+        /// <summary>the native-scale sharpen pass runs this frame: Sharpen &gt; 0, RenderScale &gt;= 0.99 (below that FSR's RCAS
+        /// sharpens instead) and its shader loaded. Independent of Enabled: a setting, not an optimisation.</summary>
+        public static bool SharpenActive => SharpenPass.Active;
         /// <summary>the display's refresh (Hz): reported, then measured from the vsync cadence</summary>
         public static double RefreshHz => pacer.RefreshHz;
         /// <summary>the frame cadence is vsync-locked (deltas are quantized)</summary>
@@ -110,7 +121,8 @@ namespace ZU.Engine
             pacer.RefreshHz, BudgetMs, timing.GpuMs, timing.GpuLast, CpuMs, timing.CpuMainMs, timing.CpuRenderMs, timing.PresentWaitMs,
             frameMs, capSet ? appliedTarget : Application.targetFrameRate, capSet ? appliedVSync : QualitySettings.vSyncCount,
             FrameDt, UnscaledFrameDt,
-            Governor.Current, Governor.Level, AnimBudget.Shared.LastUpdated, AnimBudget.Shared.LastHeld, MemoryWatch.AvailMB, MemoryWatch.pressure);
+            Governor.Current, Governor.Level, AnimBudget.Shared.LastUpdated, AnimBudget.Shared.LastHeld, MemoryWatch.AvailMB, MemoryWatch.pressure,
+            SharpenPass.Active);
 
         // ------------------------------------------------------------------ switches
 
@@ -162,13 +174,27 @@ namespace ZU.Engine
 
         /// <summary>the upscaling filter. Auto = FSR 1.0 while the applied render scale &lt; 0.99, else bilinear (the TS: FSR
         /// below native, the sharpen pass at native). Off = bilinear. FSR / STP forced. sharpness 0..1 maps to URP's
-        /// fsrSharpness; the default 0.9 is the TS RCAS 0.25 stops: URP computes stops = (1 - fsrSharpness) *
-        /// FSRUtils.kMaxSharpnessStops (2.5) - com.unity.render-pipelines.core FSRUtils.cs:109 / URP FinalPostProcessPass.cs:170.</summary>
+        /// fsrSharpness, which only applies BELOW native (URP runs RCAS in its final pass only when upscaling); leave the
+        /// default 0.9 = the TS RCAS 0.25 stops, exactly like the web: URP computes stops = (1 - fsrSharpness) *
+        /// FSRUtils.kMaxSharpnessStops (2.5) - com.unity.render-pipelines.core FSRUtils.cs:109 / URP FinalPostProcessPass.cs:170.
+        /// The Options "Image Sharpening" slider does NOT come here: at native it drives the SharpenPass via SetSharpen,
+        /// the web's separate native-scale pass.</summary>
         public static void SetUpscaler(Upscaler mode, float sharpness = 0.9f)
         {
             Init();
             upMode = mode; sharp = Mathf.Clamp01(sharpness);
             ApplyUpscaler();
+        }
+
+        /// <summary>the Options "Image Sharpening" slider as a fraction 0..1 (= slider / 100). Drives the web's native-scale
+        /// sharpen pass (SharpenPass: shader amount = amount01 x 0.6, Game.ts:276), which runs on the resolving Game camera
+        /// after URP's post-processing while RenderScale &gt;= 0.99; below that FSR's RCAS sharpens and the pass stays off
+        /// (Game.ts:325). 0 = off (nothing enqueued). A setting, not an optimisation: active even with Enabled == false.</summary>
+        public static void SetSharpen(float amount01)
+        {
+            Init();
+            sharpen = Mathf.Clamp01(amount01);
+            SharpenPass.SetAmount(sharpen);
         }
 
         // ------------------------------------------------------------------ the frame (PerfDriver)
@@ -184,6 +210,7 @@ namespace ZU.Engine
             onEndContext = EndRender;
             RenderPipelineManager.endContextRendering += onEndContext;
             Governor.Init();
+            SharpenPass.Init();                            // the camera hook only; the shader loads on the first frame the slider is > 0
         }
 
         /// <summary>true when the command line carries `name=0` (or `name 0`): the TS ?engine=0 switch</summary>

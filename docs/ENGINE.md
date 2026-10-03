@@ -25,6 +25,7 @@ the static facade everything else calls.
 | `Broadphase.ts` | `Assets/ZU/Sim/Core/Broadphase.cs` | uniform grid under the Level's collision queries (in `ZU.Sim`: the sim must stay Unity-free) |
 | `Interpolator.ts` | - | not needed: `MatchRunner` already snapshots and interpolates between fixed steps |
 | `FsrPass.ts` | - | URP's own FSR 1.0 / STP upscaling filter, set by `Perf.SetUpscaler` |
+| `Game.ts` SharpenShader (:54-61, :276, :325) | `SharpenPass.cs` + `Resources/ZUEngine/Sharpen.shader` | the native-scale image sharpening pass (the Options slider), `Perf.SetSharpen` |
 | - | `Governor.cs` | bottleneck-directed quality ladder + memory pressure (no TS original) |
 | - | `HardwareProfile.cs` | one-off machine snapshot: tier Low / Mid / High |
 | - | `MemoryWatch.cs` | machine free RAM (kernel32) + Unity's memory counters |
@@ -72,6 +73,8 @@ float  Perf.BaseScale          // the settings render scale (0.5..2)
 float  Perf.DynScale           // DynamicResolution's scale (1 when off)
 float  Perf.RenderScale        // URP renderScale as applied = base x dynamic
 string Perf.UpscalerActive     // "off" (no resampling) | "linear" | "fsr" | "stp"
+float  Perf.Sharpen            // the Image Sharpening slider as a fraction 0..1
+bool   Perf.SharpenActive      // the sharpen pass runs this frame: Sharpen > 0, RenderScale >= 0.99, shader loaded (independent of Enabled)
 double Perf.RefreshHz          // the display's refresh: reported, then measured from the vsync cadence
 bool   Perf.VSynced            // the cadence is vblank-locked (deltas are quantized)
 double Perf.BudgetMs           // 1000 / (cap > 0 ? min(cap, refresh) : refresh)  (the TS updateDynRes)
@@ -84,7 +87,8 @@ bool Perf.AllowAssetWrites     // default !Application.isEditor: URP asset prope
 void Perf.SetBaseScale(float scale)                       // 0.5..2; URP renderScale = base x dynamic
 void Perf.SetCap(int fps, bool vsync = true)              // 0 = display based (vSyncCount 1); fps dividing the refresh + vsync = vSyncCount k; else vSyncCount 0 + targetFrameRate
 void Perf.SetDynamicResolution(bool on, float min = 0.5f) // off resets the dynamic scale to 1 (TS applySettings)
-void Perf.SetUpscaler(Perf.Upscaler mode, float sharpness = 0.9f)   // Auto = FSR below 0.99 scale, else bilinear; 0.9 = the web RCAS 0.25 stops
+void Perf.SetUpscaler(Perf.Upscaler mode, float sharpness = 0.9f)   // Auto = FSR below 0.99 scale, else bilinear; 0.9 = the web RCAS 0.25 stops (applies below native only)
+void Perf.SetSharpen(float amount01)                      // the Image Sharpening slider / 100: the web's native-scale sharpen pass (shader amount = x 0.6), off below 0.99 scale
 ```
 
 `Perf` owns `QualitySettings.vSyncCount` / `Application.targetFrameRate` only once `SetCap` has been called (until
@@ -93,7 +97,42 @@ written only when they change (a renderScale write re-allocates the render targe
 
 `PerfStats` fields: `Enabled, VSynced, TimingSupported, BaseScale, DynScale, RenderScale, Upscaler, RefreshHz,
 BudgetMs, GpuMs, GpuLast, CpuMs, CpuMainMs, CpuRenderMs, PresentWaitMs, FrameMs, TargetFrameRate, VSyncCount, FrameDt,
-UnscaledFrameDt, Bottleneck, GovernorLevel, AnimUpdated, AnimHeld, MemAvailMB, Pressure`.
+UnscaledFrameDt, Bottleneck, GovernorLevel, AnimUpdated, AnimHeld, MemAvailMB, Pressure, SharpenActive`.
+
+#### The sharpen pass (`SharpenPass`, `Resources/ZUEngine/Sharpen.shader`)
+
+The web ran its 5-tap unsharp mask (`out = clamp(c + (4c - neighbours) * slider/100 * 0.6, 0, 1)`) as the LAST pass of
+its chain - after OutputPass (tone mapping + sRGB), the grade and SMAA - and only at render scale >= 0.99: below native
+FSR's RCAS sharpens the upscaled picture. URP runs RCAS only below scale 1 too, so the slider used to do nothing at
+native. The port:
+
+- **Injection without a renderer asset** (renderer assets belong to other people): `Perf.Init` subscribes
+  `RenderPipelineManager.beginCameraRendering`; for Game cameras with the slider > 0 and `RenderScale >= 0.99` it calls
+  `camera.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(pass)`. URP empties its pass queue only at
+  the end of each camera (`ScriptableRenderer.cs:1227`), so the enqueue survives into `AddRenderPasses`.
+- **Pass order in URP 17.6** (`UniversalRendererRenderGraph.OnAfterRendering`): custom passes in
+  `[AfterRenderingPostProcessing, AfterRendering)` are recorded after `PostProcess.RenderPostProcessing` (SMAA, DoF,
+  TAA / STP, motion blur, bloom, UberPost = tone mapping + grade; all at `AfterRenderingPostProcessing - 1`) and before
+  `RenderFinalPostProcessing` (FXAA / FSR RCAS / TAA sharpening, guaranteed to run after user passes) and the FinalBlit.
+  `AfterRendering` is past the final blit (active target = backbuffer), so `AfterRenderingPostProcessing + 50` is the
+  latest safe point, sorted after other owners' full-screen features (`FullScreenPassRendererFeature` defaults to +0).
+  Like the web: after SMAA / TAA and the grade. Unlike the web: FXAA, if the project picks it, runs after the sharpen.
+- **Gamma handling**: the camera colour after post-processing is LINEAR (the final blit / sRGB backbuffer encodes); the
+  web sharpened the display-referred sRGB picture. In a linear project the shader converts the 5 taps `LinearToSRGB`,
+  masks and clamps there, and returns `SRGBToLinear` - same numbers as the web. Gamma projects (`UNITY_COLORSPACE_GAMMA`)
+  convert nothing.
+- **Once per stack**: enqueued on every Game camera, recorded only where `UniversalCameraData.resolveFinalTarget` is
+  true (the last camera of the stack) and the camera's `renderScale >= 0.99` (URP's `imageScalingMode` is internal; its
+  `renderScale` is already snapped to 1 within 0.05). The blit goes camera colour -> a temp texture
+  of the same descriptor (single-sampled, as URP's own post targets) and `resourceData.cameraColor = temp`, the URP 17
+  pattern; the final post / final blit then read the sharpened picture. `requiresIntermediateTexture = true` keeps URP
+  off the direct-to-backbuffer path while the pass is enqueued.
+- **Not reproduced**: the web drew the first-person viewmodel after the sharpen at native (arms never sharpened); URP
+  draws it inside the stack before post-processing, so it is sharpened too.
+- Shader load: `Resources.Load<Shader>("ZUEngine/Sharpen")` on the first frame the slider is > 0 (the Resources folder
+  keeps it in players; not `Shader.Find`). A failed load warns once and the pass stays off (`SharpenActive` false).
+- Cost: one full-screen pass + one extra colour target at native (and, with FXAA off, the final blit URP adds once a
+  user pass sits after post-processing). Nothing when the slider is 0 (nothing enqueued) or below 0.99 scale.
 
 ### `AnimBudget` (per-view animation LOD)
 
@@ -198,8 +237,8 @@ using ZU.Engine;
 Perf.SetCap((int)v.fpsCap);                                   // 0 = display based; a cap that divides the refresh locks to every k-th vblank
 Perf.SetBaseScale(Mathf.Clamp((float)v.renderScale / 100f, 0.5f, 2f));
 Perf.SetDynamicResolution(v.dynamicRes);                      // off resets the dynamic scale to 1 (TS applySettings)
-// FSR below native; 0.9 = the web RCAS 0.25 stops, the Sharpen slider pushes it towards 1 (URP has one sharpness, the web had a separate pass at native)
-Perf.SetUpscaler(Perf.Upscaler.Auto, 0.9f + 0.1f * Mathf.Clamp01((float)v.sharpen / 100f));
+Perf.SetUpscaler(Perf.Upscaler.Auto);                 // FSR below native with the web's RCAS 0.25 stops
+Perf.SetSharpen(Mathf.Clamp01((float)v.sharpen / 100f)); // the web's native-scale sharpen pass
 ```
 
 The `UniversalRenderPipelineAsset` block stays for `msaaSampleCount` / `shadowDistance` only.
@@ -255,7 +294,7 @@ The Governor's lodBias ladder (1 -> 0.6) moves these thresholds together; it nev
 
 | Switch | Effect |
 |---|---|
-| `-zu-engine=0` (command line) | `Perf.Enabled = false`: `FrameDt = Time.deltaTime`, no quantizing, a plain vsync-or-target cap, no dynamic resolution, no Governor. The web `?engine=0`, for A/B checks. |
+| `-zu-engine=0` (command line) | `Perf.Enabled = false`: `FrameDt = Time.deltaTime`, no quantizing, a plain vsync-or-target cap, no dynamic resolution, no Governor, no animation LOD (every view every frame, the TS `anim.enabled = this.on`). The web `?engine=0`, for A/B checks. The sharpen pass still runs (a setting). |
 | `-zu-governor=0` | `Governor.Enabled = false`: no ladder, no memory actions; the readouts still run. |
 | `Perf.AllowAssetWrites` | default `!Application.isEditor`. In the Editor the URP asset is the project's file on disk, so renderScale / upscaler writes are skipped unless a test opts in. |
 
@@ -269,6 +308,12 @@ Nothing here has run inside the Editor yet (the compile check is the asmdef-boun
 - [ ] Moving the window to another monitor: `Screen.currentResolution.refreshRateRatio` follows it and the cap is re-applied within a second; on a non-primary monitor with a higher rate the measurement is rejected by design (never above the reported rate).
 - [ ] `FrameGraphElement` paints in the HUD; the "xx.x ms" label sits just above the 1x line (bottom = H/3 + 1 was derived from the web baseline, not seen).
 - [ ] Dynamic resolution: `DynScale` steps in 5 % with the warm-up hold at match start; `UpscalerActive` flips to "fsr" below 0.99 and the picture shows RCAS sharpening.
+- [ ] `Sharpen.shader` compiles (the asmdef check cannot compile HLSL): no errors on import, `Hidden/ZU/Sharpen` shows one pass "ZU Sharpen", `Resources.Load<Shader>("ZUEngine/Sharpen")` returns it in a player build (the Resources folder, no renderer / Always Included entry needed).
+- [ ] Sharpen pass order (Frame Debugger / Render Graph Viewer): "ZU Sharpen" sits after "UberPost" (and SMAA / TAA when on) and before "FinalPost" / "FinalBlit", on the resolving camera only - one per frame with the viewmodel overlay camera in the stack, none on the Hero Viewer / gallery cameras unless they are Game cameras resolving their own stack.
+- [ ] Sharpen gamma: with the slider at 100 a mid-grey / highlight edge sharpens like the web (the mask runs in sRGB, no stronger haloing on highlights than the web shows); the picture is not darkened or double-encoded (a wrong colour space would show as a gamma shift of the whole frame while the slider is > 0).
+- [ ] No double sharpening below native: drop the render scale to 0.9 - `SharpenActive` false, `UpscalerActive` "fsr", no "ZU Sharpen" pass in the frame; back to 1.0 - `SharpenActive` true, no RCAS. Slider 0: no pass enqueued at all (URP goes back to its direct-to-backbuffer path when nothing else needs the intermediate).
+- [ ] The cameraColor swap: after the pass the final blit reads the sharpened temp (the picture changes with the slider), no "trying to access frameData outside of the current frame" / untracked-texture errors from the blit helper, no MSAA mismatch warnings with MSAA on in the quality asset.
+- [ ] Sharpen cost at 1440p native: one full-screen blit (~0.1-0.2 ms on the RTX) plus, with FXAA off, URP's extra final blit; `GpuMs` on the HUD moves by about that when the slider goes 0 -> 50.
 - [ ] `QualitySettings.lodBias` writes in play mode do not persist into the quality asset after exiting play mode (the Governor restores the base on quit, but confirm the Editor leaves `QualitySettings` as it was).
 - [ ] Governor ladder: in a 10-hero fight with the frame over budget, `Bottleneck` reads MainThread, L1 after ~1.5 s, L2 2 s later; recovery to L0 after 4 s under 85 % of budget; `tierScale` shows in `AnimHeld` rising.
 - [ ] AnimBudget: a held frame's bones keep the last pose with the manual PlayableGraph (the clip layer is only evaluated inside `proc.Update`) - no T-pose or snap on held frames of far heroes.
@@ -281,9 +326,6 @@ Nothing here has run inside the Editor yet (the compile check is the asmdef-boun
 
 ## Open items
 
-- **Image sharpening at native scale.** URP has no RCAS pass at render scale 1: the Options Sharpen slider only reaches
-  `fsrSharpness`, which applies below native. The web ran a separate sharpen pass at native. A small full-screen
-  sharpen (a Renderer Feature) would close that gap.
 - **Overlay cameras.** URP's `renderScale` also scales stacked overlay cameras - the first-person viewmodel among them -
   while the web drew the viewmodel at native over the scaled scene. Either accept the slightly softer arms below native
   or render the viewmodel on its own camera stack at scale 1.
