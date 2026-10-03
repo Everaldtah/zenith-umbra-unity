@@ -51,6 +51,28 @@ namespace ZU.Sim
         public double[] Size => Map.size;
         public IReadOnlyList<Pad> Pads => pads;
         const double STEP = LevelConst.STEP;
+        /// <summary>Collide(): candidates are gathered this far beyond the capsule; a push sequence that carries it further
+        /// re-runs over every box (so the result is always exactly the full loop's)</summary>
+        const double PUSH_PAD = 2;
+        readonly List<int> _cand = new List<int>();
+        static double[] Footprint(Box b) => new[] { b.x - b.w / 2, b.z - b.d / 2, b.x + b.w / 2, b.z + b.d / 2 };
+        // broadphase grids over the static geometry (Broadphase.cs), built on first use
+        GridIndex gBoxes, gFloors, gSolids;
+        GridIndex BoxGrid()
+        {
+            if (gBoxes == null || gBoxes.count != boxes.Count) gBoxes = new GridIndex(boxes.Count, i => Footprint(boxes[i]));
+            return gBoxes;
+        }
+        GridIndex FloorGrid()
+        {
+            if (gFloors == null || gFloors.count != floors.Count) gFloors = new GridIndex(floors.Count, i => Footprint(floors[i]));
+            return gFloors;
+        }
+        GridIndex SolidGrid()
+        {
+            if (gSolids == null || gSolids.count != solids.Count) gSolids = new GridIndex(solids.Count, i => { var s = solids[i]; return new[] { s.x - s.r, s.z - s.r, s.x + s.r, s.z + s.r }; });
+            return gSolids;
+        }
 
         public BoxLevel(MapDef map)
         {
@@ -84,8 +106,9 @@ namespace ZU.Sim
         public string MatAt(double x, double z, double fromY)
         {
             double g = double.NegativeInfinity; string m = null; double lim = fromY + STEP;
-            foreach (var b in floors) { var t = Top(b, x, z); if (t.HasValue && t.Value <= lim && t.Value > g) { g = t.Value; m = b.mat ?? "ground"; } }
-            foreach (var b in boxes) { var t = Top(b, x, z); if (t.HasValue && t.Value <= lim && t.Value > g) { g = t.Value; m = b.mat ?? "ground"; } }
+            int[] fl = FloorGrid().At(x, z), bl = BoxGrid().At(x, z);
+            for (int k = 0; k < fl.Length; k++) { var b = floors[fl[k]]; var t = Top(b, x, z); if (t.HasValue && t.Value <= lim && t.Value > g) { g = t.Value; m = b.mat ?? "ground"; } }
+            for (int k = 0; k < bl.Length; k++) { var b = boxes[bl[k]]; var t = Top(b, x, z); if (t.HasValue && t.Value <= lim && t.Value > g) { g = t.Value; m = b.mat ?? "ground"; } }
             return m;
         }
 
@@ -102,18 +125,37 @@ namespace ZU.Sim
             return g;
         }
 
+        /// <summary>highest surface top at (px,pz) that is &lt;= lim and above g</summary>
         double Probe(double px, double pz, double lim, double g)
         {
-            foreach (var b in floors) { var t = Top(b, px, pz); if (t.HasValue && t.Value <= lim && t.Value > g) g = t.Value; }
-            foreach (var b in boxes) { var t = Top(b, px, pz); if (t.HasValue && t.Value <= lim && t.Value > g) g = t.Value; }
+            int[] fl = FloorGrid().At(px, pz), bl = BoxGrid().At(px, pz);
+            for (int k = 0; k < fl.Length; k++) { var t = Top(floors[fl[k]], px, pz); if (t.HasValue && t.Value <= lim && t.Value > g) g = t.Value; }
+            for (int k = 0; k < bl.Length; k++) { var t = Top(boxes[bl[k]], px, pz); if (t.HasValue && t.Value <= lim && t.Value > g) g = t.Value; }
             return g;
         }
 
         public bool Collide(ref V3 p, double r, double h)
         {
+            // Only boxes within r + PUSH_PAD of the start can be touched while every push keeps the capsule within PUSH_PAD
+            // of it - anything further fails the distance test anyway - so the candidates give the full loop's exact answer.
+            // A push that carries it further aborts, and the whole pass re-runs over everything.
+            double x0 = p.x, z0 = p.z, R = r + PUSH_PAD;
+            bool? hit = CollideBoxes(ref p, r, h, BoxGrid().Rect(x0 - R, z0 - R, x0 + R, z0 + R, _cand), x0, z0);
+            if (hit == null) { p.x = x0; p.z = z0; hit = CollideBoxes(ref p, r, h, null, x0, z0); }
+            double x1 = p.x, z1 = p.z;
+            bool? sh = CollideSolids(ref p, r, h, SolidGrid().Rect(x1 - R, z1 - R, x1 + R, z1 + R, _cand), x1, z1);
+            if (sh == null) { p.x = x1; p.z = z1; sh = CollideSolids(ref p, r, h, null, x1, z1); }
+            return hit.Value || sh.Value;
+        }
+
+        /// <summary>Collide()'s box pass over candidate indices (ascending) - null = moved past PUSH_PAD - or over every box</summary>
+        bool? CollideBoxes(ref V3 p, double r, double h, List<int> cand, double x0, double z0)
+        {
             bool hit = false;
-            foreach (var b in boxes)
+            int n = cand != null ? cand.Count : boxes.Count;
+            for (int k = 0; k < n; k++)
             {
+                var b = boxes[cand != null ? cand[k] : k];
                 double y0 = b.y ?? 0, hx = b.w / 2, hz = b.d / 2;
                 double cx = Math.Max(b.x - hx, Math.Min(p.x, b.x + hx));
                 double cz = Math.Max(b.z - hz, Math.Min(p.z, b.z + hz));
@@ -132,18 +174,29 @@ namespace ZU.Sim
                 {
                     // centre inside the box: exit along the shallowest axis (first minimum, as JS indexOf)
                     double[] ex = { b.x + hx - p.x + r, p.x - (b.x - hx) + r, b.z + hz - p.z + r, p.z - (b.z - hz) + r };
-                    int i = 0; for (int k = 1; k < 4; k++) if (ex[k] < ex[i]) i = k;
+                    int i = 0; for (int j = 1; j < 4; j++) if (ex[j] < ex[i]) i = j;
                     double m = ex[i];
                     if (i == 0) p.x += m; else if (i == 1) p.x -= m; else if (i == 2) p.z += m; else p.z -= m;
                 }
+                if (cand != null && (Math.Abs(p.x - x0) > PUSH_PAD || Math.Abs(p.z - z0) > PUSH_PAD)) return null;
             }
-            foreach (var s in solids)
+            return hit;
+        }
+
+        /// <summary>the same for the cylindrical prop solids (binned by their radius, so the same margin argument holds)</summary>
+        bool? CollideSolids(ref V3 p, double r, double h, List<int> cand, double x0, double z0)
+        {
+            bool hit = false;
+            int n = cand != null ? cand.Count : solids.Count;
+            for (int k = 0; k < n; k++)
             {
+                var s = solids[cand != null ? cand[k] : k];
                 if (p.y >= s.y1 || p.y + h <= s.y0) continue;
                 double dx = p.x - s.x, dz = p.z - s.z, rr = r + s.r, d2 = dx * dx + dz * dz;
                 if (d2 >= rr * rr) continue;
                 double d = Math.Sqrt(d2); if (d == 0) d = 1e-4;
                 p.x = s.x + dx / d * rr; p.z = s.z + dz / d * rr; hit = true;
+                if (cand != null && (Math.Abs(p.x - x0) > PUSH_PAD || Math.Abs(p.z - z0) > PUSH_PAD)) return null;
             }
             return hit;
         }
@@ -151,8 +204,10 @@ namespace ZU.Sim
         public double CeilingAt(double x, double z, double headY)
         {
             double c = double.PositiveInfinity;
-            foreach (var b in boxes)
+            var bl = BoxGrid().At(x, z);
+            for (int k = 0; k < bl.Length; k++)
             {
+                var b = boxes[bl[k]];
                 double y0 = b.y ?? 0;
                 if (y0 > headY - 0.05 && y0 < c && !(x < b.x - b.w / 2 || x > b.x + b.w / 2 || z < b.z - b.d / 2 || z > b.z + b.d / 2)) c = y0;
             }
@@ -161,6 +216,8 @@ namespace ZU.Sim
 
         public RayHit? Ray(V3 o, V3 d, double max)
         {
+            // candidates = what lies in the grid cells under the ray's path, tested in the original order (boxes, floors,
+            // solids; ascending), so ties and the ramp march resolve exactly as a test of every item would
             RayHit? best = null;
             void Test(Box b, double thick)
             {
@@ -181,10 +238,14 @@ namespace ZU.Sim
                 }
                 best = new RayHit { t = h.t, nx = h.nx, ny = h.ny, nz = h.nz, mat = b.mat };
             }
-            foreach (var b in boxes) Test(b, 0);
-            foreach (var b in floors) Test(b, 1.5);
-            foreach (var s in solids)
+            var bl = BoxGrid().Segment(o.x, o.z, d.x, d.z, max, _cand);
+            for (int k = 0; k < bl.Count; k++) Test(boxes[bl[k]], 0);
+            var fl = FloorGrid().Segment(o.x, o.z, d.x, d.z, max, _cand);
+            for (int k = 0; k < fl.Count; k++) Test(floors[fl[k]], 1.5);
+            var sl = SolidGrid().Segment(o.x, o.z, d.x, d.z, max, _cand);
+            for (int k = 0; k < sl.Count; k++)
             {
+                var s = solids[sl[k]];
                 // vertical cylinder
                 double ox = o.x - s.x, oz = o.z - s.z, a = d.x * d.x + d.z * d.z;
                 if (a < 1e-9) continue;

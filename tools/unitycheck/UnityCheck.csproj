@@ -17,6 +17,7 @@
     <Compile Include="$(ProjectRoot)\Assets\ZU\Sim\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Game\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Dynamics\**\*.cs" />
+    <Compile Include="$(ProjectRoot)\Assets\ZU\Engine\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Net\Core\**\*.cs" />
     <Compile Include="$(ProjectRoot)\Assets\ZU\Net\Unity\**\*.cs" />
     <!-- com.unity.webrtc (ZU.Net.Unity): the package's own sources once this worktree's editor has resolved it, else the
