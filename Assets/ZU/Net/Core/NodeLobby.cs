@@ -24,6 +24,8 @@ namespace ZU.Net
         /// <summary>online play: a custom game's line, ping to the node, profile level, best rank, host score</summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)] public string info, rank;
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)] public int ping, lvl, score;
+        /// <summary>Zenith.net launcher party id (the node keeps it): party members find each other's squad</summary>
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)] public string party;
         public Presence Clone() => (Presence)MemberwiseClone();
     }
 
