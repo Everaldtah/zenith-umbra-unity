@@ -170,6 +170,43 @@ namespace ZU.Game.FirstPerson
         /// "ult", with "aim" for Yuzu's Hawk Eye) and a time in it, instead of gameplay</summary>
         public static (string moment, float t, bool aim)? ArcherFreeze;
         float[] arcOut, arcOff, arcOffV; string arcMoment = ""; float aimA;
+        // first-person foley between the sim's own draw / loose sounds (evera-eb's AudioKit.PlayFp, found by reflection so this
+        // compiles and stays silent until the audio branch is in): each fires once as its moment's clock crosses its time
+        static System.Action<string, float> playFp; static bool playFpLooked;
+        string sfxMoment = ""; float sfxT = -1; bool sfxAim;
+        static void Fp(string id, float vol = 1)
+        {
+            if (!playFpLooked)
+            {
+                playFpLooked = true;
+                var m = typeof(ZU.Game.Audio.AudioKit).GetMethod("PlayFp", new[] { typeof(string), typeof(float) });
+                if (m != null && m.IsStatic)
+                {
+                    if (m.ReturnType == typeof(void)) playFp = (System.Action<string, float>)System.Delegate.CreateDelegate(typeof(System.Action<string, float>), m);
+                    else playFp = (s, v) => m.Invoke(null, new object[] { s, v });
+                }
+            }
+            playFp?.Invoke(id, vol);
+        }
+        /// <summary>the foley cues of this frame: moment `id` ran from the last frame's clock to `mt`</summary>
+        void ArcherSfx(string id, string moment, float mt, bool aimWant)
+        {
+            if (ArcherFreeze.HasValue) { sfxMoment = id; sfxT = mt; return; }
+            bool yz = heroId == "yuzu";
+            if (yz && aimWant != sfxAim) Fp(aimWant ? "fp_aim_in" : "fp_aim_out");
+            sfxAim = aimWant;
+            float from = id == sfxMoment ? sfxT : -1;
+            bool Cross(float at) => from < at && mt >= at;
+            if (moment == "draw" && Cross(0.9f)) Fp("fp_bow_ready", 0.6f);
+            if (moment == "loose" || moment == "scatter")
+            {
+                if (Cross(0.1f)) Fp("fp_quiver_reach");
+                if (Cross(yz ? 0.2f : 0.19f)) Fp("fp_arrow_draw");
+                if (Cross(yz ? 0.4f : 0.345f)) Fp("fp_nock");
+                if (yz && aimA > 0.5f && Cross(0.04f)) Fp("fp_bow_kick", 0.7f);
+            }
+            sfxMoment = id; sfxT = mt;
+        }
         Transform fpArrow; Renderer[] fpArrowRends; float arrowLen;
         (FingerGrip L, FingerGrip R) arcGrips = (FingerGrip.Fist, FingerGrip.Hook);
 
@@ -273,6 +310,7 @@ namespace ZU.Game.FirstPerson
             var src = ArcherPose(a, t, dt, out var moment, out var mt);
             string id = moment == "draw" || moment == "idle" ? moment : moment + "@" + (moment == "loose" || moment == "scatter" || moment == "melee" ? a.anim.attackAt : a.anim.castAt).ToString("F3");
             if (ArcherFreeze.HasValue) { arcOut = null; arcOff = null; }
+            ArcherSfx(id, moment, mt, heroId == "yuzu" && a.Sv("zoom", 0) > 0);
             var k = ArcherFreeze.HasValue ? src : Inertia(id, src, dt);
             // breathing (less while drawn: the archer holds still), and the flinch of a hit
             float still = moment == "draw" ? 0.25f : 1;
