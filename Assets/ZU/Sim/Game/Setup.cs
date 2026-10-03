@@ -7,7 +7,14 @@ using ZU.Sim.Data;
 
 namespace ZU.Sim
 {
-    public class Match { public World world; public INav nav; public Actor player; public List<Bot> bots = new List<Bot>(); }
+    public class Match
+    {
+        public World world; public INav nav; public Actor player; public List<Bot> bots = new List<Bot>();
+        /// <summary>Training Grounds (desktop edition): the Hero Range - any hero as a target, attack or defense mode</summary>
+        public HeroRange range;
+        /// <summary>Training Grounds (desktop edition): the Spar Arena - one-on-one against any hero in a sealed box</summary>
+        public Spar spar;
+    }
 
     public static class Setup
     {
@@ -46,6 +53,8 @@ namespace ZU.Sim
                     r.spawn = new[] { x, z }; world.Respawn(r, true);
                     var b = new Bot(world, r, nav, skill); r.controller = b; m.bots.Add(b);
                 }
+                m.range = world.full ? new HeroRange(world, nav) : null;
+                m.spar = world.full ? new Spar(world, nav, m.range) : null;
                 return m;
             }
             // the AI lab / headless sims alternate the two-tank team's pick map by map (deterministic, both get exercised)

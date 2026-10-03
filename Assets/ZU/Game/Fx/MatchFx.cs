@@ -177,6 +177,8 @@ namespace ZU.Game.Fx
                     fx.Ring(p, 1.4f, C(e.color, "#bfe8ff"), now, 0.3f, false); fx.Emit(p, N(24), C("#fff4d6"), FxKit.O(4, 0.5f, 0.28f, spread: 0.6f));
                     break;
                 case "swoopburst": fx.Ring(p, 2.2f, C(e.color, "#bfe8ff"), now, 0.35f); fx.Emit(p, N(34), C("#fff4d6"), FxKit.O(6, 0.55f, 0.3f, spread: 0.6f)); fx.Light(p, C(e.color, "#bfe8ff"), 25, now); break;
+                // ultimate charge pack (Training Grounds): a gold ring, sparks rising, a pulse of light
+                case "ultpack": fx.Ring(Up(p, -0.45f), 1.8f, C("#ffd23f"), now, 0.5f); fx.Emit(p, N(30), C("#fff1a8"), FxKit.O(3f, 0.8f, 0.3f, spread: 0.6f, up: 4)); fx.Light(p, C("#ffc83a"), 22, now); break;
                 case "healthpack": fx.Ring(Up(p, -0.45f), (float)(e.r ?? 1) * 1.6f, C("#29f0a0"), now, 0.45f); fx.Emit(p, N(26), C("#7dffb0"), FxKit.O(2.5f, 0.7f, 0.28f, spread: 0.6f, up: 3)); fx.Light(p, C("#29f0a0"), 18, now); break;
                 case "wound": fx.Emit(p, N(10), C("#ff2d55"), FxKit.O(2.5f, 0.5f, 0.16f, grav: 7)); fx.Emit(p, N(4), C("#ffd0d8"), FxKit.O(4, 0.18f, 0.12f)); break;
                 case "warcall":

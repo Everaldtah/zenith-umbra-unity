@@ -19,7 +19,7 @@ namespace ZU.Sim
         }
     }
 
-    public sealed class DmgEvent : SimEvent { public override string T => "dmg"; public Actor src, tgt; public double amt; public bool crit, heal; public V3 pos; }
+    public sealed class DmgEvent : SimEvent { public override string T => "dmg"; public Actor src, tgt; public double amt; public bool crit, heal; public V3 pos; public string kind; }
     public sealed class KillEvent : SimEvent { public override string T => "kill"; public Actor src, tgt; }
     public sealed class DemechEvent : SimEvent { public override string T => "demech"; public Actor src, tgt; }
     public sealed class CastEvent : SimEvent { public override string T => "cast"; public Actor actor; public string id, name; }
