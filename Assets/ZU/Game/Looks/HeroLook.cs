@@ -37,6 +37,10 @@ namespace ZU.Game.Looks
         public bool noSmear;
         /// <summary>the skin shown now (TS CharacterView.skin)</summary>
         public string SkinId { get; private set; }
+        /// <summary>the costume's two hues as measured (x, y = the first [hue, value], z, w the second: TS zuSrc1 / zuSrc2) and the
+        /// neck line (model space; 1e9 = none) - for checks against the TS</summary>
+        public Vector4 SrcHues => new Vector4(src1.x, src1.y, src2.x, src2.y);
+        public float HeadY => headY;
         HeroSkin.Values skin = HeroSkin.Values.Classic;
         Vector4 src1 = new Vector4(0, 0.5f), src2 = new Vector4(0.5f, 0.5f);      // TS lookUniforms defaults
         float headY = 1e9f, headBand = 0.01f, time;
@@ -221,7 +225,7 @@ namespace ZU.Game.Looks
                 var t2 = new Texture2D(N, N, TextureFormat.RGBA32, false, false);
                 t2.ReadPixels(new Rect(0, 0, N, N), 0, 0, false); t2.Apply(false);
                 px = t2.GetPixels32();
-                Object.Destroy(t2);
+                if (Application.isPlaying) Object.Destroy(t2); else Object.DestroyImmediate(t2);     // (the editor's look preview)
             }
             finally { RenderTexture.active = prev; RenderTexture.ReleaseTemporary(rt); }
             return palettes[tex] = Analyse(px);

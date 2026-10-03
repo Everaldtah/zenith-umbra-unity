@@ -274,6 +274,7 @@ namespace ZU.Game
         {
             foreach (var s in slots) if (s != null) { if (s.rends != null) foreach (var r in s.rends) yield return r; if (s.swapRends != null) foreach (var r in s.swapRends) yield return r; if (s.flashR != null) yield return s.flashR; }
             if (propRends != null) foreach (var r in propRends) yield return r;
+            if (flameR != null) yield return flameR;          // (made after propRends; UpdateDetails shows it)
             if (backRends != null) foreach (var r in backRends) yield return r;
             foreach (var b in bracers) if (b != null) foreach (var r in b.GetComponentsInChildren<Renderer>(true)) yield return r;
             if (skates != null) foreach (var s in skates) foreach (var r in s.root.GetComponentsInChildren<Renderer>(true)) yield return r;
