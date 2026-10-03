@@ -21,7 +21,8 @@ namespace ZU.Game.UI.Toolkit
             Perf.SetCap((int)v.fpsCap);                                   // 0 = display based; a cap dividing the refresh locks to every k-th vblank
             Perf.SetBaseScale(Mathf.Clamp((float)v.renderScale / 100f, 0.5f, 2f));
             Perf.SetDynamicResolution(v.dynamicRes);                      // off resets the dynamic scale to 1 (TS applySettings)
-            Perf.SetUpscaler(Perf.Upscaler.Auto, 0.9f + 0.1f * Mathf.Clamp01((float)v.sharpen / 100f));   // FSR below native; 0.9 = the TS RCAS
+            Perf.SetUpscaler(Perf.Upscaler.Auto);                         // FSR below native with the web's RCAS 0.25 stops
+            Perf.SetSharpen(Mathf.Clamp01((float)v.sharpen / 100f));     // the web's native-scale sharpen pass (ZU.Engine SharpenPass)
             // texture filtering and resolution
             int af = Mathf.Clamp((int)v.texFilter, 1, 16);
             QualitySettings.anisotropicFiltering = af > 1 ? AnisotropicFiltering.ForceEnable : AnisotropicFiltering.Disable;

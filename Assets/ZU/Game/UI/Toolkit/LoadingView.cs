@@ -108,7 +108,9 @@ namespace ZU.Game.UI.Toolkit
             // the match's Start has built the world; MatchUi.Attach calls Warm() for the rest
         }
 
-        /// <summary>the match is built: warm the shaders against its lights, then draw full frames behind the screen, then lift it</summary>
+        /// <summary>the match is built: draw full frames behind the screen (they compile the variants actually drawn, like the
+        /// TS renderer.compile of the scene), then lift it. No Shader.WarmupAllShaders(): warming every loaded shader tripped
+        /// URP's fallback keyword spaces (76 "keyword state size mismatch" errors, evera-23) and stalled an online host.</summary>
         public static IEnumerator Warm()
         {
             if (!Open) yield break;
@@ -118,7 +120,6 @@ namespace ZU.Game.UI.Toolkit
             if (!online) Time.timeScale = 0;
             Progress("Compiling shaders", 0.65f);
             yield return null;
-            Shader.WarmupAllShaders();
             const int FRAMES = 24;
             for (int i = 0; i < FRAMES; i++) { Progress("Warm-up", 0.7f + 0.3f * i / FRAMES); yield return null; }
             Progress("Ready", 1);

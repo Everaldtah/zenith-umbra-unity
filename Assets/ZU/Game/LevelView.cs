@@ -158,7 +158,7 @@ namespace ZU.Game
             {
                 var b = boxes[i];
                 if (shellBoxes.Contains(i)) { Collider(shellBoxes.Root, b); continue; }
-                if (b.mat == "rock" && b.ramp == null && rocks.Count > 0)
+                if (b.mat == "rock" && b.ramp == null && rocks.Count > 0 && RockShaped(b))
                 {
                     if (rockRoot == null) { rockRoot = new GameObject("Rocks").transform; rockRoot.SetParent(transform, false); }
                     DressRock(rockRoot, b, rocks[ri % rocks.Count], ri); ri++;
@@ -186,6 +186,7 @@ namespace ZU.Game
             var props = new GameObject("Props").transform; props.SetParent(transform, false);
             foreach (var p in map.props ?? new List<Prop>()) Prop(p, props);
             GroundDressing.Build(map, transform);
+            AmbienceSpots.Build(map, transform);
             TintLight();
             MapObjects.Build(map, transform, level, Mat);
             AmbientParticles.Build(map, transform);
@@ -238,6 +239,14 @@ namespace ZU.Game
             var col = new GameObject("box collider"); col.transform.SetParent(parent, false);
             col.transform.localPosition = Conv.U(b.x, y0 + b.h / 2, b.z);
             col.AddComponent<BoxCollider>().size = new Vector3((float)b.w, (float)b.h, (float)b.d);
+        }
+
+        /// <summary>a rock box a formation can wear without looking stretched: at least 2 m thick, footprint no longer than 4:1,
+        /// no taller than 3x its thickness - not the 146 x 22 x 1 m canyon walls that fence Sunset Mile / Iron Gulch in</summary>
+        static bool RockShaped(Box b)
+        {
+            double t = System.Math.Min(b.w, b.d), l = System.Math.Max(b.w, b.d);
+            return t >= 2 && l / t <= 4 && b.h / t <= 3;
         }
 
         /// <summary>a Tripo rock fitted round a rock box (seeded turn), with a box collider for the camera's collision</summary>
