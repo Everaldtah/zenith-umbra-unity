@@ -165,6 +165,12 @@ def level_to(a, target_m):
     return a * 10 ** ((target_m - L) / 20), round(target_m - L, 2)
 
 
+def level_to_integrated(a, target_i):
+    """beds and loops: their integrated (gated) loudness, not the loudest moment"""
+    L = meter.loudness(a, SR)["I"]
+    return a * 10 ** ((target_i - L) / 20), round(target_i - L, 2)
+
+
 # ------------------------------------------------------------------------------------------------ one clip
 def master(src, dst, cat, sr_path=None, xover=10500, fmt="wav"):
     rep = {"src": os.path.relpath(src, ROOT).replace("\\", "/"), "cat": cat}
