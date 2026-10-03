@@ -54,6 +54,7 @@ namespace ZU.Game.UI.Toolkit
         public readonly VisualElement root;
         readonly VisualElement hp, abil, ultEl, ammoBox, flight, obj, feed, callout, banner, nums, bars, status, board, portrait, subs;
         readonly Label fps, ammo, hpNum;
+        readonly ZU.Engine.FrameGraphElement graph = new ZU.Engine.FrameGraphElement();   // the advanced overlay's frame-time graph (TS FrameGraph)
         readonly HpBar hpBar;
         readonly ReticleEl cross;
         readonly HitMarkEl hitmark;
@@ -93,6 +94,7 @@ namespace ZU.Game.UI.Toolkit
             status = U.Div("status", root);
             board = U.Div("board", root);
             fps = U.Txt("", "fps", root);
+            graph.style.position = Position.Absolute; graph.style.left = 10; graph.style.top = 150; graph.style.display = DisplayStyle.None; root.Add(graph);
             subs = U.Div("subs", root);
             hurt = new Vignette(); hurt.AddToClassList("fill"); hurt.AddToClassList("hurtfx"); root.Add(hurt);
             U.Show(hurt, false); U.Show(board, false); U.Show(banner, false);
@@ -146,6 +148,7 @@ namespace ZU.Game.UI.Toolkit
         public void Perf(string[] lines)
         {
             U.Toggle(fps, "adv", lines != null);
+            graph.style.display = lines != null ? DisplayStyle.Flex : DisplayStyle.None;
             if (lines != null) U.Set(fps, string.Join("\n", lines));
         }
 
