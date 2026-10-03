@@ -25,6 +25,7 @@ namespace ZU.Game.Fx
         ChainCage chains;
         PuppetSwarm swarm;
         SunSwarm suns;
+        bool sunsFailed;
         CharacterExtras extras;
         bool ready;
 
@@ -84,7 +85,9 @@ namespace ZU.Game.Fx
             var kit = MatchFx.Current;
             dragons.Update(now, (q, c, big) => kit?.Emit(q, big ? 3 : 2, c, FxKit.O(speed: big ? 2.2f : 1.2f, life: big ? 0.7f : 0.5f, size: big ? 0.55f : 0.4f, spread: big ? 0.8f : 0.5f)));
             seals.Update(w, now, dt);
-            suns.Update(w, r.Player, now, dt);
+            // (fenced: the Unity-only rework must never take the other showpieces down with it)
+            try { suns.Update(w, r.Player, now, dt); }
+            catch (System.Exception e) { if (!sunsFailed) { sunsFailed = true; Debug.LogException(e); } }
             chains.Update(w, now);
             if (swarm == null) foreach (var a in w.actors) if (a.IsSummon && a.def.id == "puppet") { swarm = new PuppetSwarm(); break; }
             if (swarm != null)
