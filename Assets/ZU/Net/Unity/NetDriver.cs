@@ -60,6 +60,9 @@ namespace ZU.Net.Unity
                 return session;
             }
         }
+        /// <summary>the online PvP session if one exists, without creating (and connecting) one: the menu asks "went online and
+        /// is idle?" after any match (TS Menu quit: `session?.phase === 'idle' && session.online`)</summary>
+        public static OnlineSession Existing => session;
         /// <summary>the campaign co-op session (created on first use)</summary>
         public static CoopSession Coop
         {
