@@ -32,7 +32,7 @@ namespace ZU.Game.Fx
             ["sealstorm"] = new Plan { secs = 16, wide = 0.4f, tough = 3 },  // Divine Seal Storm: bursts on every enemy within 18 m for 15 s
             ["judgment"] = new Plan { secs = 7, fight = 2.2f },
             ["susanoo"] = new Plan { secs = 11, wide = 0.6f, tough = 2.5f },
-            ["hundredsuns"] = new Plan { secs = 4.5f },
+            ["hundredsuns"] = new Plan { secs = 17, wide = 0.5f, tough = 3 },   // (Unity rework) five giant arrows, then a 15 s swarm over 30 m
             ["singularity"] = new Plan { secs = 4.5f, flat = true },
             ["requiem"] = new Plan { secs = 4.5f },
             ["theater"] = new Plan { secs = 17, wide = 1, tough = 2.5f },

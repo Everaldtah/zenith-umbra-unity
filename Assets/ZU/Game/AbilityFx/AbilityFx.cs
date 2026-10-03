@@ -5,6 +5,7 @@
 //  - SealStorm      sealstorm / sealshield / sealstrike / sealburst / sealmend      Kaien's Divine Seal Storm
 //  - ChainCage      the 'dohyo' zones and the 'chained' status                      Gantetsu's Grand Dohyo
 //  - PuppetSwarm    the 'puppet' summons                                            Hex's puppet army
+//  - SunSwarm       the 'sunswarm' zones (Unity-only rework)                        Yuzu's Hundred Suns
 //  - CharacterExtras  blinking lids / masked eye glow, ragdoll deaths              every hero view
 //  - UltShowcase    attached when UltShowcase.Open started this match
 // Runs early in LateUpdate (order -50): after the Animator, before HeroView's held weapons and fingers and before the
@@ -23,6 +24,7 @@ namespace ZU.Game.Fx
         SealStorm seals;
         ChainCage chains;
         PuppetSwarm swarm;
+        SunSwarm suns;
         CharacterExtras extras;
         bool ready;
 
@@ -46,6 +48,7 @@ namespace ZU.Game.Fx
             dragons = new SpiritDragons(transform);
             chains = new ChainCage(transform);
             seals = new SealStorm(MatchFx.Current);
+            suns = new SunSwarm(MatchFx.Current);
             extras = new CharacterExtras(r, ViewOf);
             // the swarm is built at match start when Hex is in it (the TS: so the preloader compiles it), else on the first puppet
             foreach (var a in r.World.actors) if (a.baseDef.id == "hex") { swarm = new PuppetSwarm(); break; }
@@ -81,6 +84,7 @@ namespace ZU.Game.Fx
             var kit = MatchFx.Current;
             dragons.Update(now, (q, c, big) => kit?.Emit(q, big ? 3 : 2, c, FxKit.O(speed: big ? 2.2f : 1.2f, life: big ? 0.7f : 0.5f, size: big ? 0.55f : 0.4f, spread: big ? 0.8f : 0.5f)));
             seals.Update(w, now, dt);
+            suns.Update(w, r.Player, now, dt);
             chains.Update(w, now);
             if (swarm == null) foreach (var a in w.actors) if (a.IsSummon && a.def.id == "puppet") { swarm = new PuppetSwarm(); break; }
             if (swarm != null)
@@ -94,7 +98,7 @@ namespace ZU.Game.Fx
         void OnDestroy()
         {
             EventSink.OnEvent -= OnEvent;
-            dragons?.Dispose(); seals?.Dispose(); chains?.Dispose(); swarm?.Dispose(); extras?.Dispose();
+            dragons?.Dispose(); seals?.Dispose(); suns?.Dispose(); chains?.Dispose(); swarm?.Dispose(); extras?.Dispose();
         }
     }
 }
