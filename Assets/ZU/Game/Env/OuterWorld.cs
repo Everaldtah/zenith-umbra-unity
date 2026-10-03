@@ -71,10 +71,43 @@ namespace ZU.Game.Env
 
             var bins = new MeshBins();
             Skyline(th, rng, bins, X, Z, HeightAt, water);
-            Landmarks(map, th, rng, bins, X, Z, HeightAt);
+            // the Tripo landscape set pieces for the map's style stand in for the procedural landmarks when there are any
+            if (!Vistas(th, rng, root, X, Z, HeightAt, water)) Landmarks(map, th, rng, bins, X, Z, HeightAt);
             bins.Emit(root, mat, prefix: "outer ");
             Trees(th, rng, root, X, Z, HeightAt, water);
             Showpieces(map, th, rng, root, X, Z, HeightAt);
+        }
+
+        // ------------------------------------------------------------------------------------------------ Tripo vistas
+        /// <summary>the style's Tripo set pieces (TripoEnv, kind vista) on the ring 120 - 600 m out: seeded angles spread round
+        /// the arena, each on the terrain at its foot (sunk a little), turned to face the arena, sized from its height_m
+        /// (a little larger the further out); never in the sea. False when the style has none (the landmarks stay).</summary>
+        static bool Vistas(Theme th, System.Random rng, Transform root, float X, float Z, System.Func<float, float, float> heightAt, float water)
+        {
+            var list = TripoEnv.Vistas(th.style.ToString());
+            if (list.Count == 0) return false;
+            var parent = new GameObject("Vistas").transform; parent.SetParent(root, false);
+            int n = Mathf.Clamp(list.Count * 2, 4, 10);
+            float inner = Mathf.Max(X, Z) + 120, outer = 600;
+            float phase = (float)(rng.NextDouble() * Mathf.PI * 2);
+            for (int i = 0; i < n; i++)
+            {
+                var piece = list[i % list.Count];
+                // spread round the ring with a seeded wobble; try a few spots to stay out of the sea
+                for (int tries = 0; tries < 6; tries++)
+                {
+                    float a = phase + (i + (float)rng.NextDouble() * 0.6f - 0.3f) * Mathf.PI * 2 / n;
+                    float r = Mathf.Lerp(inner, outer, (float)rng.NextDouble());
+                    float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
+                    float y = heightAt(x, z);
+                    if (!float.IsNaN(water) && y < water + 2) continue;
+                    float h = piece.height_m * (0.85f + (float)rng.NextDouble() * 0.3f) * (1 + (r - inner) / Mathf.Max(1, outer - inner) * 0.5f);
+                    float yaw = Mathf.Atan2(-x, -z) * Mathf.Rad2Deg + ((float)rng.NextDouble() - 0.5f) * 50;
+                    TripoEnv.Place(piece, parent, new Vector3(x, y - h * 0.05f, z), yaw, h);
+                    break;
+                }
+            }
+            return true;
         }
 
         // ------------------------------------------------------------------------------------------------ terrain
