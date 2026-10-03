@@ -91,7 +91,7 @@ namespace ZU.Game.Env
             th.tripo = new GameObject("Tripo Buildings").transform; th.tripo.SetParent(root, false);
             Skyline(th, rng, bins, X, Z, HeightAt, water);
             // the Tripo landscape set pieces for the map's style stand in for the procedural landmarks when there are any
-            if (!Vistas(th, rng, root, X, Z, HeightAt, water)) Landmarks(map, th, rng, bins, X, Z, HeightAt);
+            if (!Vistas(map, th, rng, root, X, Z, HeightAt, water)) Landmarks(map, th, rng, bins, X, Z, HeightAt);
             bins.Emit(root, mat, prefix: "outer ");
             Trees(th, rng, root, X, Z, HeightAt, water);
             Showpieces(map, th, rng, root, X, Z, HeightAt);
@@ -101,9 +101,9 @@ namespace ZU.Game.Env
         /// <summary>the style's Tripo set pieces (TripoEnv, kind vista) on the ring 120 - 600 m out: seeded angles spread round
         /// the arena, each on the terrain at its foot (sunk a little), turned to face the arena, sized from its height_m
         /// (a little larger the further out); never in the sea. False when the style has none (the landmarks stay).</summary>
-        static bool Vistas(Theme th, System.Random rng, Transform root, float X, float Z, System.Func<float, float, float> heightAt, float water)
+        static bool Vistas(MapDef map, Theme th, System.Random rng, Transform root, float X, float Z, System.Func<float, float, float> heightAt, float water)
         {
-            var list = TripoEnv.Vistas(th.style.ToString());
+            var list = TripoEnv.Vistas(th.style.ToString(), map.id);
             if (list.Count == 0) return false;
             var parent = new GameObject("Vistas").transform; parent.SetParent(root, false);
             int n = Mathf.Clamp(list.Count * 2, 4, 10);

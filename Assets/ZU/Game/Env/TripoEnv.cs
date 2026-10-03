@@ -20,6 +20,8 @@ namespace ZU.Game.Env
                                                     // watertower, chimney, tank, block, wall; dressing: temperate | desert | urban | gothic | alpine
             public float footprint_m, height_m, w_m, d_m;
             public bool tall;                       // dressing over ~0.35 m: wall bases and map edges only (nothing collides with it)
+            public string maps;                     // vista: the maps it stands round ("gulch", "cloudstep, amatsu, campaign");
+                                                    // empty = every map of its style
             [JsonIgnore] public GameObject prefab;
             [JsonIgnore] Vector3? unit;
             /// <summary>the prefab's own bounds size at scale 1 (1 m tall, footprint as Tripo made it), measured once</summary>
@@ -67,7 +69,20 @@ namespace ZU.Game.Env
         }
 
         /// <summary>the vistas for an outer-world style ("west", "japan", "industry", "observatory", "sky", "academy")</summary>
-        public static List<Piece> Vistas(string style) => All.Where(p => p.kind == "vista" && string.Equals(p.style, style, System.StringComparison.OrdinalIgnoreCase)).ToList();
+        public static List<Piece> Vistas(string style, string mapId) => All.Where(p => p.kind == "vista" && ForMap(p, style, mapId)).ToList();
+
+        /// <summary>a vista's maps list names this map ("campaign" = every c1_ .. c5_ level), or it has none and the style matches</summary>
+        static bool ForMap(Piece p, string style, string mapId)
+        {
+            if (string.IsNullOrWhiteSpace(p.maps)) return string.Equals(p.style, style, System.StringComparison.OrdinalIgnoreCase);
+            bool campaign = mapId.Length > 2 && mapId[0] == 'c' && char.IsDigit(mapId[1]) && mapId[2] == '_';
+            foreach (var t in p.maps.Split(','))
+            {
+                var m = t.Trim();
+                if (m == mapId || (campaign && m == "campaign")) return true;
+            }
+            return false;
+        }
         public static List<Piece> Rocks => All.Where(p => p.kind == "rock").ToList();
         /// <summary>the ground dressing of a biome (GroundDressing scatters it)</summary>
         public static List<Piece> Dressing(string biome) => All.Where(p => p.kind == "dressing" && string.Equals(p.biome, biome, System.StringComparison.OrdinalIgnoreCase)).ToList();
