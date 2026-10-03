@@ -186,6 +186,7 @@ namespace ZU.Game
             var props = new GameObject("Props").transform; props.SetParent(transform, false);
             foreach (var p in map.props ?? new List<Prop>()) Prop(p, props);
             GroundDressing.Build(map, transform);
+            AmbienceSpots.Build(map, transform);
             TintLight();
             MapObjects.Build(map, transform, level, Mat);
             AmbientParticles.Build(map, transform);

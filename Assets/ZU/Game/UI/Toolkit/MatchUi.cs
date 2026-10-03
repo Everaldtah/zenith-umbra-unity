@@ -164,6 +164,7 @@ namespace ZU.Game.UI.Toolkit
                     $"{fpsAvg:0} FPS  {1000 / Mathf.Max(1, fpsAvg):0.0} ms",
                     $"render {Mathf.RoundToInt(Screen.width * ps.RenderScale)}x{Mathf.RoundToInt(Screen.height * ps.RenderScale)} ({Mathf.RoundToInt(ps.RenderScale * 100)}%){(ps.Upscaler != "off" ? " " + ps.Upscaler.ToUpperInvariant() : "")}",
                     $"sim 120 Hz  heroes {w.actors.Count}  projectiles {w.projs.Count}",
+                    $"audio {AudioKit.Voices} voices, limiter {AudioKit.LimiterDb:0.0} dB",
                     $"CPU {ps.CpuMs:0.0} ms  GPU {(ps.GpuMs >= 0 ? ps.GpuMs.ToString("0.0") + " ms" : "n/a")}",
                     $"display {ps.RefreshHz:0} Hz{(ps.VSynced ? " vsync" : "")}  cap {(ps.TargetFrameRate > 0 ? ps.TargetFrameRate + " fps" : ps.VSyncCount > 0 ? "vsync/" + ps.VSyncCount : "off")}  dyn {ps.DynScale:0.00}",
                     $"gov {ps.Bottleneck} L{ps.GovernorLevel}  anim LOD {ps.AnimUpdated} full / {ps.AnimHeld} held  RAM {ps.MemAvailMB:0} MB {ps.Pressure}",
