@@ -75,6 +75,14 @@ namespace ZU.Game
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
             else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
+            StartCoroutine(MarkLive());
+        }
+
+        /// <summary>start-up timing: the first frame the match is drawn (QA times its shots from this, not a guessed delay)</summary>
+        System.Collections.IEnumerator MarkLive()
+        {
+            yield return null; yield return new WaitForEndOfFrame();
+            StartupClock.Mark($"match live: {mode} on {mapId} as {(Player != null ? Player.def.id : "spectator")}");
         }
 
         void Update()
