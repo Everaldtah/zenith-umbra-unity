@@ -159,7 +159,13 @@ namespace ZU.Game.FirstPerson
         }
 
         // ---------------------------------------------------------------- state
-        bool Archer => style != null && style.grip == Grip.Bow && (heroId == "seiran" || heroId == "yuzu");
+        /// <summary>off: the archers go back to their converted clips (fp_seiran / fp_yuzu) and the canted-bow liberty - takes
+        /// effect on the next viewmodel build (a hero swap or a new match)</summary>
+        public static bool KeyedArchers = true;
+        /// <summary>decided once per viewmodel build (ArcherBuild), so a flip of KeyedArchers never strands a half-switched rig</summary>
+        bool archerOn;
+        bool Archer => archerOn;
+        bool WantArcher => KeyedArchers && style != null && style.grip == Grip.Bow && (heroId == "seiran" || heroId == "yuzu");
         /// <summary>captures / tests: hold the archer at a moment ("idle", "draw", "loose", "scatter", "melee", "step", "hop",
         /// "ult", with "aim" for Yuzu's Hawk Eye) and a time in it, instead of gameplay</summary>
         public static (string moment, float t, bool aim)? ArcherFreeze;

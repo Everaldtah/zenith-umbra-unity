@@ -156,7 +156,9 @@ namespace ZU.Game.FirstPerson
             if (held != null) { held.gunScale = style.gunScale; foreach (var rd in held.Renderers()) { rd.gameObject.layer = LAYER; rd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; } }
             fingers = Fingers.Build(model.transform);
             if (!string.IsNullOrEmpty(style.gauntlets)) LoadGauntlets();
-            if (Archer) ArcherBuild();
+            archerOn = WantArcher;
+            if (archerOn) ArcherBuild();
+            else if (fpArrow != null) { Destroy(fpArrow.gameObject); fpArrow = null; }
             overlay.nearClipPlane = Mathf.Max(0.02f, style.clip);
             // state
             playing = ""; oneShot = null; equipped = false; swings = 0; idleSince = r.World.time; hasLast = false;
