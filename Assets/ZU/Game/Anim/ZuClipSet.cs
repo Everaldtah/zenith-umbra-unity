@@ -38,7 +38,7 @@ namespace ZU.Game.Anim
         static bool tried;
         public static ZuClipSet Get()
         {
-            if (cached == null && !tried) { tried = true; cached = Resources.Load<ZuClipSet>("ZUAnim/ZuClipSet"); }
+            if (cached == null && !tried) { tried = true; StartupClock.Mark("clip set loading"); cached = Resources.Load<ZuClipSet>("ZUAnim/ZuClipSet"); StartupClock.Mark("clip set loaded"); }
             return cached;
         }
     }
