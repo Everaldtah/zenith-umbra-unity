@@ -115,9 +115,11 @@ namespace ZU.Sim
                             w.Damage(z.owner, x, SUNS_LAND_DMG, new DmgOpts { kind = "ability", ability = "hundredsuns" });
                     landed++; z.data["landed"] = landed;
                 }
-                while (z.next <= t && z.next < z.until)
+                // (its own count: the generic zone tick above moves every zone's `next` on by 0.25 s)
+                double ticks = ZoneNum(z, "ticks");
+                while (z.born + SUNS_SPLIT + ticks * SUNS_TICK <= t && z.born + SUNS_SPLIT + ticks * SUNS_TICK < z.until)
                 {
-                    z.next += SUNS_TICK;
+                    ticks++; z.data["ticks"] = ticks;
                     foreach (var x in w.Enemies(z.owner))
                         if (M.Hypot(x.pos.x - z.x, x.pos.z - z.z) < z.r) w.Damage(z.owner, x, SUNS_DMG, new DmgOpts { kind = "ability", ability = "hundredsuns" });
                 }

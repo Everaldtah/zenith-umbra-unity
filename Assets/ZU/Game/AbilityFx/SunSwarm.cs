@@ -21,7 +21,7 @@ namespace ZU.Game.Fx
     {
         /// <summary>small arrows a swarm; their length and the giant ones' (m)</summary>
         const int N = 1000;
-        const float SMALL = 0.7f, GIANT = 6f;
+        const float SMALL = 0.7f, GIANT = 9f;
         /// <summary>a giant arrow's fall (s), how high and how far out it starts, how deep its tip goes in (m)</summary>
         const float FALL = 0.45f, FALL_UP = 28, FALL_OUT = 5, DEPTH = 1.0f;
         /// <summary>the swarm's flight: spring stiffness, damping, top speed (m/s)</summary>
@@ -33,7 +33,7 @@ namespace ZU.Game.Fx
         /// <summary>targets that flash on a tick, and that sound on one (2 a tick, 4 a second)</summary>
         const int FLASH_MAX = 12, HIT_SOUNDS = 2;
 
-        static readonly Color ORANGE = Sp.Lin(Sp.Hex("#ffa94d")), GOLD = Sp.Lin(Sp.Hex("#ffd27a")), WHITE = Sp.Lin(Sp.Hex("#fff3d6"));
+        static readonly Color ORANGE = Sp.Lin(Sp.Hex("#ffa94d")), GOLD = Sp.Lin(Sp.Hex("#ffd27a")), WHITE = Sp.Lin(Sp.Hex("#fff3d6")), EMBER = Sp.Lin(Sp.Hex("#ff7a1a"));
         static readonly Color ORANGE_FX = Sp.Hex("#ffa94d"), GOLD_FX = Sp.Hex("#ffd27a"), WHITE_FX = Sp.Hex("#fff3d6"), DUST_FX = Sp.Hex("#8a7a66");
 
         // per-arrow constants (the same on every machine): where it sits in its knot, how it turns, when it dives and dies
@@ -80,8 +80,8 @@ namespace ZU.Game.Fx
         public SunSwarm(FxKit fx)
         {
             this.fx = fx;
-            small.AddRange(Load("yuzu_ult_sunarrow", SmallArrow, 1.8f));
-            giant.AddRange(Load("yuzu_ult_greatarrow", GreatArrow, 1.4f));
+            small.AddRange(Load("yuzu_ult_sunarrow", SmallArrow, 0.8f));
+            giant.AddRange(Load("yuzu_ult_greatarrow", GreatArrow, 0.9f));
             var tm = AbilityKit.Additive();
             tm.SetFloat("_VertexColors", 1); tm.SetColor("_BaseColor", Color.white);
             mats.Add(tm);
@@ -136,15 +136,15 @@ namespace ZU.Game.Fx
         {
             var b = new AbilityKit.MeshBuilder();
             var n = Matrix4x4.Scale(Vector3.one / 6f) * Matrix4x4.Translate(new Vector3(0, -3, 0));      // built 6 m tall from the tail
-            b.Append(AbilityKit.Cylinder(0.09f, 0.09f, 4.4f, 6), n * Matrix4x4.Translate(new Vector3(0, 2.2f, 0)));
-            b.Append(AbilityKit.Cone(0.45f, 1.5f, 4), n * Matrix4x4.TRS(new Vector3(0, 5.25f, 0), Quaternion.identity, new Vector3(1, 1, 0.2f)));
-            b.Append(AbilityKit.Cone(0.45f, 0.35f, 4), n * Matrix4x4.TRS(new Vector3(0, 4.32f, 0), Quaternion.AngleAxis(180, Vector3.right), new Vector3(1, 1, 0.2f)));
-            b.Append(AbilityKit.Box(1.1f, 0.14f, 0.28f), n * Matrix4x4.Translate(new Vector3(0, 4.1f, 0)));
-            for (int i = 0; i < 3; i++) b.Append(AbilityKit.Cylinder(0.13f, 0.13f, 0.12f, 6), n * Matrix4x4.Translate(new Vector3(0, 1.6f + i * 0.9f, 0)));
+            b.Append(AbilityKit.Cylinder(0.15f, 0.15f, 4.4f, 6), n * Matrix4x4.Translate(new Vector3(0, 2.2f, 0)));
+            b.Append(AbilityKit.Cone(0.7f, 1.5f, 4), n * Matrix4x4.TRS(new Vector3(0, 5.25f, 0), Quaternion.identity, new Vector3(1, 1, 0.22f)));
+            b.Append(AbilityKit.Cone(0.7f, 0.35f, 4), n * Matrix4x4.TRS(new Vector3(0, 4.32f, 0), Quaternion.AngleAxis(180, Vector3.right), new Vector3(1, 1, 0.22f)));
+            b.Append(AbilityKit.Box(1.6f, 0.18f, 0.36f), n * Matrix4x4.Translate(new Vector3(0, 4.1f, 0)));
+            for (int i = 0; i < 3; i++) b.Append(AbilityKit.Cylinder(0.2f, 0.2f, 0.14f, 6), n * Matrix4x4.Translate(new Vector3(0, 1.6f + i * 0.9f, 0)));
             for (int i = 0; i < 3; i++)
             {
                 var q = Quaternion.AngleAxis(i * 120, Vector3.up);
-                b.Append(AbilityKit.Box(0.04f, 1.2f, 0.7f), n * Matrix4x4.TRS(q * new Vector3(0, 0, 0.36f) + new Vector3(0, 0.8f, 0), q, Vector3.one));
+                b.Append(AbilityKit.Box(0.05f, 1.3f, 0.9f), n * Matrix4x4.TRS(q * new Vector3(0, 0, 0.5f) + new Vector3(0, 0.8f, 0), q, Vector3.one));
             }
             return b.Build("sun great arrow (stand-in)", true);
         }
@@ -248,7 +248,7 @@ namespace ZU.Game.Fx
                     {
                         float u = (age - (L - FALL)) / FALL;
                         tip = tipEnd - d * (Mathf.Sqrt(FALL_UP * FALL_UP + FALL_OUT * FALL_OUT) * (1 - u * u));
-                        TrailAt(tip - d * GIANT, q, 1.1f, 9, ORANGE * 1.6f);
+                        TrailAt(tip - d * GIANT, q, 1.6f, 12, EMBER * 1.2f);
                     }
                     else
                     {
@@ -258,7 +258,7 @@ namespace ZU.Game.Fx
                     }
                     var axis = q * up;
                     float sc = 1 + 0.07f * crack * Mathf.Sin(age * 70 + i * 1.7f);
-                    Giant(tip - axis * (GIANT * 0.5f * sc), q, GIANT * sc, Color.Lerp(Color.Lerp(ORANGE, GOLD, 0.4f), WHITE, crack));
+                    Giant(tip - axis * (GIANT * 0.5f * sc), q, GIANT * sc, Color.Lerp(Color.Lerp(EMBER, ORANGE, 0.6f), WHITE, crack));
                     if (crack > 0 && Random.value < 0.35f) fx.Emit(U(tip - axis * (GIANT * Random.value)), 1, WHITE_FX, FxKit.O(speed: 2.5f, life: 0.4f, size: 0.25f, spread: 0.6f));
                 }
             }
@@ -340,8 +340,8 @@ namespace ZU.Game.Fx
                 s.v[k] = v; s.p[k] += v * dt;
                 if (sp > 0.5f) s.d[k] = v / sp;
                 var q = Along(s.d[k]);
-                Small(s.p[k], q, SMALL * life, Color.Lerp(ORANGE, GOLD, H3[k] * 0.6f));
-                TrailAt(s.p[k] - s.d[k] * (SMALL * 0.45f), q, 0.09f * life, Mathf.Clamp(sp * 0.05f, 0.15f, 1.6f), ORANGE * (1.6f * life));
+                Small(s.p[k], q, SMALL * life, Color.Lerp(EMBER, ORANGE, H3[k]));
+                TrailAt(s.p[k] - s.d[k] * (SMALL * 0.45f), q, 0.09f * life, Mathf.Clamp(sp * 0.05f, 0.15f, 1.6f), EMBER * (0.9f * life));
             }
             // ---- the hits, on the sim's beat (a tick at split + j * SUNS_TICK): a flash on each target, a few of them heard
             while (s.split && s.born + split + s.tick * (float)Abilities.SUNS_TICK <= now && s.born + split + s.tick * (float)Abilities.SUNS_TICK < s.until)

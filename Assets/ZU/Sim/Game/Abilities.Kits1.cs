@@ -359,8 +359,7 @@ namespace ZU.Sim
         static bool Hundredsuns(World w, Actor a)
         {
             var p = w.GroundPoint(a, 50);
-            var z = MakeZone(w, a, "sunswarm", p, SUNS_REACH, SUNS_SPLIT + SUNS_SECS, new Dictionary<string, object> { ["landed"] = 0.0 });
-            z.next = w.time + SUNS_SPLIT;           // the swarm's first hit
+            MakeZone(w, a, "sunswarm", p, SUNS_REACH, SUNS_SPLIT + SUNS_SECS, new Dictionary<string, object> { ["landed"] = 0.0, ["ticks"] = 0.0 });
             w.Sfx("ultcall", a.Center, a);
             return true;
         }
