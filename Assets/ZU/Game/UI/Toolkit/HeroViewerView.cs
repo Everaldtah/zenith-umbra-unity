@@ -198,8 +198,9 @@ namespace ZU.Game.UI.Toolkit
 
         /// <summary>a preview's model skin (null: the equipped one) - ActorViews.SkinModel asks this first</summary>
         public static (Actor actor, string model)? Preview;
-        /// <summary>the skin hook the front end installs: the viewer's preview, else the hero's equipped skin</summary>
-        public static string SkinModelFor(Actor a) => Preview.HasValue && Preview.Value.actor == a ? Preview.Value.model : EquippedSkinModel(a.baseDef.id);
+        /// <summary>the skin hook the front end installs: the viewer's preview, else the equipped skin - on the local player only;
+        /// bots and other players wear the hero's own model (TS Game.addView: a.isPlayer ? equippedSkin : 'classic')</summary>
+        public static string SkinModelFor(Actor a) => Preview.HasValue && Preview.Value.actor == a ? Preview.Value.model : a.isPlayer ? EquippedSkinModel(a.baseDef.id) : null;
 
         void ShowModel(string skinId)
         {
