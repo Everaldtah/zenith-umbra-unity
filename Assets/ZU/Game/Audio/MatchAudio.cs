@@ -92,6 +92,24 @@ namespace ZU.Game.Audio
             AudioKit.Play(id, rel == Rel.Self ? (Vector3?)null : U(a.pos), rel == Rel.Self ? 0.45f : 1, PlayOpts.Of(a, rel));
         }
 
+        /// <summary>the impact sound for a world material (level box materials: wall, trim, window, wood, roof, accent,
+        /// ground, rock, paint, glass); the hangar is a metal building, as its footsteps are</summary>
+        static string ImpactId(string mat, string map)
+        {
+            string id, fallback;
+            switch (mat)
+            {
+                case "wood": return "impact_wood";
+                case "window": case "glass": id = "impact_glass"; fallback = "impact_metal"; break;
+                case "trim": case "accent": return "impact_metal";
+                case "roof": id = "impact_tile"; fallback = "impact_stone"; break;
+                case "ground": id = "impact_dirt"; fallback = "impact_stone"; break;
+                default: return map == "hangar" ? "impact_metal" : "impact_stone";     // wall, rock, paint
+            }
+            if (map == "hangar" && mat == "roof") return "impact_metal";
+            return AudioKit.Has(id) ? id : fallback;
+        }
+
         /// <summary>a ragdoll hitting the floor (TS Game: view.onBodyFall)</summary>
         void BodyFall(Actor a, Vector3 at, float speed) => AudioKit.Play("bodyfall", at, Mathf.Min(1, 0.35f + speed / 10));
 
@@ -119,10 +137,10 @@ namespace ZU.Game.Audio
                 }
                 case FxEvent f when f.kind == "impact" && f.actor == null:
                 {
-                    // bullets and blades hitting the world sound like what they hit
-                    var m = f.mat;
-                    var id = m == "wood" ? "impact_wood" : m == "trim" || m == "glass" || m == "window" || m == "accent" ? "impact_metal" : "impact_stone";
-                    if (UnityEngine.Random.value < 0.6f) AudioKit.Play(id, U(f.pos), 0.8f);
+                    // bullets and blades hitting the world sound like what they hit (the building clash): glass panes,
+                    // roof tiles and bare ground have their own sounds now, each falling back to the old three until the
+                    // bank has it
+                    if (UnityEngine.Random.value < 0.6f) AudioKit.Play(ImpactId(f.mat, r.World.map.id), U(f.pos), 0.8f);
                     return;
                 }
                 case DmgEvent d when !d.heal:
@@ -212,6 +230,7 @@ namespace ZU.Game.Audio
             }
             // ---- loops
             AudioKit.Loop("amb", "amb_" + w.map.id, null, 0.85f);
+            AmbientEmitter.Drive(AudioKit.Listener);
             foreach (var a in w.actors)
             {
                 if (!a.alive || a.isRobot) continue;

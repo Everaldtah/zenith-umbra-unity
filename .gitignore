@@ -50,3 +50,6 @@ __pycache__/
 # per-worktree solution files the Editor writes (named after the folder)
 *.slnx
 !zenith-umbra-unity.slnx
+
+# audio captures (zu_audio_capture, Sound Lab)
+/Captures/
