@@ -249,7 +249,8 @@ namespace ZU.Game.FirstPerson
             if (newAttack && c.attackKind != "punch") swings++;
             dipV += (-dip * 120 - dipV * 14) * dt; dip += dipV * dt;
             // aiming down the arrow (Freja's Take Aim): the bow comes up and a little to the right, rolled more upright
-            aimK += ((style.grip == Grip.Bow && a.Sv("zoom", 0) > 0 ? 1 : 0) - aimK) * Mathf.Min(1, dt * 14);
+            // (the keyed archers carry their own aim pose: FirstPersonView.Archer.cs)
+            aimK += ((style.grip == Grip.Bow && !Archer && a.Sv("zoom", 0) > 0 ? 1 : 0) - aimK) * Mathf.Min(1, dt * 14);
             if (held != null) { held.gunAim = null; held.bowCant = 0; held.bowTilt = 0; held.orbit[0] = held.orbit[1] = null; held.gunHide[0] = held.gunHide[1] = false; }
             procFrame = false; clipFrame = false; procT = t; procNewAttack = newAttack;
             // Mirei's Stellar Rebirth: a procedural moment over her clips
@@ -339,6 +340,8 @@ namespace ZU.Game.FirstPerson
             if (procFrame) Proc(a, t, procNewAttack);
             else if (held != null) { if (held.prop != null) held.PlacePropAtRest(); held.Place(); }
             held?.UpdateState(a, t, true);
+            // the props' live details as the world view has them (Tenkai-Oh's thruster flame, Hayate's nodachi glow, Hibiki's woofer)
+            held?.UpdateDetails(a, t);
             if (fingers != null && Archer) { fingers.Set(0, arcGrips.L); fingers.Set(1, arcGrips.R); fingers.Update(dt, 22); }
             else fingers?.Drive(a, t, dt, true);
             watch.Stop();

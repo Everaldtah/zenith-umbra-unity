@@ -373,7 +373,8 @@ namespace ZU.Game.FirstPerson
                 dir = (shelf - nock).normalized;
                 var far = (ToM(new Vector3(0, 0, 20)) - shelf).normalized;
                 dir = Vector3.Slerp(dir, far, 0.35f).normalized;
-                if (Vector3.Distance(shelf, nock) > arrowLen * 0.98f) nock = shelf - dir * arrowLen * 0.98f;   // never drawn off the rest
+                float len = arrowLen * (held != null ? held.gunScale : 1);
+                if (Vector3.Distance(shelf, nock) > len * 0.98f) nock = shelf - dir * len * 0.98f;   // never drawn off the rest
             }
             else dir = carryView.normalized;
             var up = U - dir * Vector3.Dot(U, dir); if (up.sqrMagnitude < 1e-6f) up = Vector3.up;
