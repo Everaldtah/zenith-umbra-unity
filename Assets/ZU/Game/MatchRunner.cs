@@ -106,7 +106,7 @@ namespace ZU.Game
                 SyncViews();
                 return;
             }
-            acc += Time.deltaTime;
+            acc += ZU.Engine.Perf.FrameDt;          // the engine's vsync-quantized frame delta (x timeScale; Time.deltaTime with -zu-engine=0)
             int steps = 0;
             while (acc >= DT && steps < 16)
             {
