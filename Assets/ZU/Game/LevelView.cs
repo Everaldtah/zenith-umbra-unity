@@ -145,8 +145,18 @@ namespace ZU.Game
                     bins.xf = keep;
                 }
             }
+            // the rock boxes of Sunset Mile / Iron Gulch wear Tripo rock formations when the env set has them (the box stays the
+            // simulation's collider and the camera's; the formation is a touch larger so its edges hide the box's)
+            var rocks = TripoEnv.Rocks; int ri = 0;
+            Transform rockRoot = null;
             foreach (var b in map.boxes ?? new List<Box>())
             {
+                if (b.mat == "rock" && b.ramp == null && rocks.Count > 0)
+                {
+                    if (rockRoot == null) { rockRoot = new GameObject("Rocks").transform; rockRoot.SetParent(transform, false); }
+                    DressRock(rockRoot, b, rocks[ri % rocks.Count], ri); ri++;
+                    continue;
+                }
                 // (the perimeter walls of Kagura, Lantern, Starfall, Foundry and the Training Grounds are drawn, as in MapScene)
                 if (b.ramp != null) Ramp(solid[b.mat ?? "wall"], b);
                 else Boxed(solid[b.mat ?? "wall"], b, grime: true);
@@ -173,6 +183,17 @@ namespace ZU.Game
             // off, only the PC game's own harbour water and cloud sea are built
             OuterWorld.Build(map, transform, Mat, full: OuterWorld.Enabled);
             EnvKit.Apply(map, transform, OuterWorld.Enabled ? OuterWorld.Extent : 600f);
+        }
+
+        /// <summary>a Tripo rock fitted round a rock box (seeded turn), with a box collider for the camera's collision</summary>
+        static void DressRock(Transform parent, Box b, TripoEnv.Piece piece, int i)
+        {
+            float y0 = (float)(b.y ?? 0);
+            var center = Conv.U(b.x, y0 + b.h / 2, b.z);
+            var size = new Vector3((float)b.w, (float)b.h, (float)b.d);
+            TripoEnv.FitRock(piece, parent, center, size, (i * 7 + 3) % 4);
+            var col = new GameObject("rock collider"); col.transform.SetParent(parent, false); col.transform.localPosition = center;
+            col.AddComponent<BoxCollider>().size = size;
         }
 
         /// <summary>the 4 unmaterialled walls that fence the play space in (they stand on its edge)</summary>
