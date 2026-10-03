@@ -249,6 +249,11 @@ namespace ZU.Game.Audio
         /// <summary>a sound effect by id; pos null = in your head (UI, your own sounds)</summary>
         public static void Play(string id, Vector3? pos, float vol = 1, Rel rel = Rel.None, float rate = 1) => Play(id, pos, vol, new PlayOpts { rel = rel, rate = rate });
 
+        /// <summary>a first-person foley sound in your head, timed by the viewmodel's animation (FirstPersonView: nock,
+        /// quiver reach, aim in / out, "ready" ting...). The sim's own weapon sounds (the shot, the draw) still play as
+        /// they always do; these only add the detail between them. Silent until the bank has the id.</summary>
+        public static void PlayFp(string id, float vol = 1) => Play(id, null, vol, new PlayOpts { rel = Rel.Self, rate = 1 });
+
         /// <summary>a sound effect by id, mixed by who made it (TS Sfx.play -> playSample)</summary>
         public static void Play(string id, Vector3? pos, float vol, PlayOpts o)
         {
@@ -275,7 +280,7 @@ namespace ZU.Game.Audio
 
         // ------------------------------------------------------------------------------------------------ voice lines
         /// <summary>a playing voice line: stop() fades it out (TS playLine's handle)</summary>
-        public sealed class LineHandle { internal Voice v; internal AudioClip clip; public float dur; public void Stop() { if (v != null && v.src.clip == clip && v.src.isPlaying) FadeOut(v, 0.03f, 0.12f); } }
+        public sealed class LineHandle { internal Voice v; internal AudioClip clip; public float dur; public void Stop() { if (v != null && v.src != null && v.src.clip == clip && v.src.isPlaying) FadeOut(v, 0.03f, 0.12f); } }   // (src == null: destroyed with play mode)
 
         /// <summary>a voice line on the voice bus (the director decides who hears what): radio = a mech pilot over the cockpit
         /// comms; ult = an enemy ult warning, loud wherever it comes from; announcer = the announcer's bus</summary>
@@ -353,7 +358,7 @@ namespace ZU.Game.Audio
             if (L.loopKey == key) { L.targetGain = 0; FadeOut(L, 0.08f, 0.5f); L.loopKey = null; }
         }
         public static void StopAllLoops() { foreach (var k in new List<string>(loops.Keys)) StopLoop(k); }
-        public static void StopAll() { foreach (var v in pool) { v.src.Stop(); v.until = 0; v.loopKey = null; } loops.Clear(); }
+        public static void StopAll() { foreach (var v in pool) { if (v.src != null) v.src.Stop(); v.until = 0; v.loopKey = null; } loops.Clear(); }
 
         /// <summary>a readout of the mix for checks from the CLI: the ducks, what's playing per bus, each voice line's filter
         /// chain, the reverb zone, and the output level</summary>
