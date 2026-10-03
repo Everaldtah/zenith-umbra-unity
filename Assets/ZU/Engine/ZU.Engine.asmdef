@@ -1,23 +1,15 @@
 {
-  "name": "ZU.Game",
-  "rootNamespace": "ZU.Game",
+  "name": "ZU.Engine",
+  "rootNamespace": "ZU.Engine",
   "references": [
-    "ZU.Sim",
-    "ZU.Engine",
-    "ZU.Net",
-    "ZU.Net.Unity",
-    "ZU.Dynamics",
-    "Unity.InputSystem",
     "Unity.RenderPipelines.Universal.Runtime",
     "Unity.RenderPipelines.Core.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
-  "overrideReferences": true,
-  "precompiledReferences": [
-    "Newtonsoft.Json.dll"
-  ],
+  "overrideReferences": false,
+  "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [],
   "versionDefines": [],
