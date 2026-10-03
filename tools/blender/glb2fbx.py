@@ -1,6 +1,7 @@
 # Blender batch converter: GLB -> FBX for Unity's ModelImporter (Humanoid avatars + humanoid animation clips).
 #   blender -b --factory-startup -P glb2fbx.py -- <jobs.txt>
-# jobs.txt: one "<in.glb>|<out.fbx>|<mode>" per line; mode = model (mesh + rig, textures copied beside it)
+# jobs.txt: one "<in.glb>|<out.fbx>|<mode>" per line; mode = model (mesh + rig, textures copied beside it),
+#           prop (a map prop: like model, plus one mesh decimated to ~8k tris with _LOD0/_LOD1/_LOD2 levels)
 #           or anim (armature + every action as its own take, no meshes needed by Unity's clip import).
 import sys, os, bpy
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'export'))
@@ -68,6 +69,45 @@ def image_roles():
                         break
     return roles
 
+PROP_TRIS = 8000
+LOD_RATIOS = (0.40, 0.12)   # LOD1 / LOD2 of the LOD0 mesh (the engine's prop LOD convention, ZU.EditorTools.PropImport)
+
+def tri_count(o):
+    return sum(len(p.vertices) - 2 for p in o.data.polygons)
+
+def decimate(o, ratio):
+    m = o.modifiers.new('decimate', 'DECIMATE')
+    m.decimate_type = 'COLLAPSE'; m.ratio = max(0.001, min(1.0, ratio)); m.use_collapse_triangulate = True
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.modifier_apply(modifier=m.name)
+
+def make_lods(base):
+    """a map prop: one mesh decimated to ~PROP_TRIS as <base>_LOD0, plus <base>_LOD1 / _LOD2 copies at LOD_RATIOS of it -
+    one material on every level (Unity's importer reads the _LODn names; PropImport builds the LODGroup)"""
+    meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+    if not meshes:
+        return
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in meshes:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    if len(meshes) > 1:
+        bpy.ops.object.join()
+    lod0 = bpy.context.view_layer.objects.active
+    n = tri_count(lod0)
+    if n > PROP_TRIS:
+        decimate(lod0, PROP_TRIS / n)
+    lod0.name = lod0.data.name = f'{base}_LOD0'
+    counts = [tri_count(lod0)]
+    for i, k in enumerate(LOD_RATIOS, 1):
+        c = lod0.copy(); c.data = lod0.data.copy()
+        for col in lod0.users_collection:
+            col.objects.link(c)
+        decimate(c, k)
+        c.name = c.data.name = f'{base}_LOD{i}'
+        counts.append(tri_count(c))
+    print('  lods', base, 'from', n, 'tris ->', counts)
+
 def convert(src, dst, mode):
     reset()
     bpy.ops.import_scene.gltf(filepath=src, bone_heuristic='TEMPERANCE', guess_original_bind_pose=False)
@@ -86,7 +126,7 @@ def convert(src, dst, mode):
             a.animation_data.action = None
             for t in list(a.animation_data.nla_tracks):
                 a.animation_data.nla_tracks.remove(t)
-    if mode == 'model':
+    if mode in ('model', 'prop'):
         # unpack the GLB's embedded textures beside the FBX first, so the FBX references real files (ZU.Editor builds
         # the materials from them by name). Packed images are written as their original bytes (WebP in Tripo GLBs) whatever
         # the name says, so tools/blender/fix_textures.py re-encodes them as real PNGs afterwards
@@ -113,6 +153,8 @@ def convert(src, dst, mode):
                     img.save()
                 except Exception as e:
                     print('  texture', img.name, 'not saved:', e)
+    if mode == 'prop':
+        make_lods(os.path.splitext(os.path.basename(dst))[0])
     bpy.ops.export_scene.fbx(
         filepath=dst, use_selection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
         apply_unit_scale=True, apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y',
