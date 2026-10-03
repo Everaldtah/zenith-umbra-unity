@@ -289,8 +289,8 @@ namespace ZU.Game.Fx
 
         public static void Orient(Transform t, Vector3 a, Vector3 b, float w)
         {
-            var d = b - a; float l = Mathf.Max(0.01f, d.magnitude);
-            t.SetPositionAndRotation(a, Quaternion.LookRotation(d / l));
+            var d = b - a; float m = d.magnitude, l = Mathf.Max(0.01f, m);
+            t.SetPositionAndRotation(a, m > 1e-4f ? Quaternion.LookRotation(d / m) : t.rotation);   // (ends together: keep the turn)
             t.localScale = new Vector3(w, w, l);
         }
 

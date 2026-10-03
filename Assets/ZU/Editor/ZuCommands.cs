@@ -14,6 +14,16 @@ namespace ZU.EditorTools
     {
         const string MatchScene = "Assets/ZU/Scenes/Match.unity";
 
+        [CliCommand("zu_lazy_library", "Turn the hero library's prefab references lazy (a hero loads on first use, not with the library)")]
+        public static string LazyLibrary()
+        {
+            var lib = AssetDatabase.LoadAssetAtPath<ZU.Game.HeroLibrary>("Assets/ZU/Resources/ZUHeroLibrary.asset");
+            if (lib == null) return "no library";
+            int n = 0; foreach (var e in lib.heroes) if (e.MakeLazy()) n++;
+            EditorUtility.SetDirty(lib); AssetDatabase.SaveAssets();
+            return $"{n} of {lib.heroes.Count} entries made lazy";
+        }
+
         [CliCommand("zu_status", "ZENITH//UMBRA: game data, playable maps, heroes and the active scene")]
         public static string Status()
         {
