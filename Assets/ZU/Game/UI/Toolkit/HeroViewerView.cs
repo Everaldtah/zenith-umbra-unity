@@ -209,6 +209,7 @@ namespace ZU.Game.UI.Toolkit
             skinShown = skinId;
             var def = all[id];
             var a = actor = new Actor(def, def.team ?? "zenith") { isPlayer = true, grounded = true };
+            Looks.HeroSkin.Show(a, skinId);       // the previewed body recolour, not the equipped one (TS HeroViewer view.setSkin)
             var sk = SkinsFor(id).FirstOrDefault(s => s.id == skinId);
             Preview = (a, sk != null && !string.IsNullOrEmpty(sk.model) ? sk.model : null);
             view = ActorViews.Create(a, studio.transform);
