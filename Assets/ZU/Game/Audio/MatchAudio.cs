@@ -212,6 +212,7 @@ namespace ZU.Game.Audio
             }
             // ---- loops
             AudioKit.Loop("amb", "amb_" + w.map.id, null, 0.85f);
+            AmbientEmitter.Drive(AudioKit.Listener);
             foreach (var a in w.actors)
             {
                 if (!a.alive || a.isRobot) continue;

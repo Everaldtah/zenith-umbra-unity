@@ -1,0 +1,20 @@
+<!-- Headless tests of the engine-free audio DSP (Assets/ZU/Game/Audio/MasterChain.cs) with the .NET 8 SDK bundled in the
+     Unity editor: `powershell -File tools/audio/dsptest/run.ps1` builds and runs every case in Program.cs (exit 0 = pass);
+     `run.ps1 render <in.wav> <out.wav>` puts a WAV through the master chain (listen to what it does to a mix). -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ZU.DspTest</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <UseSharedCompilation>false</UseSharedCompilation>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Assets/ZU/Game/Audio/MasterChain.cs" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+</Project>

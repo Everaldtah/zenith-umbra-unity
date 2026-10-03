@@ -11,6 +11,11 @@
 //
 // Unity has no runtime mixer graph, so the buses and ducks are gains applied to each pooled AudioSource every frame
 // (AudioKitDriver), and the reverb sends are each source's reverbZoneMix into the listener's reverb zone (Space.cs).
+// The whole mix then goes through the master chain on the listener (MasterBus / MasterChain: glue compressor, true-peak
+// limiter at -1 dBTP, output meter) - the TS desktop edition's safeguards, so a dense fight can't clip into crackle.
+// Voice management keeps Unity's own voice limit out of play: the pool (VOICES) fits inside the project's real voice
+// count (ProjectSettings/AudioManager.asset m_RealVoiceCount), every source carries a priority by what it is (voice lines
+// and your own shots first, ambience last), and a busy pool never cuts a playing sound off mid-wave (a hard stop clicks).
 // No HRTF (Unity needs a spatializer plugin for it): 3D sources use Unity's panning.
 using System;
 using System.Collections.Generic;
@@ -41,7 +46,13 @@ namespace ZU.Game.Audio
         };
         /// <summary>simultaneous instances of one sound per category (the oldest fades out to make room)</summary>
         static readonly Dictionary<string, int> CAP = new Dictionary<string, int> { ["weapon"] = 5, ["impact"] = 4, ["step"] = 6, ["move"] = 3, ["ability"] = 4, ["feedback"] = 3, ["loop"] = 2, ["amb"] = 1, ["voice"] = 3 };
-        const int MAX_LIVE = 48, VOICES = 64;
+        const int MAX_LIVE = 44, VOICES = 72;
+        /// <summary>Unity source priority by category (0 = most important): what Unity would drop first if it ever ran out
+        /// of real voices - ambience and footsteps of friends before an enemy's shot or a voice line</summary>
+        static readonly Dictionary<string, int> PRIORITY = new Dictionary<string, int>
+        {
+            ["voice"] = 8, ["feedback"] = 16, ["weapon"] = 40, ["ability"] = 48, ["impact"] = 72, ["step"] = 80, ["move"] = 110, ["loop"] = 96, ["amb"] = 200,
+        };
 
         /// <summary>where the listener is (MatchAudio sets it each frame from the camera)</summary>
         public static Vector3 Listener;
@@ -72,6 +83,7 @@ namespace ZU.Game.Audio
             UnityEngine.Object.DontDestroyOnLoad(host);
             host.AddComponent<AudioKitDriver>();
             pool.Clear(); clips.Clear(); lines.Clear(); last.Clear(); throttle.Clear(); loops.Clear();
+            warm = 0; warmIds = null; listener = null; preset = null;
             for (int i = 0; i < VOICES; i++)
             {
                 var go = new GameObject("voice " + i); go.transform.SetParent(host.transform, false);
@@ -189,16 +201,26 @@ namespace ZU.Game.Audio
         }
         static void FadeOut(Voice v, float tc, float stopIn) { v.fadeTarget = 0; v.fadeTc = tc; v.stopAt = Time.unscaledTime + stopIn; }
 
-        static Voice Free()
+        /// <summary>a source to play on: an idle one; else one that already faded out; else (only for the important stuff -
+        /// voice lines, your own sounds) the quietest one-shot that's nearly done. Never an audible sound cut mid-wave
+        /// (a hard stop is a click): with the budget below the pool size this only matters in pathological bursts.</summary>
+        static Voice Free(bool important)
         {
-            Voice best = null;
-            foreach (var v in pool) { if (!v.src.isPlaying) return v; if (!v.loop && (best == null || v.until < best.until)) best = v; }
-            return best;   // steal the one-shot closest to finishing
+            Voice faded = null, steal = null;
+            float now = Time.unscaledTime;
+            foreach (var v in pool)
+            {
+                if (!v.src.isPlaying) return v;
+                if (v.loop) continue;
+                if (v.fade < 0.02f || now >= v.until) { faded = v; continue; }
+                if (important && (steal == null || v.gain * v.fade * (v.until - now) < steal.gain * steal.fade * (steal.until - now))) steal = v;
+            }
+            return faded ?? steal;
         }
 
         static Voice Start(AudioClip clip, Vector3? pos, float gain, float refDist, float pv, Rel rel, float rate, bool loop, Bus bus, float cutoff, float send, string id, string cat)
         {
-            var v = Free();
+            var v = Free(cat == "voice" || rel == Rel.Self || loop);
             if (v == null) return null;
             var s = v.src;
             s.Stop();
@@ -209,6 +231,10 @@ namespace ZU.Game.Audio
             s.minDistance = Mathf.Max(0.5f, refDist);
             s.pitch = rate * (1 + (UnityEngine.Random.value - 0.5f) * 2 * Mathf.Min(0.03f, pv));     // pitch spread kept small
             s.reverbZoneMix = Mathf.Clamp(send * 2, 0, 1.1f);
+            int pr = PRIORITY.TryGetValue(cat, out var pc) ? pc : 64;
+            if (rel == Rel.Self) pr = Mathf.Min(pr, 24);                 // your own sounds are never the ones dropped
+            else if (rel == Rel.Enemy && (cat == "step" || cat == "weapon")) pr -= 16;   // nor an enemy's steps or shots
+            s.priority = Mathf.Clamp(pr, 0, 256);
             v.lp.cutoffFrequency = v.cutoff = v.cutoffTarget = cutoff; v.lp.lowpassResonanceQ = 0.7f;
             v.hp.enabled = false; v.drive.enabled = false;
             v.id = id; v.cat = cat; v.bus = bus; v.loop = loop; v.loopKey = null;
@@ -286,8 +312,8 @@ namespace ZU.Game.Audio
         static readonly Dictionary<string, Voice> loops = new Dictionary<string, Voice>();
         static int frame;
         public static void BeginFrame() { Ensure(); frame++; }
-        /// <summary>keep a looping sound going this frame (call every frame it should play); loops not refreshed fade out
-        /// (EndFrame). Keys starting "amb" go on the ambience bus.</summary>
+        /// <summary>keep a looping sound going this frame (call every frame it should play, from anywhere in the frame);
+        /// loops not refreshed for a frame fade out (EndFrame). Keys starting "amb" go on the ambience bus.</summary>
         public static void Loop(string key, string id, Vector3? pos, float vol, PlayOpts o = default)
         {
             Ensure();
@@ -312,11 +338,12 @@ namespace ZU.Game.Audio
             if (o.rate > 0) L.src.pitch = Mathf.Lerp(L.src.pitch, o.rate, 0.2f);
             if (pos.HasValue && o.rel != Rel.Self) L.src.transform.position = pos.Value;
         }
-        /// <summary>fade out loops nobody refreshed this frame</summary>
+        /// <summary>fade out loops nobody refreshed this frame or the one before (a loop driven from another component -
+        /// AbilityFx, an AmbientEmitter - may refresh before BeginFrame or after EndFrame, depending on script order)</summary>
         public static void EndFrame()
         {
             List<string> gone = null;
-            foreach (var kv in loops) if (kv.Value.seen != frame) (gone ??= new List<string>()).Add(kv.Key);
+            foreach (var kv in loops) if (kv.Value.seen < frame - 1) (gone ??= new List<string>()).Add(kv.Key);
             if (gone != null) foreach (var k in gone) StopLoop(k);
         }
         public static void StopLoop(string key)
@@ -342,18 +369,45 @@ namespace ZU.Game.Audio
             foreach (var v in pool)
                 if (v.src.isPlaying && v.cat == "voice")
                     sb.Append($"[{v.src.clip?.name} vol {v.src.volume:0.00} 3d {v.src.spatialBlend:0} lp {v.lp.cutoffFrequency:0} hp {(v.hp.enabled ? v.hp.cutoffFrequency.ToString("0") : "off")} drive {(v.drive.enabled ? "on" : "off")}] ");
-            sb.Append(Space.Diag());
+            sb.Append(Space.Diag()).Append("; ");
+            sb.Append(MasterBus.Live != null ? MasterBus.Live.Chain.Readout() : "master: no bus");
             var buf = new float[1024]; AudioListener.GetOutputData(buf, 0);
             double sum = 0, peak = 0; foreach (var x in buf) { sum += x * x; peak = Math.Max(peak, Math.Abs(x)); }
             sb.Append($" out rms {Math.Sqrt(sum / buf.Length):0.000} peak {peak:0.000}");
             return sb.ToString();
         }
 
+        /// <summary>sources playing right now (the F8 overlay's "audio N voices")</summary>
+        public static int Voices { get { int k = 0; foreach (var v in pool) if (v.src != null && v.src.isPlaying) k++; return k; } }
+        /// <summary>how hard the master limiter is working right now, dB (0 = idle; the F8 overlay)</summary>
+        public static float LimiterDb => MasterBus.Live != null ? MasterBus.Live.Chain.ReductionDb : 0;
+
         // ------------------------------------------------------------------------------------------------ per frame
+        static AudioListener listener;
+        static string preset;
+        static int warm;
+        static List<string> warmIds;
         /// <summary>the buses, ducks, fades and loop gains applied to every voice (AudioKitDriver, every frame)</summary>
         internal static void Tick(float dt)
         {
             float now = Time.unscaledTime;
+            // the master chain rides on whichever listener is live (menu, match, captures)
+            if (listener == null || !listener.isActiveAndEnabled)
+            {
+                listener = UnityEngine.Object.FindAnyObjectByType<AudioListener>();
+                if (listener != null) MasterBus.On(listener);
+                preset = null;
+            }
+            var mix = Mix?.mix ?? "default";
+            if (mix != preset && MasterBus.Live != null) { preset = mix; MasterBus.Live.Chain.SetPreset(mix); }
+            // warm the sound bank a few ids a frame (a clip's first Resources.Load on the main thread mid-fight is a hitch,
+            // and a hitch starves the audio thread)
+            if (sfx != null && warmIds == null) { warmIds = new List<string>(); foreach (var kv in sfx) warmIds.Add(kv.Key); }
+            for (int i = 0; warmIds != null && warm < warmIds.Count && i < 6; i++, warm++)
+            {
+                var id = warmIds[warm]; var meta = sfx[id];
+                Clips("sfx:" + id, $"ZUAudio/sfx/{id}/", (int?)meta?["n"] ?? 0);
+            }
             // ducks: the world toward 1 - amount x k while a line plays, back to 1 after it
             float dk = now < duckUntil ? duckAmount : 0, kDown = 1 - Mathf.Exp(-dt / 0.04f), kUp = 1 - Mathf.Exp(-dt / 0.3f);
             float ws = 1 - dk * 0.35f, wa = 1 - dk;
