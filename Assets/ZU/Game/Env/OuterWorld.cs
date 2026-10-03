@@ -64,7 +64,7 @@ namespace ZU.Game.Env
             float HeightAt(float x, float z) => Height(th, X, Z, x, z);
 
             // (the PC game's own harbour water and cloud sea, MapScene.ts, stay when the rest of the outer world is off)
-            if (th.sea) Water(map, root, water, mat);
+            if (th.sea) Water(map, root, water, full);
             if (th.clouds) Clouds(map, root);
             if (!full) return;
             if (!th.clouds && !th.space) Terrain(map, th, root, mat, HeightAt, X, Z);
@@ -266,78 +266,40 @@ namespace ZU.Game.Env
         }
 
         // ------------------------------------------------------------------------------------------------ water / clouds
-        static void Water(MapDef map, Transform root, float level, System.Func<string, Material> mat)
+        /// <summary>the PC game's harbour water (MapScene.ts): ZU/Harbour - the painted, rolling sea, its roll tinted by the
+        /// map's colour - on a 700 m plane at the map's water level; with the full outer world it reaches the world's edge</summary>
+        static void Water(MapDef map, Transform root, float level, bool full)
         {
             if (float.IsNaN(level)) level = -0.7f;
-            // the TS harbour palette (deep #1d3f73, shallow #3f86b8), pulled toward the map's fog so the sea sits in its light
-            var fog = map.fog != null && map.fog.Length == 3 ? Conv.Hex(map.fog[0] as string, Color.gray) : Color.gray;
-            var wm = new Material(mat("water")) { name = "zu_sea" };
-            if (wm.HasProperty("_DeepColor")) wm.SetColor("_DeepColor", Color.Lerp(Conv.Hex("#1d3f73"), fog, 0.35f));
-            if (wm.HasProperty("_ShallowColor")) wm.SetColor("_ShallowColor", Color.Lerp(Conv.Hex("#3f86b8"), fog, 0.25f));
-            if (!wm.HasProperty("_DeepColor")) wm.SetColor("_BaseColor", Color.Lerp(Conv.Hex("#1d3f73"), fog, 0.35f));
-            var go = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            go.name = "Sea"; go.transform.SetParent(root, false);
-            Object.Destroy(go.GetComponent<Collider>());
-            go.transform.localPosition = new Vector3(0, level, 0);
-            go.transform.localScale = new Vector3(Extent * 0.2f, 1, Extent * 0.2f);
-            var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = wm; r.shadowCastingMode = ShadowCastingMode.Off;
+            var src = Resources.Load<Material>("ZUEnv/zu_harbour");
+            if (src == null) { Debug.LogWarning("[ZU] ZUEnv/zu_harbour missing"); return; }
+            var m = new Material(src) { name = "zu_sea" };
+            m.SetColor("_Glow", Conv.Hex(map.tint, new Color(1f, 0.6f, 0.24f)));
+            Sheet("Sea", root, level, full ? Extent * 2 : 700, m);
         }
 
+        /// <summary>the PC game's cloud sea under the floating maps (MapScene.ts): ZU/CloudSea - drifting cloud between the
+        /// fog colour and white (violet on the Rift), fading out by 450 m - on a 900 m plane at y -22</summary>
         static void Clouds(MapDef map, Transform root)
         {
-            var fog = map.fog != null && map.fog.Length == 3 ? Conv.Hex(map.fog[0] as string, Color.white) : Color.white;
-            var tex = CloudTexture();
-            float[] ys = { -22, -34, -52 }; float[] alpha = { 0.92f, 0.75f, 0.6f };
-            for (int i = 0; i < ys.Length; i++)
-            {
-                var go = GameObject.CreatePrimitive(PrimitiveType.Plane);
-                go.name = "Cloud sea " + i; go.transform.SetParent(root, false);
-                Object.Destroy(go.GetComponent<Collider>());
-                go.transform.localPosition = new Vector3(0, ys[i], 0);
-                go.transform.localScale = new Vector3(Extent * 0.2f, 1, Extent * 0.2f);
-                var m = Unlit(tex, Color.Lerp(Color.white, fog, 0.35f + i * 0.2f), alpha[i]);
-                m.SetTextureScale("_BaseMap", new Vector2(6 + i * 2, 6 + i * 2));
-                var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = m; r.shadowCastingMode = ShadowCastingMode.Off;
-                go.AddComponent<Scroll>().speed = new Vector2(0.004f + i * 0.002f, 0.0025f - i * 0.001f);
-            }
+            var src = Resources.Load<Material>("ZUEnv/zu_cloudsea");
+            if (src == null) { Debug.LogWarning("[ZU] ZUEnv/zu_cloudsea missing"); return; }
+            var m = new Material(src) { name = "zu_clouds" };
+            m.SetColor("_C1", map.fog != null && map.fog.Length == 3 ? Conv.Hex(map.fog[0] as string, Color.white) : Color.white);
+            m.SetColor("_C2", map.id == "rift" ? Conv.Hex("#3a1a66") : Color.white);
+            Sheet("Cloud sea", root, -22, 900, m);
         }
 
-        static Material Unlit(Texture tex, Color c, float a)
+        /// <summary>a flat, square, unshadowed sheet `size` m across at height y, centred on the map</summary>
+        static void Sheet(string name, Transform root, float y, float size, Material m)
         {
-            var m = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { name = "zu_clouds" };
-            m.SetTexture("_BaseMap", tex); m.SetColor("_BaseColor", new Color(c.r, c.g, c.b, a));
-            m.SetFloat("_Surface", 1); m.SetFloat("_Blend", 0);
-            m.SetOverrideTag("RenderType", "Transparent");
-            m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            m.SetFloat("_ZWrite", 0); m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            m.renderQueue = (int)RenderQueue.Transparent;
-            return m;
-        }
-
-        static Texture2D clouds;
-        static Texture2D CloudTexture()
-        {
-            if (clouds != null) return clouds;
-            int n = 512; clouds = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "zu_clouds", wrapMode = TextureWrapMode.Repeat };
-            var px = new Color32[n * n];
-            for (int j = 0; j < n; j++)
-                for (int i = 0; i < n; i++)
-                {
-                    float u = (float)i / n, v = (float)j / n, s = 0, a = 0.5f; int f = 3;
-                    for (int o = 0; o < 6; o++) { s += a * TilePerlin(u, v, f, o + 3); a *= 0.5f; f *= 2; }
-                    float cov = Mathf.SmoothStep(0.38f, 0.72f, s);
-                    float shade = Mathf.Lerp(0.78f, 1f, Mathf.SmoothStep(0.45f, 0.85f, s));
-                    px[j * n + i] = new Color(shade, shade, shade * 1.02f, cov);
-                }
-            clouds.SetPixels32(px); clouds.Apply(true);
-            return clouds;
-        }
-
-        sealed class Scroll : MonoBehaviour
-        {
-            public Vector2 speed; Material m; Vector2 off;
-            void Start() { m = GetComponent<MeshRenderer>().material; }
-            void Update() { off += speed * Time.deltaTime; m.SetTextureOffset("_BaseMap", off); }
+            var go = GameObject.CreatePrimitive(PrimitiveType.Plane);   // 10 m square
+            go.name = name; go.transform.SetParent(root, false);
+            Object.Destroy(go.GetComponent<Collider>());
+            go.transform.localPosition = new Vector3(0, y, 0);
+            go.transform.localScale = new Vector3(size / 10, 1, size / 10);
+            var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = m;
+            r.shadowCastingMode = ShadowCastingMode.Off; r.receiveShadows = false;
         }
 
         // ------------------------------------------------------------------------------------------------ skyline
