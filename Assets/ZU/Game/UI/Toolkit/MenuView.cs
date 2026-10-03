@@ -58,8 +58,11 @@ namespace ZU.Game.UI.Toolkit
             else if (to.StartsWith("viewer:")) m.Viewer(to.Substring(7));
             else if (to == "online" || to == "online-queue") OnlineView.Return(m, to);
             else m.Title();
+            // started from a Zenith.net launcher party: once per run, straight to Starfall co-op online (TS Menu.partyCoop)
+            if (!partyStarted && ZU.Net.Zenith.Party != null) { partyStarted = true; m.Campaign(); OnlineView.PartyCoop(m, cHero, cLevel, m.Campaign); }
             return m;
         }
+        static bool partyStarted;
 
         /// <summary>hero select over a running Training Grounds match: SWITCH picks, BACK returns to the pause</summary>
         public static MenuView OpenSwap(VisualElement parent, Action<string> pick, Action back)

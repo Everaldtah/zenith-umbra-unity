@@ -95,6 +95,8 @@ namespace ZU.Game.UI.Toolkit
             public bool outerWorld = false;
             /// <summary>Unity extra: a far-only depth of field past the play space (the PC game has none)</summary>
             public bool farDof = false;
+            /// <summary>Unity extra: Tripo grass / rock beds on the floors (GroundDressing): off | low | high</summary>
+            public string groundDetail = "high";
         }
         public sealed class SoundSettings
         {

@@ -5,6 +5,7 @@
 // game's MapScene.ts is the reference (docs/map-parity.md). Colliders exist for the camera only; the simulation's level
 // is the authority.
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using ZU.Game.Env;
 using ZU.Sim;
@@ -149,8 +150,14 @@ namespace ZU.Game
             // simulation's collider and the camera's; the formation is a touch larger so its edges hide the box's)
             var rocks = TripoEnv.Rocks; int ri = 0;
             Transform rockRoot = null;
-            foreach (var b in map.boxes ?? new List<Box>())
+            // box-built buildings wearing Tripo shells: their boxes and decor stop being drawn (each box keeps a collider for
+            // the camera; the simulation never sees any of this)
+            var (shellBoxes, shellDecor) = Shells();
+            var boxes = map.boxes ?? new List<Box>();
+            for (int i = 0; i < boxes.Count; i++)
             {
+                var b = boxes[i];
+                if (shellBoxes.Contains(i)) { Collider(shellBoxes.Root, b); continue; }
                 if (b.mat == "rock" && b.ramp == null && rocks.Count > 0)
                 {
                     if (rockRoot == null) { rockRoot = new GameObject("Rocks").transform; rockRoot.SetParent(transform, false); }
@@ -161,8 +168,11 @@ namespace ZU.Game
                 if (b.ramp != null) Ramp(solid[b.mat ?? "wall"], b);
                 else Boxed(solid[b.mat ?? "wall"], b, grime: true);
             }
-            foreach (var b in map.decor ?? new List<Box>())
+            var decor = map.decor ?? new List<Box>();
+            for (int i = 0; i < decor.Count; i++)
             {
+                var b = decor[i];
+                if (shellDecor.Contains(i)) continue;
                 if (b.ramp != null) Ramp(deco[b.mat ?? "trim"], b);
                 else Boxed(deco[b.mat ?? "trim"], b, grime: false);
             }
@@ -175,6 +185,7 @@ namespace ZU.Game
 
             var props = new GameObject("Props").transform; props.SetParent(transform, false);
             foreach (var p in map.props ?? new List<Prop>()) Prop(p, props);
+            GroundDressing.Build(map, transform);
             TintLight();
             MapObjects.Build(map, transform, level, Mat);
             AmbientParticles.Build(map, transform);
@@ -183,6 +194,50 @@ namespace ZU.Game
             // off, only the PC game's own harbour water and cloud sea are built
             OuterWorld.Build(map, transform, Mat, full: OuterWorld.Enabled);
             EnvKit.Apply(map, transform, OuterWorld.Enabled ? OuterWorld.Extent : 600f);
+        }
+
+        /// <summary>the box / decor indices hidden under shells, and the "Buildings" root the shells and their colliders sit in</summary>
+        sealed class Hidden : HashSet<int> { public Transform Root; }
+
+        /// <summary>the map's Tripo building shells (TripoEnv.Shells): each fitted to its cluster's bounds; returns what they
+        /// cover. Nothing when the map has none (the boxes draw as before).</summary>
+        (Hidden boxes, Hidden decor) Shells()
+        {
+            var hb = new Hidden(); var hd = new Hidden();
+            var list = TripoEnv.Shells(map.id);
+            if (list.Count == 0) return (hb, hd);
+            var root = new GameObject("Buildings").transform; root.SetParent(transform, false);
+            hb.Root = hd.Root = root;
+            int nb = map.boxes?.Count ?? 0, nd = map.decor?.Count ?? 0;
+            foreach (var s in list)
+            {
+                // a shell whose indices don't fit this map's data (stale manifest) is skipped whole: half a building is worse
+                if ((s.boxes != null && s.boxes.Any(i => i < 0 || i >= nb)) || (s.decor != null && s.decor.Any(i => i < 0 || i >= nd))) continue;
+                if (s.pos?.Length == 3 && s.s > 0)
+                {
+                    var go = Instantiate(s.prefab, root, false); go.name = s.id;
+                    go.transform.localPosition = new Vector3((float)s.pos[0], (float)s.pos[1], (float)s.pos[2]);
+                    go.transform.localScale = Vector3.one * (float)s.s;
+                }
+                else
+                {
+                    var size = new Vector3((float)s.size[0], (float)s.size[1], (float)s.size[2]);
+                    var center = Conv.U(s.c[0], s.c[1] + s.size[1] / 2, s.c[2]);
+                    TripoEnv.Fit(s.prefab, TripoEnv.Unit(s), s.id, root, center, size, s.turns, (float)s.grow);
+                }
+                if (s.boxes != null) foreach (var i in s.boxes) hb.Add(i);
+                if (s.decor != null) foreach (var i in s.decor) hd.Add(i);
+            }
+            return (hb, hd);
+        }
+
+        /// <summary>a hidden box's stand-in for the camera's collision (MatchCamera sphere-casts the level's colliders)</summary>
+        static void Collider(Transform parent, Box b)
+        {
+            float y0 = (float)(b.y ?? 0);
+            var col = new GameObject("box collider"); col.transform.SetParent(parent, false);
+            col.transform.localPosition = Conv.U(b.x, y0 + b.h / 2, b.z);
+            col.AddComponent<BoxCollider>().size = new Vector3((float)b.w, (float)b.h, (float)b.d);
         }
 
         /// <summary>a Tripo rock fitted round a rock box (seeded turn), with a box collider for the camera's collision</summary>
