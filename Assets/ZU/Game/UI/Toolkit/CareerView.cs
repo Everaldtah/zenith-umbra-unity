@@ -59,7 +59,7 @@ namespace ZU.Game.UI.Toolkit
             Grad.Set(medal, Grad.Radial(35, 30, (Grad.C("#3a4a7a"), 0), (Grad.C("#141a30"), 100)));
             U.Txt(CareerProfile.PlayerLevel(p).ToString(), "md-b", medal); U.Txt("LEVEL", "md-s", medal);
             var who = U.Div("who", head);
-            U.Txt(PlayerPrefs.GetString("zu-name", "Vanguard"), "who-h2", who);
+            U.Txt(OnlineView.PlayerName, "who-h2", who);
             U.Txt($"{CareerProfile.FmtHours(all.time)} played · {CareerProfile.Plural(all.wins, "game")} won · {CareerProfile.Plural(CareerProfile.HeroesPlayed(p, "all").Count, "hero", "heroes")}", "who-s", who);
             var chips = U.Div("chips", head);
             foreach (var r in new[] { "tank", "damage", "support" })
