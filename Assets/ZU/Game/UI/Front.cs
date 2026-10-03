@@ -72,7 +72,7 @@ namespace ZU.Game.UI
         {
             var me = r.Player; var w = r.World;
             // (an online match moves the online ranks, on its own result screen - OnlineView.Results)
-            if (me == null || ZU.Net.NetMatch.Current != null || (r.mode != "competitive" && r.mode != "quickplay")) return;
+            if (me == null || ZU.Net.NetMatch.Current != null || Toolkit.UiTour.Active || (r.mode != "competitive" && r.mode != "quickplay")) return;
             string us = me.team, them = us == "zenith" ? "umbra" : "zenith";
             bool won = w.winner == us;
             string score = w.rules == "push" ? $"{System.Math.Round(w.push.best[us])}m - {System.Math.Round(w.push.best[them])}m" : $"{w.control.wins[us]} - {w.control.wins[them]}";

@@ -41,9 +41,14 @@ namespace ZU.Game.UI.Toolkit
         float fMin, fMax = 1.8f, fRad = 0.5f, fitAge;
         string skinShown;
 
+        /// <summary>the viewer on screen (the UI tour closes it)</summary>
+        public static HeroViewerView Current { get; private set; }
+        public void CloseToTitle() => Close();
+
         HeroViewerView(VisualElement parent, Action onClose)
         {
             this.onClose = onClose;
+            Current = this;
             roster = MenuState.Roster(d);
             extra = Extras();
             foreach (var h in roster.Concat(extra)) all[h.id] = h;
@@ -414,7 +419,7 @@ namespace ZU.Game.UI.Toolkit
             a.charging = false; a.beamOn = false;
         }
 
-        void Close() { Dispose(); onClose?.Invoke(); }
+        void Close() { Dispose(); if (Current == this) Current = null; onClose?.Invoke(); }
 
         /// <summary>tear down without going back to the menu (the Ult Viewer takes over the screen)</summary>
         void Dispose()

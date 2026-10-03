@@ -39,6 +39,7 @@ namespace ZU.Game.UI.Toolkit
         OptionsView(VisualElement parent, Action back)
         {
             this.back = back;
+            Current = this;
             tab = lastTab;
             el = U.Div("opts", parent, pick: true);
             Grad.Fill(Grad.Radial(20, 0, (Grad.C("#1b2140"), 0), (Grad.C("#080a12"), 65)), el);
@@ -47,7 +48,10 @@ namespace ZU.Game.UI.Toolkit
 
         public static OptionsView Open(VisualElement parent, Action back) => new OptionsView(parent, back);
 
-        public void Close() { listening = null; el.RemoveFromHierarchy(); }
+        public void Close() { listening = null; el.RemoveFromHierarchy(); if (Current == this) Current = null; }
+        /// <summary>the Options screen on screen (the UI tour switches its tabs)</summary>
+        public static OptionsView Current { get; private set; }
+        public void SetTab(string t) { tab = t; listening = null; Render(); }
 
         /// <summary>every frame while open: a key being rebound takes the next key / button / wheel notch; Esc goes back</summary>
         public void Update()

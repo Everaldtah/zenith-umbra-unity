@@ -21,6 +21,12 @@ namespace ZU.Game.UI.Toolkit
         public static readonly Dictionary<string, string> FIXED_VIEW = new Dictionary<string, string> { ["skirmish"] = "first", ["stadium"] = "third", ["quickplay"] = "first", ["competitive"] = "first", ["practice"] = "first" };
 
         static MenuView current;
+        /// <summary>the menu on screen (the UI tour drives it)</summary>
+        public static MenuView Current => current;
+        /// <summary>the mode the next hero select / launch is for (TS Menu.mode)</summary>
+        public string ModeName { get => mode; set => mode = value; }
+        public void OpenCareer() => Career_();
+        public void OpenSettings() => Settings(Title);
         readonly VisualElement root;
         readonly GameData d;
         readonly List<HeroDef> heroes;
