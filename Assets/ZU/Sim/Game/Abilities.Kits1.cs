@@ -340,11 +340,27 @@ namespace ZU.Sim
             w.Fx("sunhop", a.pos, new FxOpts { color = "#ffd27a" }); w.Sfx("sunhop", a.pos, a);
             return true;
         }
+        // UNITY DIVERGENCE (the user's rework of 2026-10-03; the web game keeps the TS 3 s rain of 40 arrows): five giant
+        // sword-like arrows of sunlight land in a ring round the aim point, one by one (100 each within SUNS_LAND_R of where it
+        // lands), then shatter into a swarm of a thousand small arrows that hunts every enemy within SUNS_REACH of the ring for
+        // SUNS_SECS (12 every 0.5 s: 360 in all). The sim keeps one zone ("sunswarm") and a per-tick hit on each enemy in reach
+        // - no arrow entities; AbilityFx/SunSwarm draws the arrows from the zone's timeline, so a client sees the same from the
+        // replicated zone (its id places the ring). Ult charge 2400 (Data/UnityDivergence).
+        public const double SUNS_RING = 7, SUNS_REACH = 30, SUNS_SECS = 15, SUNS_LAND_AT = 0.5, SUNS_LAND_STEP = 0.15, SUNS_SPLIT = 1.4,
+            SUNS_TICK = 0.5, SUNS_DMG = 12, SUNS_LAND_DMG = 100, SUNS_LAND_R = 3;
+        public const int SUNS_N = 5;
+        /// <summary>where the zone's i-th giant arrow lands (sim space, on the ground under the ring)</summary>
+        public static V3 SunsLanding(World w, Zone z, int i)
+        {
+            double th = z.id * 2.399963 + i * Math.PI * 2 / SUNS_N, x = z.x + Math.Cos(th) * SUNS_RING, zz = z.z + Math.Sin(th) * SUNS_RING;
+            double g = w.level.GroundAt(x, zz, z.y + 4);
+            return new V3(x, double.IsInfinity(g) || double.IsNaN(g) || Math.Abs(g - z.y) > 8 ? z.y : g, zz);
+        }
         static bool Hundredsuns(World w, Actor a)
         {
             var p = w.GroundPoint(a, 50);
-            MakeZone(w, a, "arrows", p, 8, 3, new Dictionary<string, object> { ["left"] = 40.0 });
-            w.Fx("arrowsmark", p, new FxOpts { r = 8, color = "#ffd27a", dur = 3 }); w.Sfx("ultcall", a.Center, a); w.Sfx("arrowrain", p, a);
+            MakeZone(w, a, "sunswarm", p, SUNS_REACH, SUNS_SPLIT + SUNS_SECS, new Dictionary<string, object> { ["landed"] = 0.0, ["ticks"] = 0.0 });
+            w.Sfx("ultcall", a.Center, a);
             return true;
         }
         // ================================================================ Gorgoth

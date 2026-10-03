@@ -40,6 +40,7 @@ namespace ZU.Sim.Data
             d.Enemy = d.Enemies.ToDictionary(x => x.id);
             d.Boss = d.Bosses.ToDictionary(x => x.id);
             d.Map = d.Maps.ToDictionary(x => x.id);
+            UnityDivergence.Apply(d);
             Current = d;
             return d;
         }

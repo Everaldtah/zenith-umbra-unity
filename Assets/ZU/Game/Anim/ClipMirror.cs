@@ -3,6 +3,7 @@
 // muscle pair, negates the central side-to-side muscles (spine, chest, neck, head and jaw "Left-Right" / "Twist"), and
 // reflects the body: position x -> -x, rotation (x, y, z, w) -> (x, -y, -z, w). The library uses it to fill the strafe
 // directions a gait has only one side of.
+using Unity.Burst;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -10,6 +11,7 @@ using UnityEngine.Playables;
 
 namespace ZU.Game.Anim
 {
+    [BurstCompile]
     public struct ClipMirrorJob : IAnimationJob
     {
         public NativeArray<MuscleHandle> muscles;

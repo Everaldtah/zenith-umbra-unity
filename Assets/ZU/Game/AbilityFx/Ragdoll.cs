@@ -157,11 +157,12 @@ namespace ZU.Game.Fx
         float still;
         readonly float[] floor;
 
-        /// <summary>advance the simulation and pose the skeleton (posed every frame, asleep or not: the Animator still runs)</summary>
-        public void Step(float dt)
+        /// <summary>advance the simulation and pose the skeleton. A sleeping body keeps its pose for free - unless something
+        /// else writes the bones every frame (`reposeAsleep`: a Mecanim controller still running), then it's re-posed</summary>
+        public void Step(float dt, bool reposeAsleep = true)
         {
             if (!asleep) Simulate(dt);
-            Pose();
+            if (!asleep || reposeAsleep) Pose();
         }
 
         void Simulate(float dt)

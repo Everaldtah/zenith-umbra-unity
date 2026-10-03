@@ -511,7 +511,7 @@ namespace ZU.Sim
                         var kage = foes.FirstOrDefault(x => x.def.id == "kagemaru" && x.Has("stealth", t) && allies.Any(al => World.Dist3(al.pos, x.pos) < 10));
                         if (kage != null && Rdy("reveal")) { CastAt("a2", kage.Center); break; }
                         if (Rdy("sunhop") && tg != null && d < 7) { CastAt("a1"); break; }
-                        if (ultReady && tg != null && Near(tg.pos, 8, foes).Count >= 2) { CastAt("ult", tg.pos); break; }
+                        if (ultReady && tg != null && Near(tg.pos, 15, foes).Count >= 2) { CastAt("ult", tg.pos); break; }     // (the Unity swarm reaches 30 m: see Hundredsuns)
                         break;
                     }
                 case "gorgoth":
