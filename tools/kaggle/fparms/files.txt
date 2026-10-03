@@ -1,0 +1,3 @@
+# repo files the fparms stage runs (tools/kaggle/kaggle_run.py ships them to /kaggle/working/zu/<path>)
+tools/fpfit/fp_arm_fit.py
+tools/blender/fp_arm_bind.py

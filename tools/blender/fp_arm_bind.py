@@ -120,7 +120,22 @@ def bind(mesh, rig):
     return weighted
 
 
+def save_textures(tex_dir):
+    """the GLB's packed images written out as PNG beside the FBX (the exporter copies files, not packed data)"""
+    os.makedirs(tex_dir, exist_ok=True)
+    for img in bpy.data.images:
+        if img.type != "IMAGE" or not img.has_data and not img.packed_file:
+            continue
+        name = "".join(c if c.isalnum() or c in "-_" else "_" for c in os.path.splitext(img.name)[0]) + ".png"
+        img.filepath_raw = os.path.join(tex_dir, name); img.file_format = "PNG"
+        try:
+            img.save()
+        except Exception as e:
+            print("texture not saved", img.name, e)
+
+
 def export(rig, mesh, path):
+    save_textures(os.path.join(os.path.dirname(path), os.path.splitext(os.path.basename(path))[0] + "_tex"))
     bpy.ops.object.select_all(action="DESELECT")
     rig.select_set(True); mesh.select_set(True); bpy.context.view_layer.objects.active = rig
     os.makedirs(os.path.dirname(path), exist_ok=True)
