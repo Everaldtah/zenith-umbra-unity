@@ -1,9 +1,10 @@
 # Blender batch converter: GLB -> FBX for Unity's ModelImporter (Humanoid avatars + humanoid animation clips).
 #   blender -b --factory-startup -P glb2fbx.py -- <jobs.txt>
 # jobs.txt: one "<in.glb>|<out.fbx>|<mode>" per line; mode = model (mesh + rig, textures copied beside it),
-#           prop (a map prop: like model, plus one mesh decimated to ~8k tris with _LOD0/_LOD1/_LOD2 levels)
+#           prop (a map prop: like model, plus one mesh decimated to ~8k tris with _LOD0/_LOD1/_LOD2 levels;
+#           prop:<tris> sets the LOD0 budget, e.g. prop:20000 for a building, prop:200 for an instanced arrow)
 #           or anim (armature + every action as its own take, no meshes needed by Unity's clip import).
-import sys, os, bpy
+import sys, os, json, bpy
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'export'))
 from gltf_factors import write_factors   # the glTF material factors the FBX loses
 from mathutils import Vector
@@ -75,15 +76,43 @@ LOD_RATIOS = (0.40, 0.12)   # LOD1 / LOD2 of the LOD0 mesh (the engine's prop LO
 def tri_count(o):
     return sum(len(p.vertices) - 2 for p in o.data.polygons)
 
+def weld(o):
+    """Tripo / glTF meshes come split at every UV seam (UVs stay per loop when welded) and carry loose specks; both stall
+    the collapse decimator far above the budget (8k asked -> 10-15k, LOD1 = LOD2). Weld the seams and drop islands under
+    0.1 % of the faces - the web pipeline's assetgen/blender/decimate_prop.py, with a smaller island cut so thin real parts
+    (windpump blades, lamp chains) survive"""
+    import bmesh
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=2e-4)
+    bm.faces.ensure_lookup_table()
+    seen, small, cut = set(), [], 0.001 * len(bm.faces)
+    for f in bm.faces:
+        if f.index in seen:
+            continue
+        stack, isl = [f], []
+        seen.add(f.index)
+        while stack:
+            x = stack.pop(); isl.append(x)
+            for e in x.edges:
+                for y in e.link_faces:
+                    if y.index not in seen:
+                        seen.add(y.index); stack.append(y)
+        if len(isl) < cut:
+            small.extend(isl)
+    bmesh.ops.delete(bm, geom=small, context='FACES')
+    bm.to_mesh(o.data); bm.free()
+    return len(small)
+
 def decimate(o, ratio):
     m = o.modifiers.new('decimate', 'DECIMATE')
     m.decimate_type = 'COLLAPSE'; m.ratio = max(0.001, min(1.0, ratio)); m.use_collapse_triangulate = True
     bpy.context.view_layer.objects.active = o
     bpy.ops.object.modifier_apply(modifier=m.name)
 
-def make_lods(base):
-    """a map prop: one mesh decimated to ~PROP_TRIS as <base>_LOD0, plus <base>_LOD1 / _LOD2 copies at LOD_RATIOS of it -
-    one material on every level (Unity's importer reads the _LODn names; PropImport builds the LODGroup)"""
+def make_lods(base, budget=PROP_TRIS):
+    """a map prop: one mesh decimated to ~budget tris as <base>_LOD0, plus <base>_LOD1 / _LOD2 copies at LOD_RATIOS of it -
+    one material on every level (Unity's importer reads the _LODn names; PropImport builds the LODGroup). Prints a
+    `LODS {json}` line (tools/kaggle/blender collects them into its manifest)"""
     meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     if not meshes:
         return
@@ -94,9 +123,10 @@ def make_lods(base):
     if len(meshes) > 1:
         bpy.ops.object.join()
     lod0 = bpy.context.view_layer.objects.active
+    specks = weld(lod0)
     n = tri_count(lod0)
-    if n > PROP_TRIS:
-        decimate(lod0, PROP_TRIS / n)
+    if n > budget:
+        decimate(lod0, budget / n)
     lod0.name = lod0.data.name = f'{base}_LOD0'
     counts = [tri_count(lod0)]
     for i, k in enumerate(LOD_RATIOS, 1):
@@ -107,8 +137,10 @@ def make_lods(base):
         c.name = c.data.name = f'{base}_LOD{i}'
         counts.append(tri_count(c))
     print('  lods', base, 'from', n, 'tris ->', counts)
+    print('LODS ' + json.dumps({'id': base, 'src_tris': n, 'tris': counts, 'specks_removed': specks}))
 
 def convert(src, dst, mode):
+    mode, _, budget = mode.partition(':')
     reset()
     bpy.ops.import_scene.gltf(filepath=src, bone_heuristic='TEMPERANCE', guess_original_bind_pose=False)
     os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -154,7 +186,7 @@ def convert(src, dst, mode):
                 except Exception as e:
                     print('  texture', img.name, 'not saved:', e)
     if mode == 'prop':
-        make_lods(os.path.splitext(os.path.basename(dst))[0])
+        make_lods(os.path.splitext(os.path.basename(dst))[0], int(budget) if budget else PROP_TRIS)
     bpy.ops.export_scene.fbx(
         filepath=dst, use_selection=False, object_types={'ARMATURE', 'MESH', 'EMPTY'},
         apply_unit_scale=True, apply_scale_options='FBX_SCALE_UNITS', axis_forward='-Z', axis_up='Y',

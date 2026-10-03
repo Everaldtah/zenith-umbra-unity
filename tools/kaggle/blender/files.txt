@@ -1,0 +1,4 @@
+# repo files the blender stage runs (kaggle_run.py ships them to /kaggle/working/zu/<path>)
+tools/blender/glb2fbx.py
+tools/blender/fix_textures.py
+tools/export/gltf_factors.py
