@@ -91,6 +91,7 @@ namespace ZU.Sim.Data
         public List<Prop> props;
         public List<Pad> pads;
         public List<Pack> packs;
+        public List<Pack> ultPacks;           // ultimate charge packs: touch one and your ultimate is ready (Training Grounds, desktop edition)
         public Dictionary<string, double[]> spawns;   // zenith / umbra -> [x, z]
         public double[] point;                // capture point x, y, z
         public Sun sun;

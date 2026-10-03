@@ -29,14 +29,14 @@ namespace ZU.Game.UI.Toolkit
             new ActionDef { id = "swoop", label = "Starwing Swoop (Mirei)", group = "HERO", hero = "mirei" },
             new ActionDef { id = "grind", label = "Mag-Grind: hold to wall-ride & climb (Hibiki)", group = "HERO", hero = "hibiki" },
             new ActionDef { id = "view", label = "Toggle First / Third Person", group = "INTERFACE" }, new ActionDef { id = "score", label = "Scoreboard / Stats", group = "INTERFACE" },
-            new ActionDef { id = "swap", label = "Change Hero (Training)", group = "INTERFACE" }, new ActionDef { id = "perf", label = "Cycle Performance Stats", group = "INTERFACE" },
+            new ActionDef { id = "swap", label = "Change Hero (Training)", group = "INTERFACE" }, new ActionDef { id = "range", label = "Hero Range / Spar Console (Training)", group = "INTERFACE" }, new ActionDef { id = "perf", label = "Cycle Performance Stats", group = "INTERFACE" },
         };
 
         public static Dictionary<string, List<string>> DefaultBinds() => new Dictionary<string, List<string>>
         {
             ["forward"] = new List<string> { "KeyW", "ArrowUp" }, ["back"] = new List<string> { "KeyS", "ArrowDown" }, ["left"] = new List<string> { "KeyA", "ArrowLeft" }, ["right"] = new List<string> { "KeyD", "ArrowRight" },
             ["jump"] = new List<string> { "Space" }, ["crouch"] = new List<string> { "ControlLeft" }, ["fire"] = new List<string> { "Mouse0" }, ["alt"] = new List<string> { "Mouse2" }, ["a1"] = new List<string> { "ShiftLeft", "ShiftRight" }, ["a2"] = new List<string> { "KeyE" },
-            ["ult"] = new List<string> { "KeyQ" }, ["reload"] = new List<string> { "KeyR" }, ["melee"] = new List<string> { "KeyC" }, ["swoop"] = new List<string> { "KeyF" }, ["grind"] = new List<string> { "Space" }, ["view"] = new List<string> { "KeyV" }, ["score"] = new List<string> { "Tab" }, ["swap"] = new List<string> { "KeyH" }, ["perf"] = new List<string> { "F8" },
+            ["ult"] = new List<string> { "KeyQ" }, ["reload"] = new List<string> { "KeyR" }, ["melee"] = new List<string> { "KeyC" }, ["swoop"] = new List<string> { "KeyF" }, ["grind"] = new List<string> { "Space" }, ["view"] = new List<string> { "KeyV" }, ["score"] = new List<string> { "Tab" }, ["swap"] = new List<string> { "KeyH" }, ["range"] = new List<string> { "KeyG" }, ["perf"] = new List<string> { "F8" },
         };
         /// <summary>per-hero defaults (Overwatch keeps hero-specific control sets): Hibiki rides walls on the left mouse button</summary>
         public static Dictionary<string, Dictionary<string, List<string>>> HeroDefaultBinds() => new Dictionary<string, Dictionary<string, List<string>>>

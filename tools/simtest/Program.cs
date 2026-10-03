@@ -20,6 +20,7 @@ namespace ZU.SimTest
                 case "aimatch": return AiMatch(data, args.Length > 1 ? args[1] : null, args.Length > 2 ? double.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 120);
                 case "stadium": return StadiumMatch(data, args.Length > 1 ? args[1] : "hanabi");
                 case "campaign": return Campaign(data, args.Length > 1 ? args[1] : null);
+                case "training": return Training.Run(data);
                 default: Console.Error.WriteLine("unknown command " + cmd); return 2;
             }
         }

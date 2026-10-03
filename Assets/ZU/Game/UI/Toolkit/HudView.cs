@@ -506,7 +506,7 @@ namespace ZU.Game.UI.Toolkit
             else
             {
                 ObjLayout("training", () => Mid());
-                SetMid("TRAINING GROUNDS", "H: switch hero · Esc: menu", "");
+                SetMid("TRAINING GROUNDS", $"H: switch hero{(w.full ? " · G: hero range & spar · V: first / third person" : "")} · Esc: menu", "");
             }
         }
 

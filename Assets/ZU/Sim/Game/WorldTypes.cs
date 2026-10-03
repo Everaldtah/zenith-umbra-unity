@@ -40,6 +40,8 @@ namespace ZU.Sim
     public class Timer { public double at; public System.Action fn; }
 
     public class HealthPack { public double x, y, z; public bool big; public double readyAt; }
+    /// <summary>an ultimate charge pack (Training Grounds, desktop edition)</summary>
+    public class UltPack { public double x, y, z; public double readyAt; }
 
     public class PointState
     {

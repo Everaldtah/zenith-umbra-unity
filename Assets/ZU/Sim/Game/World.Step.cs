@@ -40,6 +40,7 @@ namespace ZU.Sim
             else if (stadium != null) stadium.Update(dt);
             else if (rules == "push") UpdatePush(dt);
             else if (mode != "training") UpdatePoint(dt);
+            foreach (var f in tickers) f(dt);
         }
 
         // ------------------------------------------------------------------ health packs
@@ -65,6 +66,22 @@ namespace ZU.Sim
                     a.stats["packs"] = (a.stats.TryGetValue("packs", out var n) ? n : 0) + 1;
                     Emit(new DmgEvent { src = a, tgt = a, amt = h + ar, crit = false, heal = true, pos = a.Center });
                     Fx("healthpack", new V3(p.x, p.y + 0.5, p.z), new FxOpts { color = "#7dffb0", r = p.big ? 1.6 : 1 }); Sfx("healthpack", new V3(p.x, p.y, p.z), a);
+                    break;
+                }
+            }
+            // ultimate charge packs: only for the people playing (a bot never takes one), and only when the ultimate isn't ready
+            foreach (var p in ultPacks)
+            {
+                if (t < p.readyAt) continue;
+                foreach (var a in actors)
+                {
+                    if (!a.alive || !(a.isPlayer || !string.IsNullOrEmpty(a.netId)) || M.Hypot(a.pos.x - p.x, a.pos.z - p.z) > ULT_PACK.r || Math.Abs(a.pos.y - p.y) > 1.3) continue;
+                    double cost = a.def.ult.charge;
+                    if (a.ult >= cost) continue;
+                    a.ult = cost;
+                    p.readyAt = t + ULT_PACK.respawn;
+                    a.stats["ultPacks"] = (a.stats.TryGetValue("ultPacks", out var n) ? n : 0) + 1;
+                    Fx("ultpack", new V3(p.x, p.y + 0.5, p.z), new FxOpts { color = "#ffd23f", actor = a }); Sfx("healthpack", new V3(p.x, p.y, p.z), a);
                     break;
                 }
             }
