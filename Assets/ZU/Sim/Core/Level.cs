@@ -174,7 +174,7 @@ namespace ZU.Sim
                 {
                     // centre inside the box: exit along the shallowest axis (first minimum, as JS indexOf)
                     double[] ex = { b.x + hx - p.x + r, p.x - (b.x - hx) + r, b.z + hz - p.z + r, p.z - (b.z - hz) + r };
-                    int i = 0; for (int k = 1; k < 4; k++) if (ex[k] < ex[i]) i = k;
+                    int i = 0; for (int j = 1; j < 4; j++) if (ex[j] < ex[i]) i = j;
                     double m = ex[i];
                     if (i == 0) p.x += m; else if (i == 1) p.x -= m; else if (i == 2) p.z += m; else p.z -= m;
                 }
