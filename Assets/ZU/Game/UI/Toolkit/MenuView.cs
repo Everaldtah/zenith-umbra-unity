@@ -320,7 +320,9 @@ namespace ZU.Game.UI.Toolkit
             var hd = U.Div("hd");
             var art = U.Div("art", hd);
             U.Bg(art, U.Img("key_" + h.id) != null ? "key_" + h.id : "portrait_" + h.id);
-            art.style.borderTopColor = art.style.borderBottomColor = art.style.borderLeftColor = art.style.borderRightColor = U.A(col, 0.6f);
+            // .hd .art: a hairline border (var(--line), from the USS) and box-shadow 0 0 40px -10px var(--c) - the glow in the
+            // hero's colour, as a drop-shadow filter (sigma = blur / 2, less the -10px spread)
+            Filters.Set(art, UiText.DropShadow(0, 0, 15, col));
             var info = U.Div("info", hd);
             var h2 = U.Txt(h.name, "hd-h2", info); h2.style.color = col;
             U.Txt(U.Up(h.title), "hd-sub", info);
