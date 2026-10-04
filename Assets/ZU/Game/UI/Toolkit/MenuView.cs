@@ -173,6 +173,7 @@ namespace ZU.Game.UI.Toolkit
                     var mc = MapCard(grid, m, m.id == MenuState.MapChoice, () => { MenuState.MapChoice = m.id; QueueSelect(q); });
                     U.Txt(m.name, "mc-b", mc); U.Txt(m.objective == "push" ? "MIKOSHI RUSH" : "CONTROL", "mc-p", mc);
                 }
+                StretchRows(sv, grid, 8);              // (.mapsq: repeat(auto-fill, minmax(200px, 1fr)) = 8 at 1920)
                 var bar = Bar(s);
                 U.Btn("BACK", null, Title, bar);
                 U.Btn("CHOOSE HERO", "primary", () => { MenuState.Role = "flex"; HeroSelect(); }, bar);
@@ -222,8 +223,31 @@ namespace ZU.Game.UI.Toolkit
         VisualElement MapCard(VisualElement parent, MapDef m, bool sel, Action click)
         {
             var c = U.Btn(null, "mc" + (sel ? " sel" : ""), click, parent);
-            if (m != null) { var img = U.Pic("map_" + m.id, "mc-img", c); }
+            if (m != null)
+            {
+                var img = U.Pic("map_" + m.id, "mc-img", c);
+                // CSS `.mc img { aspect-ratio: 16/9 }` (USS has no aspect-ratio): the height follows the card's width
+                img.RegisterCallback<GeometryChangedEvent>(e =>
+                {
+                    float h = e.newRect.width * 9f / 16f;
+                    if (h > 0 && Mathf.Abs(img.resolvedStyle.height - h) > 0.5f) img.style.height = h;
+                });
+            }
             return c;
+        }
+
+        /// <summary>the web's map grid is a CSS grid that fills the screen's height, its auto rows stretched: tall cards, the
+        /// art on top. Here the cards sit in a scroll view, so each card's min-height is set to its share of the view</summary>
+        static void StretchRows(ScrollView sv, VisualElement grid, int cols)
+        {
+            sv.RegisterCallback<GeometryChangedEvent>(_ =>
+            {
+                int n = grid.childCount, rows = (n + cols - 1) / cols;
+                float h = sv.contentViewport.layout.height;
+                if (rows == 0 || float.IsNaN(h) || h <= 0) return;
+                float cell = Mathf.Max(0, (h - rows * 14f) / rows);          // (each card keeps its 14 px margin below)
+                foreach (var c in grid.Children()) c.style.minHeight = cell;
+            });
         }
 
         VisualElement Bar(VisualElement s) => U.Div("bar", s, pick: true);
@@ -419,6 +443,7 @@ namespace ZU.Game.UI.Toolkit
                 ((ZButton)mc).clicked = () => { MapId = m.id; foreach (var c in cards) U.Toggle(c, "sel", (string)c.userData == m.id); };
                 U.Txt(m.name, "mc-b", mc); U.Txt(m.story, "mc-p", mc);
             }
+            StretchRows(sv, grid, 5);                  // (.mgrid: repeat(5, 1fr))
             var bar = Bar(s);
             U.Btn("BACK", null, Title, bar);
             U.Btn(mode == "aitest" ? "RUN ALL MAPS" : "WATCH", "primary go", () => { if (mode == "aitest") AiLab.Begin(MapId); Launch(); }, bar);

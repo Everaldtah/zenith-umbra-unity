@@ -257,7 +257,7 @@
 
 /* ---------------- Options (SettingsUI.ts .opts) */
 .opts { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
-.opts .o-header { flex-direction: row; align-items: flex-end; padding: 26px 48px 0 48px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
+.opts .o-header { flex-shrink: 0; flex-direction: row; align-items: flex-end; padding: 26px 48px 0 48px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
 .opts .o-h2 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 30px; letter-spacing: 3.6px; margin: 0 36px 12px 0; }
 .opts .o-nav { flex-direction: row; }
 .opts .zb.tab { --cut: 0; --fill: rgba(0, 0, 0, 0); --stroke: rgba(0, 0, 0, 0); border-bottom-width: 3px; border-color: rgba(0, 0, 0, 0); padding: 10px 22px 12px 22px; font-size: 19px; opacity: 0.65; margin-right: 4px; }
@@ -300,7 +300,7 @@
 .opts .hsel { min-width: 240px; }
 .opts .note { color: #9aa4c4; font-size: 14px; margin: 6px 0; }
 .opts .rprev { width: 240px; height: 240px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); margin-bottom: 10px; }
-.opts .o-footer { flex-direction: row; justify-content: flex-end; padding: 16px 48px; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-color: rgba(0, 0, 0, 0.35); }
+.opts .o-footer { flex-shrink: 0; flex-direction: row; justify-content: flex-end; padding: 16px 48px; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-color: rgba(0, 0, 0, 0.35); }
 .opts .o-footer .zb { margin-left: 12px; }
 
 
@@ -319,7 +319,7 @@
 .btns.two .brow > .zb { width: 300px; margin-right: 10px; margin-bottom: 0; }
 .ver { position: absolute; bottom: 20px; left: 8%; opacity: 0.5; font-size: 14px; letter-spacing: 1.4px; }
 .m-h2 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 28px; margin-bottom: 16px; }
-.bar { flex-direction: row; justify-content: flex-end; align-items: center; padding: 16px 40px; background-color: rgba(0, 0, 0, 0.5); border-top-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
+.bar { flex-shrink: 0; flex-direction: row; justify-content: flex-end; align-items: center; padding: 16px 40px; background-color: rgba(0, 0, 0, 0.5); border-top-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
 .bar > * { margin-left: 14px; }
 .bar .qtag { margin-right: auto; margin-left: 0; -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 14px; letter-spacing: 2.1px; color: #ffd76a; }
 .bar .bar-label { flex-direction: row; align-items: center; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; letter-spacing: 1.6px; }
@@ -384,7 +384,7 @@
 .mgrid-scroll { flex-grow: 1; flex-shrink: 1; min-height: 0; }
 .mgrid { flex-direction: row; flex-wrap: wrap; }
 .zb.mc { width: 18.8%; margin: 0 1.2% 14px 0; padding: 0 0 8px 0; --cut: 0; --fill: #0d111c; --stroke: rgba(0, 0, 0, 0); border-width: 2px; border-color: rgba(255, 255, 255, 0.14); align-items: stretch; justify-content: flex-start; }
-.mapsq .zb.mc { width: 15.4%; }
+.mapsq .zb.mc { width: 11.3%; }
 .zb.mc:hover { translate: 0 0; border-color: rgba(255, 215, 106, 0.6); }
 .zb.mc.sel { border-color: #ffd76a; }
 .mc .mc-img { height: 120px; background-position-y: center; }
