@@ -38,6 +38,22 @@ namespace ZU.Game
         }
         public static PlayOfTheGame Current { get; private set; }
 
+        /// <summary>a test hook: `--zu-endafter 45` decides the match for the player's side after that many seconds, so the
+        /// end-of-match sequence can be looked at without playing a whole match (0: off)</summary>
+        static double? endAfter;
+        static double EndAfter
+        {
+            get
+            {
+                if (endAfter == null)
+                {
+                    var a = System.Environment.GetCommandLineArgs(); int i = System.Array.IndexOf(a, "--zu-endafter");
+                    endAfter = i >= 0 && i + 1 < a.Length && double.TryParse(a[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v) ? v : 0;
+                }
+                return endAfter.Value;
+            }
+        }
+
         sealed class Slot { public Play play; public PlayClip clip; }
         enum Phase { Match, Wait, Card, Replay, Done }
 
@@ -78,7 +94,9 @@ namespace ZU.Game
             if (r == null || r.World == null) return;
             if (r.World != world) { world = r.World; plays = Plays.Attach(world); potg = mine = null; phase = Phase.Match; saved = false; nextScan = 0; }
             if (!Active) return;
-            var w = world; bool over = !string.IsNullOrEmpty(w.winner);
+            var w = world;
+            if (EndAfter > 0 && string.IsNullOrEmpty(w.winner) && w.time >= EndAfter) { w.winner = r.Player?.team ?? "zenith"; Debug.Log($"[ZU] --zu-endafter: the match is decided at {w.time:0.0} s"); }
+            bool over = !string.IsNullOrEmpty(w.winner);
             var kb = Keyboard.current;
             bool skip = kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame);
             switch (phase)
@@ -93,6 +111,7 @@ namespace ZU.Game
                     KillCam.Stop();                                  // (a kill cam still running belongs to the match that is over)
                     HideHud(true);
                     phase = Phase.Card; phaseAt = Time.unscaledTime;
+                    Debug.Log($"[ZU] play of the game: {potg.play.actor.baseDef.name} - {potg.play.Label} - {potg.play.summary} ({potg.play.score:0} pts, clip {potg.clip.Seconds:0.0} s)");
                     break;
                 case Phase.Card:
                     if (!skip && Time.unscaledTime - phaseAt < CARD) break;
