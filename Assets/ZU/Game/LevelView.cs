@@ -43,6 +43,8 @@ namespace ZU.Game
             m = TsMaterial(kind);
             if (m == null) m = EnvKit.Surface(map, kind);
             if (m == null) m = Resources.Load<Material>("ZUEnv/common_" + kind);
+            // the PC game's own painting wherever the material has no albedo (training grid, facades, trim, maps with no set)
+            m = EnvKit.Paint(map, kind, m);
             if (m == null && kind == "water") m = Resources.Load<Material>("ZUEnv/water");
             if (m == null)
             {
@@ -348,8 +350,10 @@ namespace ZU.Game
                 // an icosphere-ish puff: a low-poly sphere is close enough at this size
                 var tmp = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 blossomMesh = tmp.GetComponent<MeshFilter>().sharedMesh; Destroy(tmp);
-                var src = Resources.Load<Material>("ZUEnv/common_window");
-                blossomMat = src != null ? new Material(src) { name = "zu_blossom", enableInstancing = true } : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                // plain URP Lit (not a clone of the ZU/Surface window material): its instanced emissive variant drew Amatsu's
+                // canopies as flat error-magenta while Kagura's looked right (2026-10-04)
+                blossomMat = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "zu_blossom", enableInstancing = true };
+                blossomMat.EnableKeyword("_EMISSION");
                 blossomMat.SetColor("_BaseColor", Conv.Hex("#ffb3cf")); blossomMat.SetColor("_EmissionColor", Conv.Hex("#ff8fb8") * 0.18f);
                 blossomMat.SetFloat("_Smoothness", 0.2f); blossomMat.SetFloat("_Metallic", 0);
             }

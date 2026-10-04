@@ -79,6 +79,12 @@ namespace ZU.Engine
         void OnPush()
         {
             if (resolvedStyle.display == DisplayStyle.None || !visible) return;
+            // the label: text only when the budget changes (a string per change, not per frame). Set here, before the
+            // repaint is asked for - UI Toolkit throws if an element's text or style changes inside generateVisualContent
+            float budget = g.BudgetMs;
+            if (budget > 0 && Mathf.Abs(budget - labelBudget) > 0.05f) { labelBudget = budget; label.text = budget.ToString("0.0") + " ms"; }
+            float h = contentRect.height > 0 ? contentRect.height : H;
+            if (Mathf.Abs(h - labelH) > 0.5f) { labelH = h; label.style.bottom = h / 3 + 1; }
             MarkDirtyRepaint();
         }
 
@@ -128,9 +134,6 @@ namespace ZU.Engine
                 if (pen) { p.LineTo(pt); drawn = true; } else { p.MoveTo(pt); pen = true; }
             }
             if (drawn) p.Stroke();
-            // the label: text only when the budget changes (a string per change, not per frame)
-            if (Mathf.Abs(budget - labelBudget) > 0.05f) { labelBudget = budget; label.text = budget.ToString("0.0") + " ms"; }
-            if (Mathf.Abs(h - labelH) > 0.5f) { labelH = h; label.style.bottom = h / 3 + 1; }
         }
     }
 }

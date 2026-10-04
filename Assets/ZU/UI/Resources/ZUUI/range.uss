@@ -68,7 +68,7 @@
 .rg-console .rg-opts { width: 380px; flex-shrink: 0; }
 .rg-console .rg-opts .unity-scroll-view__content-container { padding-right: 4px; }
 .rg-console .rg-row { flex-direction: row; margin-bottom: 8px; }
-.rg-console .zb.rg-card { width: 11.6%; margin-right: 1%; padding: 0; --cut: 0; --fill: #111111; --stroke: rgba(0, 0, 0, 0); border-width: 2px; border-color: rgba(0, 0, 0, 0); overflow: hidden; justify-content: flex-end; align-items: flex-start; }
+.rg-console .zb.rg-card { width: 11.4%; margin-right: 1%; padding: 0; --cut: 0; --fill: #111111; --stroke: rgba(0, 0, 0, 0); border-width: 2px; border-color: rgba(0, 0, 0, 0); overflow: hidden; justify-content: flex-end; align-items: flex-start; }
 .rg-console .zb.rg-card:hover { translate: 0 -2px; }
 .rg-console .rg-card .rg-cimg { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-position-y: top; opacity: 0.9; }
 .rg-console .rg-card .rg-cglow { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; }

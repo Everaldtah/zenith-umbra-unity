@@ -90,6 +90,69 @@
   "footprint_m": 12
  },
  {
+  "id": "gnd_temperate_boulders",
+  "kind": "dressing",
+  "height_m": 1.4,
+  "footprint_m": 2.5,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": true
+ },
+ {
+  "id": "gnd_temperate_bush",
+  "kind": "dressing",
+  "height_m": 1.0,
+  "footprint_m": 1.4,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": true
+ },
+ {
+  "id": "gnd_temperate_flower_bed",
+  "kind": "dressing",
+  "height_m": 0.35,
+  "footprint_m": 1.5,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": false
+ },
+ {
+  "id": "gnd_temperate_grass_bed",
+  "kind": "dressing",
+  "height_m": 0.3,
+  "footprint_m": 2.5,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": false
+ },
+ {
+  "id": "gnd_temperate_grass_tuft",
+  "kind": "dressing",
+  "height_m": 0.5,
+  "footprint_m": 0.6,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": false
+ },
+ {
+  "id": "gnd_temperate_moss_rocks",
+  "kind": "dressing",
+  "height_m": 0.35,
+  "footprint_m": 2.0,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": false
+ },
+ {
+  "id": "gnd_temperate_pebbles",
+  "kind": "dressing",
+  "height_m": 0.08,
+  "footprint_m": 1.5,
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
+  "biome": "temperate",
+  "tall": false
+ },
+ {
   "id": "env_west_rock_2",
   "style": "west",
   "kind": "rock",

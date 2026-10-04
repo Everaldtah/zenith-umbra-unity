@@ -14,11 +14,14 @@ namespace ZU.Game.Env
 {
     public sealed class GroundDressing : MonoBehaviour
     {
-        /// <summary>the dressing biome of a map</summary>
+        /// <summary>the dressing biome of a map; null = bare floors (the Training Grounds' holo floor, the campaign's space
+        /// platforms c1_ .. c5_ - their "ground" floors are decks, not earth)</summary>
         public static string Biome(string mapId)
         {
+            if (mapId.Length > 2 && mapId[0] == 'c' && char.IsDigit(mapId[1]) && mapId[2] == '_') return null;
             switch (mapId)
             {
+                case "training": return null;
                 case "mile": case "gulch": return "desert";
                 case "foundry": case "hangar": case "kurogane": return "urban";
                 case "cathedral": case "rift": return "gothic";
@@ -48,7 +51,9 @@ namespace ZU.Game.Env
         {
             string detail = UI.Toolkit.ZuSettings.Current.video.groundDetail;
             if (detail == "off") return null;
-            var pieces = TripoEnv.Dressing(Biome(map.id));
+            var biome = Biome(map.id);
+            if (biome == null) return null;
+            var pieces = TripoEnv.Dressing(biome);
             if (pieces.Count == 0) return null;
             var go = new GameObject("Ground Dressing");
             go.transform.SetParent(parent, false);
@@ -114,11 +119,14 @@ namespace ZU.Game.Env
                     {
                         double x = gx + (rng.NextDouble() - 0.5) * cell, z = gz + (rng.NextDouble() - 0.5) * cell;
                         double roll = rng.NextDouble(), yaw = rng.NextDouble() * 360, s = 0.75 + rng.NextDouble() * 0.55; int pick = rng.Next(1 << 20);
-                        // patches: the noise mask makes clumps and bare ground between them
-                        float patch = Mathf.PerlinNoise((float)x / 9f + 3.1f, (float)z / 9f - 7.7f);
-                        if (roll > density * Mathf.SmoothStep(0, 1, (patch - 0.35f) / 0.4f)) continue;
                         if (!Inside(f, x, z, 0.2) || Covered(floors, fi, top, x, z) || !Clear(map, boxes, top, x, z)) continue;
-                        bool edge = System.Math.Abs(x) > X - 2.5 || System.Math.Abs(z) > Z - 2.5 || WallFoot(boxes, top, x, z);
+                        bool rim = System.Math.Abs(x) > X - 2.5 || System.Math.Abs(z) > Z - 2.5;
+                        bool foot = WallFoot(boxes, top, x, z, 1.4), edge = rim || foot;
+                        // patches: the noise mask makes clumps and bare ground between them; they gather along the walls' feet
+                        // and the edge (within 3 m) - open ground (the towns' paved streets, the lanes) only gets a light sprinkle
+                        float patch = Mathf.PerlinNoise((float)x / 9f + 3.1f, (float)z / 9f - 7.7f);
+                        float near = edge || WallFoot(boxes, top, x, z, 3.0) ? 1f : 0.15f;
+                        if (roll > density * near * Mathf.SmoothStep(0, 1, (patch - 0.35f) / 0.4f)) continue;
                         var from = edge && tall.Count > 0 && (pick & 3) == 0 ? tall : flat;
                         if (from.Count == 0) continue;
                         var k = from[(pick >> 2) % from.Count];
@@ -169,8 +177,8 @@ namespace ZU.Game.Env
             return true;
         }
 
-        /// <summary>at the foot of a wall: 0.3 - 1.4 m off a box standing on this floor that is at least 1.5 m tall</summary>
-        static bool WallFoot(List<Box> boxes, double top, double x, double z)
+        /// <summary>at the foot of a wall: 0.3 - `within` m off a box standing on this floor that is at least 1.5 m tall</summary>
+        static bool WallFoot(List<Box> boxes, double top, double x, double z, double within)
         {
             foreach (var b in boxes)
             {
@@ -178,7 +186,7 @@ namespace ZU.Game.Env
                 if (System.Math.Abs(y0 - top) > 0.3 || b.h < 1.5) continue;
                 double dx = System.Math.Max(0, System.Math.Abs(x - b.x) - b.w / 2), dz = System.Math.Max(0, System.Math.Abs(z - b.z) - b.d / 2);
                 double d = System.Math.Sqrt(dx * dx + dz * dz);
-                if (d > 0.3 && d < 1.4) return true;
+                if (d > 0.3 && d < within) return true;
             }
             return false;
         }

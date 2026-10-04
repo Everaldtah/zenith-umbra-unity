@@ -15,6 +15,9 @@ using ZU.Sim;
 
 namespace ZU.Game.Fx
 {
+    // (late: its Update places the camera after MatchRunner's has run the match camera - a shot taken between Update and
+    // LateUpdate, as the editor's capture commands are, got the spectate orbit)
+    [DefaultExecutionOrder(10000)]
     public sealed class UltShowcase : MonoBehaviour, IController
     {
         /// <summary>how each ult is shown: `secs` from the cast to the replay; `near` walks within that of a target before
@@ -211,12 +214,46 @@ namespace ZU.Game.Fx
         }
 
         // ------------------------------------------------------------------ camera
-        void LateUpdate()
+        void Update()
         {
             var cam = UnityEngine.Camera.main;
             if (cam == null || hero == null) return;
             ReadInput();
             Shot(cam.transform, Time.unscaledDeltaTime);
+            DevShots();
+        }
+
+        // ------------------------------------------------------------------ dev: timed shots from a built player
+        // `--zu-mode ultviewer --zu-hero <id> --zu-ultshots "0.25,0.6,3" [--zu-shots-dir <dir>]`: screenshots of the first cast
+        // at those sim seconds after it (<dir>/<hero>_<n>.png, the same moments tools/ultaudit's sheets line up with the web
+        // Ult Viewer's), then the app quits. Without the flag nothing happens.
+        static float[] devTimes; static string devDir; static bool devRead;
+        int devNext; double devT0 = -1, devQuitAt = -1;
+        void DevShots()
+        {
+            if (!devRead)
+            {
+                devRead = true;
+                var a = System.Environment.GetCommandLineArgs();
+                int i = System.Array.IndexOf(a, "--zu-ultshots"), d = System.Array.IndexOf(a, "--zu-shots-dir");
+                if (i >= 0 && i + 1 < a.Length)
+                {
+                    var ts = new List<float>();
+                    foreach (var x in a[i + 1].Split(',')) if (float.TryParse(x.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f)) ts.Add(f);
+                    ts.Sort(); devTimes = ts.ToArray();
+                    devDir = d >= 0 && d + 1 < a.Length ? a[d + 1] : System.IO.Path.Combine(Application.persistentDataPath, "ultshots");
+                    System.IO.Directory.CreateDirectory(devDir);
+                }
+            }
+            if (devTimes == null) return;
+            if (devQuitAt >= 0) { if (Time.realtimeSinceStartup >= devQuitAt) Application.Quit(); return; }
+            if (devT0 < 0) { if (phase == Phase.Show && barLeft < 1) devT0 = w.time; else return; }      // the cast: the replay bar starts draining
+            if (devNext < devTimes.Length && w.time - devT0 >= devTimes[devNext])
+            {
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(devDir, $"{HeroId}_{devNext + 1}.png"));
+                devNext++;
+                if (devNext >= devTimes.Length) devQuitAt = Time.realtimeSinceStartup + 1.5f;     // (the last shot is written at the end of its frame)
+            }
         }
 
         /// <summary>a slow three-quarter orbit behind the hero's shoulder, framing the hero and the target row (wider for the koi)

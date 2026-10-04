@@ -30,6 +30,51 @@ namespace ZU.Game.Env
         }
         static readonly Dictionary<string, string> FALLBACK = new Dictionary<string, string> { ["lantern"] = "hanabi", ["starfall"] = "cloudstep", ["mile"] = "foundry", ["gulch"] = "foundry" };
 
+        // ------------------------------------------------------------------------------------------------ painted slots
+        // MapScene.ts paints every surface with the map's own texture (env/tex_<set>_<ground|wall|roof|rock>.webp, one repeat
+        // per 6 m) and Surfaces.ts swaps in a recoloured CC0 photo only where the map's set names one; everywhere else - the
+        // training map's tech grid and honeycomb walls, the facades of Kagura / Lantern / Cloudstep / Starfall / Mile, every
+        // map's trim, and whole maps with no set (Amatsu, Kurogane, Hangar, Cathedral, Rift, the campaign) - the painting stays,
+        // with the set's relief at half strength. Resources/ZUPaint holds those paintings.
+        static readonly Dictionary<string, string> PAINT_FALLBACK = new Dictionary<string, string> { ["lantern"] = "hanabi", ["starfall"] = "cloudstep", ["foundry"] = "kurogane", ["mile"] = "foundry", ["gulch"] = "foundry" };
+        static readonly Dictionary<string, Material> painted = new Dictionary<string, Material>();
+
+        /// <summary>MapScene envSet: the map's own paintings when it has a painted wall, else its sibling's, else Amatsu's</summary>
+        static string PaintSet(string id) => Resources.Load<Texture2D>("ZUPaint/tex_" + id + "_wall") != null ? id : PAINT_FALLBACK.TryGetValue(id, out var a) ? a : "amatsu";
+
+        /// <summary>a surface kind's material with the PC game's painting on it when `m` has no albedo of its own (a slot the
+        /// map's set leaves painted, or no set at all): MapScene's texture and tint per kind, the relief kept at 0.45. A material
+        /// that already carries an albedo (a recoloured CC0 photo) comes back as it is.</summary>
+        public static Material Paint(MapDef map, string kind, Material m)
+        {
+            if (kind != "ground" && kind != "wall" && kind != "roof" && kind != "wood" && kind != "rock" && kind != "trim") return m;
+            if (m != null && m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap") != null) return m;
+            string key = map.id + "_" + kind;
+            if (painted.TryGetValue(key, out var done) && done != null) return done;
+            string set = PaintSet(map.id);
+            Texture2D T(string k) => Resources.Load<Texture2D>($"ZUPaint/tex_{set}_{k}");
+            Texture2D tex; string tint;
+            switch (kind)
+            {
+                case "ground": tex = T("ground"); tint = map.id == "hangar" ? "#6e6a62" : "#b8b8b8"; break;
+                case "roof": { var r = T("roof"); tex = r ?? T("wall"); tint = r != null ? "#ffffff" : "#7d6a5a"; break; }
+                case "wood": tex = T("wall"); tint = "#a8744a"; break;
+                case "rock": { var r = T("rock"); tex = r ?? T("wall"); tint = r != null ? "#ffffff" : "#c9b8a8"; break; }
+                case "trim": tex = T("wall"); tint = "#d8d2c8"; break;
+                default: tex = T("wall"); tint = "#ffffff"; break;
+            }
+            if (tex == null) return m;
+            var p = m != null ? new Material(m) : new Material(Shader.Find("Universal Render Pipeline/Lit")) { enableInstancing = true };
+            p.name = (m != null ? m.name : "zu_" + kind) + " (painted)";
+            p.SetTexture("_BaseMap", tex);
+            // one repeat per 6 m of the world-metric UVs (MapScene TILE); the set's normal / mask share the tiling here
+            p.SetTextureScale("_BaseMap", Vector2.one / 6f);
+            p.SetColor("_BaseColor", Conv.Hex(tint));
+            if (p.HasProperty("_BumpScale")) p.SetFloat("_BumpScale", p.GetFloat("_BumpScale") * 0.45f);
+            painted[key] = p;
+            return p;
+        }
+
         /// <summary>sky, sun, ambient, reflections, fog, post-processing and camera for `map`; `extent` = the radius the
         /// outer world reaches (fog and far plane follow it)</summary>
         public static void Apply(MapDef map, Transform root, float extent)
