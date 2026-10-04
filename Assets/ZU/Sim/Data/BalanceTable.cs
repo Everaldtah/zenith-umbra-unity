@@ -3,22 +3,23 @@ namespace ZU.Sim.Data
 {
     public static partial class Balance
     {
-        static readonly (string id, double power)[] SHIPPED =
+        static readonly (string id, double power, double taken)[] SHIPPED =
         {
-            ("tenkai", 0.83),
-            ("mirei", 0.7),
-            ("kaien", 1.013),
-            ("raijin", 1.15),
-            ("gorgoth", 1.15),
-            ("nocturne", 1.15),
-            ("hex", 1.07),
-            ("kagemaru", 0.923),
-            ("enra", 1.15),
-            ("gantetsu", 0.718),
-            ("hibiki", 0.821),
-            ("tomoe", 0.898),
-            ("hayate", 0.7),
-            ("seiran", 0.914),
+            ("tenkai", 1.292, 1),
+            ("mirei", 0.85, 1.5),
+            ("kaien", 0.982, 1),
+            ("raijin", 1.6, 0.5),
+            ("yuzu", 1, 1.5),
+            ("gorgoth", 1.6, 1),
+            ("nocturne", 1.49, 1),
+            ("hex", 0.891, 1),
+            ("kagemaru", 1.523, 1),
+            ("enra", 1.6, 0.5),
+            ("gantetsu", 0.861, 1.11),
+            ("hibiki", 0.869, 1),
+            ("tomoe", 0.893, 1),
+            ("hayate", 1.081, 1),
+            ("seiran", 1.6, 1),
         };
     }
 }

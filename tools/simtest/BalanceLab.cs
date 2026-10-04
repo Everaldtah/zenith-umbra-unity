@@ -31,8 +31,28 @@ namespace ZU.SimTest
     {
         const double DT = 1.0 / 60;
         /// <summary>the scalar's range, the win-rate band that counts as balanced, how hard an error moves the scalar</summary>
-        const double P_MIN = 0.7, P_MAX = 1.15, BAND = 0.05, GAIN = 0.6;
+        const double P_MIN = 0.85, P_MAX = 1.6, BAND = 0.05, GAIN = 0.9;
+        /// <summary>the damage-taken scalar's range: moved only for a hero whose power is at its clamp (or pinned)</summary>
+        const double T_MIN = 0.5, T_MAX = 1.5;
         static readonly HashSet<string> PINNED = new HashSet<string> { "yuzu" };
+        /// <summary>the user's targets (2026-10-04): these three are the strongest on purpose; everyone else shares what is left
+        /// of the zero-sum (about the bottom of the 45-55 % band once the pinned hero's wins are counted)</summary>
+        static readonly Dictionary<string, double> TARGET = new Dictionary<string, double> { ["hayate"] = 0.60, ["tenkai"] = 0.60, ["raijin"] = 0.60, ["yuzu"] = 0.60 };
+        /// <summary>the win rate the untargeted heroes share: every game hands out five wins, so (5 x games - the targeted
+        /// heroes' wins at their targets - the pinned heroes' measured wins) / the others' games</summary>
+        static double OthersTarget(GameData data, Census c)
+        {
+            double wins = 0, games = 0, rest = 0;
+            foreach (var kv in c.rows)
+            {
+                wins += kv.Value.wins;
+                if (TARGET.TryGetValue(kv.Key, out var t)) rest += t * kv.Value.games;
+                else if (PINNED.Contains(kv.Key)) rest += kv.Value.wins;
+                else games += kv.Value.games;
+            }
+            return games > 0 ? (wins - rest) / games : 0.5;
+        }
+        static double TargetOf(string id, double others) => TARGET.TryGetValue(id, out var t) ? t : others;
         static readonly CultureInfo INV = CultureInfo.InvariantCulture;
 
         public sealed class Row { public int games; public double wins, alive, kills, deaths, dmg, heal, mit, ults; }
@@ -68,33 +88,48 @@ namespace ZU.SimTest
                 var table = new Dictionary<string, double>(Balance.Table);
                 foreach (var h in Roster(data)) if (!table.ContainsKey(h.id)) table[h.id] = 1;
                 foreach (var id in PINNED) table[id] = 1;
+                // before: no table, on the games the result is checked on (the pinned hero as shipped, as in every run here:
+                // the others are calibrated against what players will meet)
+                var ones = Roster(data).ToDictionary(h => h.id, h => 1.0);
+                foreach (var k in table.Keys.Where(k => k.EndsWith(Balance.TAKEN)).ToList()) if (Roster(data).All(h => h.id + Balance.TAKEN != k)) table.Remove(k);
+                var before = Parallel(games, secs, seed + 1000, workers, ones, yuzu);
+                Print(data, before, ones, $"BEFORE (no table) on the validation games (seed {seed + 1000}), Yuzu x{yuzu:0.##}");
+                File.WriteAllText(Path.Combine(root, "docs/balance-before.json"), Report(data, before, ones, secs, yuzu));
                 Census c = null;
                 for (int it = 1; it <= iters; it++)
                 {
-                    c = Parallel(games, secs, seed, workers, table, 1);          // (pinned heroes at their original strength)
-                    Print(data, c, table, $"tune {it}/{iters}: {c.games} games, seed {seed}");
+                    c = Parallel(games, secs, seed, workers, table, yuzu);
+                    double others = OthersTarget(data, c);
+                    Print(data, c, table, $"tune {it}/{iters}: {c.games} games, seed {seed}; targets {string.Join(", ", TARGET.Select(kv => $"{kv.Key} {kv.Value:0.00}"))}, the others {others:0.000}");
                     double worst = 0; int moved = 0;
                     foreach (var h in Roster(data))
                     {
-                        if (PINNED.Contains(h.id) || !c.rows.TryGetValue(h.id, out var r) || r.games == 0) continue;
-                        double err = r.wins / r.games - 0.5;
-                        double p = table[h.id], q = Math.Min(P_MAX, Math.Max(P_MIN, p * Math.Exp(-GAIN * err)));
-                        bool stuck = (q == P_MIN && err > 0) || (q == P_MAX && err < 0);
+                        if (!c.rows.TryGetValue(h.id, out var r) || r.games == 0) continue;
+                        bool pinned = PINNED.Contains(h.id);
+                        if (pinned && !TARGET.ContainsKey(h.id)) continue;                 // measured only
+                        double err = r.wins / r.games - TargetOf(h.id, others);
+                        // power first (never a pinned hero's: those numbers are the user's); once it is at its clamp, toughness
+                        double p = table[h.id], q = pinned ? p : Math.Min(P_MAX, Math.Max(P_MIN, p * Math.Exp(-GAIN * err)));
+                        bool spent = pinned || (q == p && ((p == P_MIN && err > 0) || (p == P_MAX && err < 0)));
+                        string tk = h.id + Balance.TAKEN; double t0 = table.TryGetValue(tk, out var tv) ? tv : 1, t1 = t0;
+                        if (spent) t1 = Math.Min(T_MAX, Math.Max(T_MIN, t0 * Math.Exp(GAIN * err)));
+                        bool stuck = spent && t1 == t0 && ((t0 == T_MIN && err < 0) || (t0 == T_MAX && err > 0));
                         if (!stuck) worst = Math.Max(worst, Math.Abs(err));
-                        if (Math.Abs(err) > BAND * 0.5 && q != p) { table[h.id] = Math.Round(q, 3); moved++; }
+                        if (Math.Abs(err) <= 0.02) continue;
+                        if (q != p) { table[h.id] = Math.Round(q, 3); moved++; }
+                        else if (t1 != t0) { table[tk] = Math.Round(t1, 3); moved++; }
                     }
-                    Console.WriteLine($"  worst unclamped error {worst:0.000} (band {BAND}), {moved} scalars moved");
-                    if (worst <= BAND || moved == 0) break;
+                    Console.WriteLine($"  worst unclamped error {worst:0.000}, {moved} scalars moved");
+                    // (the table so far, after every pass: a run cut short still leaves its best table)
+                    File.WriteAllText(Path.Combine(root, "Assets/ZU/Sim/Data/BalanceTable.cs"), TableSource(data, table));
+                    if (worst <= 0.03 || moved == 0) break;
                 }
-                // the check on games the tuning never saw, then the game as it ships (the pinned heroes at their own numbers)
-                var check = Parallel(games, secs, seed + 1000, workers, table, 1);
-                Print(data, check, table, $"validation on unseen games (seed {seed + 1000}), pinned heroes at x1");
-                var ship = Parallel(games, secs, seed + 2000, workers, table, yuzu);
-                Print(data, ship, table, $"AS SHIPPED (seed {seed + 2000}): Yuzu x{yuzu:0.##}");
+                // the check: the same unseen games as `before`, with the table - the game as it ships
+                var check = Parallel(games, secs, seed + 1000, workers, table, yuzu);
+                Print(data, check, table, $"AFTER (the table) on the validation games (seed {seed + 1000}), Yuzu x{yuzu:0.##}; the others' share {OthersTarget(data, check):0.000}");
                 File.WriteAllText(Path.Combine(root, "Assets/ZU/Sim/Data/BalanceTable.cs"), TableSource(data, table));
-                File.WriteAllText(Path.Combine(root, "docs/balance-census.json"), Report(data, ship, table, secs, yuzu));
-                File.WriteAllText(Path.Combine(root, "docs/balance-validation.json"), Report(data, check, table, secs, 1));
-                Console.WriteLine("wrote Assets/ZU/Sim/Data/BalanceTable.cs, docs/balance-census.json, docs/balance-validation.json");
+                File.WriteAllText(Path.Combine(root, "docs/balance-census.json"), Report(data, check, table, secs, yuzu));
+                Console.WriteLine("wrote Assets/ZU/Sim/Data/BalanceTable.cs, docs/balance-before.json, docs/balance-census.json");
                 return 0;
             }
             Console.Error.WriteLine("balance: census | tune");
@@ -198,12 +233,12 @@ namespace ZU.SimTest
         static void Print(GameData data, Census c, Dictionary<string, double> table, string title)
         {
             Console.WriteLine($"\n== {title}; draws {c.draws}, errors {c.errors}");
-            Console.WriteLine($"{"hero",-10}{"role",8}{"power",7}{"games",7}{"win",7}{"K/D",6}{"K/10",6}{"D/10",6}{"dmg/10",8}{"heal/10",8}{"mit/10",8}{"ult/10",7}");
+            Console.WriteLine($"{"hero",-10}{"role",8}{"power",7}{"taken",6}{"games",7}{"win",7}{"K/D",6}{"K/10",6}{"D/10",6}{"dmg/10",8}{"heal/10",8}{"mit/10",8}{"ult/10",7}");
             foreach (var (h, r) in Rows(data, c))
             {
                 double min = Math.Max(1e-6, r.alive / 60), wr = r.wins / Math.Max(1, r.games);
-                string flag = Math.Abs(wr - 0.5) > BAND ? (PINNED.Contains(h.id) ? "  PINNED" : "  <<") : "";
-                Console.WriteLine($"{h.id,-10}{h.role,8}{(table.TryGetValue(h.id, out var p) ? p : 1),7:0.000}{r.games,7}{wr,7:0.000}{r.kills / Math.Max(1, r.deaths),6:0.00}{r.kills / min * 10,6:0.0}{r.deaths / min * 10,6:0.0}" +
+                string flag = PINNED.Contains(h.id) ? "  PINNED" : TARGET.TryGetValue(h.id, out var tg) ? (Math.Abs(wr - tg) > 0.03 ? $"  << target {tg:0.00}" : $"  (target {tg:0.00})") : Math.Abs(wr - 0.5) > BAND ? "  <<" : "";
+                Console.WriteLine($"{h.id,-10}{h.role,8}{(table.TryGetValue(h.id, out var p) ? p : 1),7:0.000}{(table.TryGetValue(h.id + Balance.TAKEN, out var tkn) ? tkn : 1),6:0.00}{r.games,7}{wr,7:0.000}{r.kills / Math.Max(1, r.deaths),6:0.00}{r.kills / min * 10,6:0.0}{r.deaths / min * 10,6:0.0}" +
                                   $"{r.dmg / min * 10,8:0}{r.heal / min * 10,8:0}{r.mit / min * 10,8:0}{r.ults / min * 10,7:0.0}{flag}");
             }
         }
@@ -215,7 +250,8 @@ namespace ZU.SimTest
                 var (h, r) = x; double min = Math.Max(1e-6, r.alive / 60);
                 return new
                 {
-                    h.id, h.role, power = table.TryGetValue(h.id, out var p) ? p : 1, pinned = PINNED.Contains(h.id), r.games,
+                    h.id, h.role, power = table.TryGetValue(h.id, out var p) ? p : 1, taken = table.TryGetValue(h.id + Balance.TAKEN, out var tkn) ? tkn : 1,
+                    target = TARGET.TryGetValue(h.id, out var tg) ? tg : (double?)null, pinned = PINNED.Contains(h.id), r.games,
                     winRate = Math.Round(r.wins / Math.Max(1, r.games), 3), kd = Math.Round(r.kills / Math.Max(1, r.deaths), 2),
                     killsPer10 = Math.Round(r.kills / min * 10, 1), deathsPer10 = Math.Round(r.deaths / min * 10, 1), dmgPer10 = Math.Round(r.dmg / min * 10),
                     healPer10 = Math.Round(r.heal / min * 10), mitPer10 = Math.Round(r.mit / min * 10), ultsPer10 = Math.Round(r.ults / min * 10, 1),
@@ -226,10 +262,12 @@ namespace ZU.SimTest
 
         static string TableSource(GameData data, Dictionary<string, double> table)
         {
-            var rows = Roster(data).Where(h => table.TryGetValue(h.id, out var p) && Math.Abs(p - 1) > 1e-9 && !PINNED.Contains(h.id))
-                .Select(h => $"            (\"{h.id}\", {table[h.id].ToString("0.###", INV)}),");
+            double T(string id) => table.TryGetValue(id + Balance.TAKEN, out var t) ? t : 1;
+            double Pw(string id) => PINNED.Contains(id) ? 1 : table.TryGetValue(id, out var p) ? p : 1;
+            var rows = Roster(data).Where(h => Math.Abs(Pw(h.id) - 1) > 1e-9 || Math.Abs(T(h.id) - 1) > 1e-9)
+                .Select(h => $"            (\"{h.id}\", {Pw(h.id).ToString("0.###", INV)}, {T(h.id).ToString("0.###", INV)}),");
             return "// GENERATED by tools/simtest `balance tune` - do not edit by hand; rerun the lab after any kit change (docs/BALANCE.md).\n" +
-                   "namespace ZU.Sim.Data\n{\n    public static partial class Balance\n    {\n        static readonly (string id, double power)[] SHIPPED =\n        {\n" +
+                   "namespace ZU.Sim.Data\n{\n    public static partial class Balance\n    {\n        static readonly (string id, double power, double taken)[] SHIPPED =\n        {\n" +
                    string.Join("\n", rows) + (rows.Any() ? "\n" : "") + "        };\n    }\n}\n";
         }
     }
