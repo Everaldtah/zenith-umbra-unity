@@ -120,7 +120,8 @@ namespace ZU.Game
         {
             if (h == null || Watching) { done?.Invoke(); return; }
             PlayClip clip = null;
-            try { clip = PlayClip.Load(h.path); } catch (Exception e) { UnityEngine.Debug.LogWarning("[ZU] highlight: " + e.Message); }
+            // (the clip's heroes are read against the game data: from the menu, before any match, it is not loaded yet)
+            try { ZuData.Get(); clip = PlayClip.Load(h.path); } catch (Exception e) { UnityEngine.Debug.LogWarning("[ZU] highlight: " + e.Message); }
             if (clip == null || !clip.HasBody)
             {
                 if (height > 0) LastExportError = "this highlight can no longer be read";
@@ -187,12 +188,20 @@ namespace ZU.Game
                 rt = new RenderTexture(new RenderTextureDescriptor(w, h, RenderTextureFormat.ARGB32, 24) { msaaSamples = 4, sRGB = true });
                 tex = new Texture2D(w, h, TextureFormat.RGB24, false);
                 oldCapture = Time.captureFramerate; Time.captureFramerate = FPS;
-                var eof = new WaitForEndOfFrame();
+                bool played = false; float idleSince = -1;
                 while (!ended)
                 {
-                    yield return eof;
+                    // (one frame a step, after every Update: the camera is rendered here by request, so nothing waits on the
+                    // end of the frame - a window that is hidden or a batch run never reaches that)
+                    yield return null;
                     var cam = Camera.main;
-                    if (cam == null || !KillCam.Playing) continue;
+                    if (cam == null || !KillCam.Playing)
+                    {
+                        // the clip has stopped and nobody said so: end rather than wait for ever
+                        if (played) { if (idleSince < 0) idleSince = Time.realtimeSinceStartup; else if (Time.realtimeSinceStartup - idleSince > 2) ended = true; }
+                        continue;
+                    }
+                    played = true; idleSince = -1;
                     try
                     {
                         var req = new RenderPipeline.StandardRequest { destination = rt };
