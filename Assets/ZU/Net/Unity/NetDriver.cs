@@ -54,7 +54,9 @@ namespace ZU.Net.Unity
                 if (session == null)
                 {
                     _ = Instance;
-                    var maps = GameData.Current.Maps.Select(m => m.id).ToList();      // (the TS MAPS order: the node's seed picks the same map in every build)
+                    // the TS PLAY_MAPS (OnlineUI: mapsFor(FULL)) in MAPS order - no training, no retired arenas: the node's seed
+                    // picks the same map in every build (seed % count, so the list must match the web's, not just its order)
+                    var maps = GameData.Current.Maps.Where(m => m.id != "training" && !m.retired).Select(m => m.id).ToList();
                     session = new OnlineSession(PlayerName, maps, () => Profile?.Invoke() ?? new ProfileInfo());
                 }
                 return session;
