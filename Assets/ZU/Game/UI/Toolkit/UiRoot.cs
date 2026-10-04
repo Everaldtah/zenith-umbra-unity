@@ -38,6 +38,8 @@ namespace ZU.Game.UI.Toolkit
             inst = go.AddComponent<UiRoot>();
             inst.doc = go.AddComponent<UIDocument>();
             inst.doc.panelSettings = MakePanel();
+            // linear project: the panel blends like the PC game's web page (CSS, on encoded values) - UiGamma.cs
+            UiGamma.Attach(go, inst.doc.panelSettings);
             go.SetActive(true);
             inst.Build();
             return inst;
@@ -82,6 +84,8 @@ namespace ZU.Game.UI.Toolkit
             if (sheet != null) Root.styleSheets.Add(sheet);
             else Debug.LogWarning("[ZU UI] Resources/ZUUI/zu.uss is missing - the front end draws unstyled");
             HudLayer = Layer("hud-layer"); MenuLayer = Layer("menu-layer"); OverlayLayer = Layer("overlay-layer");
+            // letter-spacing (the standard text generator) and glows that outreach the font atlas - UiText.cs
+            UiText.Install(this);
             // the skins chosen in the Hero Viewer dress the heroes in a match (model skins: Hibiki's Bassline Armor)
             ActorViews.SkinModel = HeroViewerView.SkinModelFor;
         }
