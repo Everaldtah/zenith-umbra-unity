@@ -94,7 +94,8 @@ namespace ZU.Game.Env
         static Material Instanced(Material src)
         {
             if (src.enableInstancing) return src;
-            if (!instMats.TryGetValue(src, out var m)) instMats[src] = m = new Material(src) { name = src.name + " (instanced)", enableInstancing = true };
+            // (a copy made in an earlier Editor play session may be destroyed by now: the static outlives it)
+            if (!instMats.TryGetValue(src, out var m) || m == null) instMats[src] = m = new Material(src) { name = src.name + " (instanced)", enableInstancing = true };
             return m;
         }
 
