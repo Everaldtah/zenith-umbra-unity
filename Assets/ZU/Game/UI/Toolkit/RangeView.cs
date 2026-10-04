@@ -248,6 +248,8 @@ namespace ZU.Game.UI.Toolkit
             var grid = new ScrollView(ScrollViewMode.Vertical); grid.AddToClassList("rg-grid"); left.Add(grid);
             var opts = new ScrollView(ScrollViewMode.Vertical); opts.AddToClassList("rg-opts"); body.Add(opts);
             var log = new ScrollView(ScrollViewMode.Vertical); log.AddToClassList("rg-log"); left.Add(log);
+            // overflow-y: auto only (a Vertical ScrollView still shows a horizontal bar on a sub-pixel overflow)
+            foreach (var sv in new[] { grid, opts, log }) sv.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             var R = draftR; var S = draftS; var s = spar;
             Pick(grid, tab == "range" ? R.hero : S.hero, id => { if (tab == "range") R.hero = id; else S.hero = id; Show(); });
             if (tab == "range")
