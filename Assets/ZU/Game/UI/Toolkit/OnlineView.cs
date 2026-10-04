@@ -256,6 +256,7 @@ namespace ZU.Game.UI.Toolkit
             else if (s.Role != "host") U.Txt("WAITING", "ck-s", clock);
             if (notice != "") U.Txt(notice, "onotice", root);
             var teams = U.Div("teams", root);
+            int bot = 0;          // (the AI's seats are named as in the match: Bot 1, Bot 2, ... through both teams - Net/Core/PlayerNames.cs)
             foreach (var team in new[] { "zenith", "umbra" })
             {
                 var xs = s.Seats.Where(x => x.team == team).ToList(); int ai = Math.Max(0, 5 - xs.Count);
@@ -265,7 +266,7 @@ namespace ZU.Game.UI.Toolkit
                 for (int i = 0; i < ai; i++)
                 {
                     var li = U.Div("oli ai", ot); U.Txt("AI", "q", li);
-                    var tx = U.Div("oli-t", li); U.Txt("<b>AI hero</b>", null, tx); U.Txt("fills the seat at the start", "oli-s", tx);
+                    var tx = U.Div("oli-t", li); U.Txt($"<b>{PlayerNames.Bot(++bot)}</b>", null, tx); U.Txt("AI hero · fills the seat at the start", "oli-s", tx);
                 }
             }
             if (me != null)

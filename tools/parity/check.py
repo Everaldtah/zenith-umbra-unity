@@ -113,6 +113,8 @@ DIVERGENCES = {
                         'damage a second (UnityDivergence.YuzuPower)',
     'Balance table': 'the user, 2026-10-04: per-hero power (damage, healing) and toughness (damage taken) scalars, tuned by tools/simtest `balance tune` '
                      '(Sim/Data/Balance.cs + BalanceTable.cs, docs/BALANCE.md); off with -zu-balance=0',
+    'Online names': 'the user, 2026-10-04: in an online match the scoreboard, kill feed, name tags and kill cam show who plays a hero - the '
+                    'username, or Bot 1..n for the seats the AI fills (Net/Core/PlayerNames.cs); the web game shows hero names only',
     'Kill cam': 'the user, 2026-10-04: when you are eliminated the last seconds replay from the killer\'s side, with who did it and what '
                 'each attacker dealt (Game/AbilityFx/KillCam.cs; off with -zu-killcam=0); the web game has none',
     'Locomotion clips': 'the user, 2026-10-04 (hands dangling behind on a run): the walk / jog / run loops are the Mixamo and '

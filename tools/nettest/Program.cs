@@ -242,6 +242,17 @@ namespace ZU.NetTest
             double before = other.pos.x;
             var undo = hw.rewind(remote);
             if (undo != null) { undo(); Near(other.pos.x, before, 1e-6, "rewind undone"); }
+            // who plays whom (PlayerNames): the two people by username, every AI seat Bot 1..8 through both teams, and the
+            // client's mirror world - other actor objects, another order - gives every hero the same name
+            var seats = new List<Seat> { new Seat { id = "H", name = "x", team = "zenith", hero = "raijin" }, new Seat { id = "C", name = " y<b> ", team = "zenith", hero = "yuzu" } };
+            var hn = PlayerNames.Assign(seats, hw); var cn = PlayerNames.Assign(seats, cw);
+            string Key(Actor a) => a.team + "/" + (a.baseDef ?? a.def).id;
+            var hk = hn.ToDictionary(kv => Key(kv.Key), kv => kv.Value); var ck = cn.ToDictionary(kv => Key(kv.Key), kv => kv.Value);
+            Ok(hk.Count == 10 && hk["zenith/raijin"] == "x" && hk["zenith/yuzu"] == "y‹b›", "names: the two players by username: " + string.Join(", ", hk.Select(kv => kv.Key + "=" + kv.Value)));
+            var bots = hn.Where(kv => kv.Value.StartsWith("Bot ")).ToList();
+            Ok(bots.Count == 8 && bots.Select(kv => kv.Value).Distinct().Count() == 8 && Enumerable.Range(1, 8).All(i => bots.Any(kv => kv.Value == "Bot " + i)), "names: the eight AI seats are Bot 1..8");
+            Ok(bots.Where(kv => kv.Key.team == "zenith").All(kv => int.Parse(kv.Value.Substring(4)) <= 3) && bots.Where(kv => kv.Key.team == "umbra").All(kv => int.Parse(kv.Value.Substring(4)) >= 4), "names: Zenith's bots are 1..3, Umbra's 4..8");
+            Ok(ck.Count == hk.Count && hk.All(kv => ck.TryGetValue(kv.Key, out var v) && v == kv.Value), "names: the client names every hero as the host does: " + string.Join(", ", ck.Select(kv => kv.Key + "=" + kv.Value)));
         }
 
         static void Latch()

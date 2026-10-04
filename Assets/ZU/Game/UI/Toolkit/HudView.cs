@@ -552,7 +552,7 @@ namespace ZU.Game.UI.Toolkit
                     b.e.style.scale = new Scale(new Vector3(sc, sc, 1));
                     string icons = "";
                     foreach (var s in OB_ICONS) if (a.Has(s, t)) icons += $" <color={OB_ICON_COL[s]}>●</color>";
-                    U.Set(b.name, a.def.name + icons);
+                    U.Set(b.name, ZU.Net.PlayerNames.OrHero(a) + icons);
                     b.fill.style.width = new Length((float)Math.Max(0, a.Health / a.MaxHp * 100), LengthUnit.Percent);
                     b.fill.style.backgroundColor = ally ? AllyColor : EnemyColor;
                     bool shield = a.ShieldAmt > 1;
@@ -627,7 +627,9 @@ namespace ZU.Game.UI.Toolkit
                 var row = U.Div("tr" + (a == me ? " me" : "") + (a.alive ? "" : " dead"), tm);
                 var h = U.Div("td h", row);
                 U.Pic("portrait_" + a.def.id, "ti", h);
-                U.Txt(a.def.name + (a == me ? " <color=#ffd76a><size=11>YOU</size></color>" : ""), "tn", h);
+                // online: who plays the hero - a username, or Bot N for a seat the AI fills (Net/Core/PlayerNames.cs)
+                string who = ZU.Net.PlayerNames.Of(a);
+                U.Txt((who != null ? $"{who} <size=11><alpha=#99>{a.def.name}<alpha=#FF></size>" : a.def.name) + (a == me ? " <color=#ffd76a><size=11>YOU</size></color>" : ""), "tn", h);
                 double up = a.def.ult != null && a.def.ult.charge > 0 ? a.ult / a.def.ult.charge : 0;
                 U.Txt(up >= 1 ? "ULT" : $"{Math.Floor(up * 100)}%", up >= 1 ? "u" : "up", h);
                 string F(double v) => U.N(v);
@@ -687,9 +689,11 @@ namespace ZU.Game.UI.Toolkit
         void Kill(Actor src, Actor tgt, bool demech, Actor me)
         {
             var k = U.Div("kf", feed);
-            var a = U.Txt(src != null ? src.def.name : "The Void", "kf-b", k); if (src != null) a.style.color = src.team == "zenith" ? Z : UM;
+            // (online the feed names the players - a username or Bot N - with the hero small beside it)
+            string Who(Actor x, string hero) => ZU.Net.PlayerNames.Of(x) is string u ? $"{u} <size=11><alpha=#B3>{hero}<alpha=#FF></size>" : hero;
+            var a = U.Txt(src != null ? Who(src, src.def.name) : "The Void", "kf-b", k); if (src != null) a.style.color = src.team == "zenith" ? Z : UM;
             U.Txt(demech ? "⟶⚙" : src != null ? "⟶" : "↓", "kf-i", k);
-            var b = U.Txt(demech ? tgt.baseDef.name : tgt.def.name, "kf-b", k); b.style.color = tgt.team == "zenith" ? Z : UM;
+            var b = U.Txt(Who(tgt, demech ? tgt.baseDef.name : tgt.def.name), "kf-b", k); b.style.color = tgt.team == "zenith" ? Z : UM;
             if (me != null && (src == me || tgt == me)) k.AddToClassList("me");
             Prepend(feed, k);
             k.schedule.Execute(() => k.RemoveFromHierarchy()).StartingIn(6000);

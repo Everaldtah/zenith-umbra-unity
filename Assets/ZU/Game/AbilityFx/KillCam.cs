@@ -237,19 +237,24 @@ namespace ZU.Game.Fx
             {
                 case FxEvent _: case SfxEvent _: events.Add((t, e)); break;
                 case DmgEvent d when me != null && d.tgt == me && !d.heal && d.src != null && d.src != me:
-                    hits.Add(new Hit { t = t, who = (d.src.owner ?? d.src).baseDef.name, amt = d.amt, crit = d.crit });
+                    hits.Add(new Hit { t = t, who = Named(d.src.owner ?? d.src), amt = d.amt, crit = d.crit });
                     break;
                 case KillEvent k when me != null && k.tgt == me:
                 {
                     var by = k.src != null && k.src != me ? k.src : me.lastHitBy != me ? me.lastHitBy : null;
                     by = by?.owner ?? by;
                     deathAt = t; victimId = me.id; killerId = by?.id ?? 0;
-                    killerName = by != null ? by.baseDef.name : ""; killerTitle = by != null ? by.baseDef.title ?? "" : ""; killerColor = by?.baseDef.color ?? "#ffffff";
+                    // (online: the player's username or Bot N, the hero on the line under it)
+                    string user = by != null ? Net.PlayerNames.Of(by) : null;
+                    killerName = by == null ? "" : user ?? by.baseDef.name; killerTitle = by == null ? "" : user != null ? by.baseDef.name : by.baseDef.title ?? ""; killerColor = by?.baseDef.color ?? "#ffffff";
                     pending = Enabled;
                     break;
                 }
             }
         }
+
+        /// <summary>an attacker in the recap: the hero, and online who plays it</summary>
+        static string Named(Actor a) => Net.PlayerNames.Of(a) is string u ? $"{u} ({a.baseDef.name})" : a.baseDef.name;
 
         void Sample(World w)
         {
