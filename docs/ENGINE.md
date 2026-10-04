@@ -77,7 +77,7 @@ float  Perf.Sharpen            // the Image Sharpening slider as a fraction 0..1
 bool   Perf.SharpenActive      // the sharpen pass runs this frame: Sharpen > 0, RenderScale >= 0.99, shader loaded (independent of Enabled)
 double Perf.RefreshHz          // the display's refresh: reported, then measured from the vsync cadence
 bool   Perf.VSynced            // the cadence is vblank-locked (deltas are quantized)
-double Perf.BudgetMs           // 1000 / (cap > 0 ? min(cap, refresh) : refresh)  (the TS updateDynRes)
+double Perf.BudgetMs           // from the cap in effect (re-read once a second, whoever set it): vSyncCount k (player) = refresh / k; else targetFrameRate > 0 = min(targetFrameRate, refresh) (the TS updateDynRes); else refresh
 double Perf.CpuMs              // the last frame's own main-thread work (FrameTimer main - present wait, else measured)
 FrameTimer Perf.Timing;  FrameGraph Perf.Graph;  FramePacer Perf.Pacer;  DynamicResolution Perf.DynRes
 PerfStats Perf.Stats           // readonly struct snapshot of all of the above + Governor / AnimBudget / MemoryWatch state
@@ -86,7 +86,7 @@ bool Perf.Enabled              // default true; false with -zu-engine=0. Off = T
 bool Perf.AllowAssetWrites     // default !Application.isEditor: URP asset properties are written only when true
 void Perf.SetBaseScale(float scale)                       // 0.5..2; URP renderScale = base x dynamic
 void Perf.SetCap(int fps, bool vsync = true)              // 0 = display based (vSyncCount 1); fps dividing the refresh + vsync = vSyncCount k; else vSyncCount 0 + targetFrameRate
-void Perf.SetDynamicResolution(bool on, float min = 0.5f) // off resets the dynamic scale to 1 (TS applySettings)
+void Perf.SetDynamicResolution(bool on, float min = 0.8f) // off resets the dynamic scale to 1 (TS applySettings); floor 0.8 (the web's 0.5 fitted its lighter renderer), explicit 0.25..1
 void Perf.SetUpscaler(Perf.Upscaler mode, float sharpness = 0.9f)   // Auto = FSR below 0.99 scale, else bilinear; 0.9 = the web RCAS 0.25 stops (applies below native only)
 void Perf.SetSharpen(float amount01)                      // the Image Sharpening slider / 100: the web's native-scale sharpen pass (shader amount = x 0.6), off below 0.99 scale
 ```
@@ -94,6 +94,23 @@ void Perf.SetSharpen(float amount01)                      // the Image Sharpenin
 `Perf` owns `QualitySettings.vSyncCount` / `Application.targetFrameRate` only once `SetCap` has been called (until
 then the settings code's own writes stand), and the URP asset's `renderScale` / `upscalingFilter` / `fsrSharpness`,
 written only when they change (a renderScale write re-allocates the render targets).
+
+**Dynamic resolution rules** (from the first Editor run, Hanabi):
+
+- Floor 0.8 by default. The web's 0.5 suited its lighter three.js renderer; on the URP PC pipeline an RTX 3050 missing
+  the 60 Hz budget with the Ultra preset (base 1.25) would be walked down to render scale 0.625 = visibly blurry. 0.8
+  keeps Ultra at native or above (1.25 x 0.8) and the 100 % preset at >= 80 %, where FSR is close to native. Explicit
+  callers may still pass 0.25..1.
+- Never open-loop. The controller steps only while its scale can reach URP (`AllowAssetWrites` and a URP asset). In the
+  Editor asset writes are off, so lowering the scale never lowered the load and `dyn` walked 0.50..0.90 while `render`
+  stayed 1.00. Now: on the false edge the controller resets to 1 and is held; `DynScale` / `PerfStats` read 1.00 and
+  never drift. **Editor readings stay 1.00: dynres is verified in a player only** (or a test that sets
+  `Perf.AllowAssetWrites = true`, after which it resumes from 1 with its normal 3 s warm-up).
+- The budget follows the cap in effect, not only a cap set through `SetCap`: `vSyncCount`/`targetFrameRate` are re-read
+  in the once-a-second check (and after the engine's own writes), so a `targetFrameRate` somebody set by hand (the lead's
+  60 in the Editor while SettingsApply had `SetCap(0)`) moves the budget too. Player with `vSyncCount k`: refresh / k;
+  else `targetFrameRate > 0`: 1000 / min(targetFrameRate, refresh); else the refresh. The Editor ignores `vSyncCount`,
+  so only its `targetFrameRate` counts there.
 
 `PerfStats` fields: `Enabled, VSynced, TimingSupported, BaseScale, DynScale, RenderScale, Upscaler, RefreshHz,
 BudgetMs, GpuMs, GpuLast, CpuMs, CpuMainMs, CpuRenderMs, PresentWaitMs, FrameMs, TargetFrameRate, VSyncCount, FrameDt,
@@ -307,7 +324,8 @@ Nothing here has run inside the Editor yet (the compile check is the asmdef-boun
 - [ ] The cap rule: 60 cap on the 144 Hz display stays on `vSyncCount 0 + targetFrameRate 60` (not a divisor); 72 -> `vSyncCount 2`; 144 -> `vSyncCount 1`; display based -> `vSyncCount 1`. Measured `RefreshHz` settles near 144 with `VSynced` true in a player (never in the Editor: it ignores vSyncCount, the pacer's divisor is forced to 0 there).
 - [ ] Moving the window to another monitor: `Screen.currentResolution.refreshRateRatio` follows it and the cap is re-applied within a second; on a non-primary monitor with a higher rate the measurement is rejected by design (never above the reported rate).
 - [ ] `FrameGraphElement` paints in the HUD; the "xx.x ms" label sits just above the 1x line (bottom = H/3 + 1 was derived from the web baseline, not seen).
-- [ ] Dynamic resolution: `DynScale` steps in 5 % with the warm-up hold at match start; `UpscalerActive` flips to "fsr" below 0.99 and the picture shows RCAS sharpening.
+- [ ] Dynamic resolution (player only: in the Editor `DynScale` is held at 1.00 by design): `DynScale` steps in 5 % with the warm-up hold at match start; `UpscalerActive` flips to "fsr" below 0.99 and the picture shows RCAS sharpening.
+- [ ] Player, Ultra preset (base 1.25) on the 60 Hz display: F8 render % stays >= 100 % in a fight (floor 0.8 x 1.25); `BudgetMs` reads 16.7 with vsync, and follows a hand-set `Application.targetFrameRate` within a second.
 - [ ] `Sharpen.shader` compiles (the asmdef check cannot compile HLSL): no errors on import, `Hidden/ZU/Sharpen` shows one pass "ZU Sharpen", `Resources.Load<Shader>("ZUEngine/Sharpen")` returns it in a player build (the Resources folder, no renderer / Always Included entry needed).
 - [ ] Sharpen pass order (Frame Debugger / Render Graph Viewer): "ZU Sharpen" sits after "UberPost" (and SMAA / TAA when on) and before "FinalPost" / "FinalBlit", on the resolving camera only - one per frame with the viewmodel overlay camera in the stack, none on the Hero Viewer / gallery cameras unless they are Game cameras resolving their own stack.
 - [ ] Sharpen gamma: with the slider at 100 a mid-grey / highlight edge sharpens like the web (the mask runs in sRGB, no stronger haloing on highlights than the web shows); the picture is not darkened or double-encoded (a wrong colour space would show as a gamma shift of the whole frame while the slider is > 0).
