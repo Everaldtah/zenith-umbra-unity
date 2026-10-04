@@ -49,7 +49,9 @@ namespace ZU.Game.UI.Toolkit
 
         protected virtual void Draw(MeshGenerationContext mgc)
         {
-            var r = contentRect;
+            // the border box, as a CSS background / clip-path (contentRect is inset by the padding, and the outline is
+            // drawn from 0,0: a padded button got a content-sized shape up-left of its label, the label hanging under it)
+            var r = new Rect(Vector2.zero, layout.size);
             if (r.width <= 0 || r.height <= 0) return;
             var p = mgc.painter2D;
             var poly = Outline(r.width, r.height);
