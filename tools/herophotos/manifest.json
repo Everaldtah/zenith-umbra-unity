@@ -1,0 +1,512 @@
+{
+ "boss_genesis/key": {
+  "installed": "c3465b305e8c4c9d",
+  "note": "purple, black and gold frame, gold antenna crest, purple wing plates, empty hands: same as model",
+  "scores": {
+   "0": 0.401,
+   "1": 0.307,
+   "2": 0.262,
+   "3": 0.264
+  },
+  "sha": "ab98cffe0102b06b",
+  "source": "raw/boss_genesis_key_3.png",
+  "state": "accept"
+ },
+ "boss_ironmaw/key": {
+  "installed": "a9ac8ae9af4851b1",
+  "note": "orange shoulder shells, grey frame, purple core, heavy arms: same as model",
+  "scores": {
+   "0": 0.128,
+   "1": 0.051
+  },
+  "sha": "fb39100c631627ac",
+  "source": "raw/boss_ironmaw_key_1.png",
+  "state": "accept"
+ },
+ "boss_leviathan/key": {
+  "installed": "643d82a53cebff77",
+  "note": "black frame, teal legs and accents, purple core, no weapon: same as model (candidate 1 invented a gun)",
+  "scores": {
+   "0": 0.335,
+   "1": 0.452
+  },
+  "sha": "c16e8195bff323aa",
+  "source": "raw/boss_leviathan_key_0.png",
+  "state": "accept"
+ },
+ "boss_phoenix/key": {
+  "installed": "38b40a791912997b",
+  "note": "orange and black feathered wings and frame, yellow crest: same as model",
+  "scores": {
+   "0": 0.312,
+   "1": 0.093
+  },
+  "sha": "638296447756f5d0",
+  "source": "raw/boss_phoenix_key_1.png",
+  "state": "accept"
+ },
+ "boss_reaper/key": {
+  "installed": "b994fd258f5c6aef",
+  "note": "pale violet frame with long blade wings and blades: same as model",
+  "scores": {
+   "0": 0.338,
+   "1": 0.381
+  },
+  "sha": "c775bb366c40687f",
+  "source": "raw/boss_reaper_key_1.png",
+  "state": "accept"
+ },
+ "enra/key": {
+  "installed": "fe60d94e114bdc4e",
+  "note": "full armour, red tabard, twin curved blades with burning fists: same as model",
+  "scores": {
+   "0": 0.291,
+   "1": 0.515
+  },
+  "sha": "a12ee71d35abfb50",
+  "source": "raw/enra_key_0.png",
+  "state": "accept"
+ },
+ "enra/portrait": {
+  "installed": "c7004fc56ca3d68e",
+  "note": "horns, white hair, dark face, black spiked armour with red: same as model",
+  "scores": {
+   "0": 0.189,
+   "1": 0.291
+  },
+  "sha": "749faee786750c45",
+  "source": "raw/enra_portrait_0.png",
+  "state": "accept"
+ },
+ "gantetsu/key": {
+  "installed": "2294a7c2dcc6f8a2",
+  "note": "red vest, tattoos, rope belt, flame skirt, cannon arm and drum gauntlet: same as model",
+  "scores": {
+   "0": 0.15,
+   "1": 0.105
+  },
+  "sha": "565a1756dedccbe9",
+  "source": "raw/gantetsu_key_1.png",
+  "state": "accept"
+ },
+ "gantetsu/portrait": {
+  "installed": "574b25bd12976d3f",
+  "note": "topknot with red tie, jewelled headband, beard, red vest, green tattoos, bead strap: same as model",
+  "scores": {
+   "0": 0.12,
+   "1": 0.16
+  },
+  "sha": "fc6e7ef113044bce",
+  "source": "raw/gantetsu_portrait_1.png",
+  "state": "accept"
+ },
+ "gorgoth/key": {
+  "installed": "36354b5794abe368",
+  "note": "crimson and black spiked mech, red loincloth, empty hands: same as model (candidate 1 invented an axe)",
+  "scores": {
+   "0": 0.113,
+   "1": 0.172
+  },
+  "sha": "3b581ee24ca8eeb6",
+  "source": "raw/gorgoth_key_0.png",
+  "state": "accept"
+ },
+ "gorgoth/portrait": {
+  "installed": "2c45d2f088e53fd7",
+  "note": "spiked black helm with red crest, crimson shoulder blocks, chest gem: same as model",
+  "scores": {
+   "0": 0.175,
+   "1": 0.192
+  },
+  "sha": "9aa47158130332e6",
+  "source": "raw/gorgoth_portrait_0.png",
+  "state": "accept"
+ },
+ "haruto/key": {
+  "installed": "4fa5902eb61160d1",
+  "note": "white and red mech suit, wing pods, gold and grey rifle, brown hair: same as model",
+  "scores": {
+   "0": 0.325,
+   "1": 0.19
+  },
+  "sha": "da63e69e0ac691af",
+  "source": "raw/haruto_key_1.png",
+  "state": "accept"
+ },
+ "haruto/portrait": {
+  "installed": "85099b95e19b2b59",
+  "note": "brown hair male pilot, white and red mech suit with wing pods: same as model",
+  "scores": {
+   "0": 0.2,
+   "1": 0.171
+  },
+  "sha": "3e0697bcbfafed5e",
+  "source": "raw/haruto_portrait_1.png",
+  "state": "accept"
+ },
+ "hayate/key": {
+  "installed": "7af2435f69294091",
+  "note": "white cyber ninja, green scarf, sword on back, kusarigama with blue blades: same as model",
+  "scores": {
+   "0": 0.554,
+   "1": 0.474
+  },
+  "sha": "88bbc1f8fd4701fb",
+  "source": "raw/hayate_key_1.png",
+  "state": "accept"
+ },
+ "hayate/portrait": {
+  "installed": "1cb2d83efe2df93a",
+  "note": "white horned cyber helm with cyan visor line, green scarf, sword on back: same as model",
+  "scores": {
+   "0": 0.219,
+   "1": 0.266
+  },
+  "sha": "a21a64b3317cbe41",
+  "source": "raw/hayate_portrait_0.png",
+  "state": "accept"
+ },
+ "hex/key": {
+  "installed": "e0a88a0e1aed8d42",
+  "note": "skull mask, hooded black long coat, white gloves: same as model",
+  "scores": {
+   "0": 0.646,
+   "1": 0.12
+  },
+  "sha": "01005fd130721b7d",
+  "source": "raw/hex_key_1.png",
+  "state": "accept"
+ },
+ "hex/portrait": {
+  "installed": "1e5f31a688c16c08",
+  "note": "white skull mask with forehead gem, black hood and coat, cravat: same as model",
+  "scores": {
+   "0": 0.118,
+   "1": 0.092
+  },
+  "sha": "ee50ce44c83eb18b",
+  "source": "raw/hex_portrait_1.png",
+  "state": "accept"
+ },
+ "hibiki/key": {
+  "installed": "2c2fee0962f3f9b0",
+  "note": "cyan jacket, white hoodie, striped joggers, yellow shoes, gold speaker: same as model",
+  "scores": {
+   "0": 0.273,
+   "1": 0.117
+  },
+  "sha": "c52c2bb5520d4ec4",
+  "source": "raw/hibiki_key_1.png",
+  "state": "accept"
+ },
+ "hibiki/portrait": {
+  "installed": "d4d29f9777a69f48",
+  "note": "dreadlocks, gold headphones and glasses, cyan jacket over white hoodie, gold chains: same as model",
+  "scores": {
+   "0": 0.261,
+   "1": 0.175
+  },
+  "sha": "990e86e026ec2299",
+  "source": "raw/hibiki_portrait_0.png",
+  "state": "accept"
+ },
+ "kagemaru/key": {
+  "installed": "f2d1ed6073c6ba59",
+  "note": "black ninja, skull mask, purple sash and belt, claws: same as model",
+  "scores": {
+   "0": 0.516,
+   "1": 0.182
+  },
+  "sha": "51a6f8afd5b36ec0",
+  "source": "raw/kagemaru_key_1.png",
+  "state": "accept"
+ },
+ "kagemaru/portrait": {
+  "installed": "4dde47c40a7143c3",
+  "note": "eared black hood, skull mask, purple sash, spiked shoulders: same as model",
+  "scores": {
+   "0": 0.281,
+   "1": 0.339
+  },
+  "sha": "4fff5f496564cd9f",
+  "source": "raw/kagemaru_portrait_0.png",
+  "state": "accept"
+ },
+ "kaien/key": {
+  "installed": "7d7e88bb801a6915",
+  "note": "white and navy robe, bead belt with gold crest, talisman fan, sandals: same as model",
+  "scores": {
+   "0": 0.221,
+   "1": 0.11
+  },
+  "sha": "ff3d9ff42ca082fa",
+  "source": "raw/kaien_key_1.png",
+  "state": "accept"
+ },
+ "kaien/portrait": {
+  "installed": "ce18a4fe0b2e7a22",
+  "note": "black hair with top bun, white robe with navy collar: same as model",
+  "scores": {
+   "0": 0.151,
+   "1": 0.192
+  },
+  "sha": "795cf1bac3e24ce2",
+  "source": "raw/kaien_portrait_0.png",
+  "state": "accept"
+ },
+ "minion_bomber/portrait": {
+  "installed": "68153f9cf2e06777",
+  "note": "whole four-legged drone: chipped white dome, big purple eye, side orbs, purple legs: same as model",
+  "scores": {
+   "0": 0.266,
+   "1": 0.235,
+   "2": 0.408,
+   "3": 0.587
+  },
+  "sha": "9faada5b903bf093",
+  "source": "raw/minion_bomber_portrait_2.png",
+  "state": "accept"
+ },
+ "minion_lancer/portrait": {
+  "installed": "0da1972c211764fb",
+  "note": "purple domed head, purple shoulder shells, dark frame, antenna: same as model",
+  "scores": {
+   "0": 0.045,
+   "1": 0.173
+  },
+  "sha": "ddc0b93faef68f91",
+  "source": "raw/minion_lancer_portrait_0.png",
+  "state": "accept"
+ },
+ "minion_sentinel/portrait": {
+  "installed": "b7d6af3aebd9ee14",
+  "note": "headless hexagonal dark hull with purple panels and side plates: same as model (candidate 0 invented a head)",
+  "scores": {
+   "0": 0.106,
+   "1": 0.132
+  },
+  "sha": "36d01ff64cc45114",
+  "source": "raw/minion_sentinel_portrait_1.png",
+  "state": "accept"
+ },
+ "minion_swarmer/portrait": {
+  "installed": "371c15edb764f4a3",
+  "note": "whole insect drone: grey hull, purple wing plates, top antenna, legs: same as model",
+  "scores": {
+   "0": 0.474,
+   "1": 0.352
+  },
+  "sha": "cae86d0e5cdcb86a",
+  "source": "raw/minion_swarmer_portrait_0.png",
+  "state": "accept"
+ },
+ "mirei/key": {
+  "installed": "6970b84ffd3cdf5b",
+  "note": "white and gold suit, white wings with blue crystal feathers, chest star: same as model",
+  "scores": {
+   "0": 0.169,
+   "1": 0.109
+  },
+  "sha": "b3bffa41a527e134",
+  "source": "raw/mirei_key_1.png",
+  "state": "accept"
+ },
+ "mirei/portrait": {
+  "installed": "9fea69b28e4517a2",
+  "note": "silver bob, white and gold suit, blue star crystal on the chest, white wings with blue crystal feathers: same as model",
+  "scores": {
+   "0": 0.21,
+   "1": 0.205,
+   "2": 0.12,
+   "3": 0.187
+  },
+  "sha": "98cc4c23c3e48e37",
+  "source": "raw/mirei_portrait_2.png",
+  "state": "accept"
+ },
+ "nocturne/key": {
+  "installed": "dab7a31078b8fec4",
+  "note": "crown, bat wings, corset, black gown with red lining: same as model",
+  "scores": {
+   "0": 0.451,
+   "1": 0.281
+  },
+  "sha": "12890892709def6b",
+  "source": "raw/nocturne_key_1.png",
+  "state": "accept"
+ },
+ "nocturne/portrait": {
+  "installed": "ebc276856b8fb1a6",
+  "note": "crown, silver hair, pale skin, red eyes, bat wings, black and white corset, red gem: same as model",
+  "scores": {
+   "1": 0.066
+  },
+  "sha": "744e03894960b2ba",
+  "source": "raw/nocturne_portrait_1.png",
+  "state": "accept"
+ },
+ "qelvaris/key": {
+  "installed": "bd862b4fa175e931",
+  "note": "gold mask, wire halo, ornate dark robe with violet: same as model",
+  "scores": {
+   "0": 0.257,
+   "1": 0.422
+  },
+  "sha": "0e70c73ba4319d5d",
+  "source": "raw/qelvaris_key_0.png",
+  "state": "accept"
+ },
+ "qelvaris/portrait": {
+  "installed": "e45da7a3e348e738",
+  "note": "gold alien mask with violet eyes, wire halo, dark ornate coat: same as model",
+  "scores": {
+   "0": 0.287,
+   "1": 0.319
+  },
+  "sha": "db1c0d124af3d28c",
+  "source": "raw/qelvaris_portrait_0.png",
+  "state": "accept"
+ },
+ "raijin/key": {
+  "installed": "ed961811f2fd4549",
+  "note": "spiky blond hair, navy coat with yellow lightning, studded shoulders, katana: same as model",
+  "scores": {
+   "0": 0.279,
+   "1": 0.385
+  },
+  "sha": "c559cb377a93b4bc",
+  "source": "raw/raijin_key_0.png",
+  "state": "accept"
+ },
+ "raijin/portrait": {
+  "installed": "1126f83ee5439a56",
+  "note": "spiky blond hair, navy high-collar coat with yellow lightning markings, ribbed chest plate, studded shoulders: same as model",
+  "scores": {
+   "0": 0.153,
+   "1": 0.123,
+   "2": 0.231,
+   "3": 0.164
+  },
+  "sha": "cbd6d8b1942e08c6",
+  "source": "raw/raijin_portrait_3.png",
+  "state": "accept"
+ },
+ "seiran/key": {
+  "installed": "a9540d0ce2ed5a1f",
+  "note": "robe, chest plate, arrows on back, and the ornate bow gripped in the left hand with a nocked arrow exactly as the game model holds it",
+  "scores": {
+   "0": 0.205,
+   "1": 0.058,
+   "2": 0.119,
+   "3": 0.244
+  },
+  "sha": "141dbd52fc857ab6",
+  "source": "raw/seiran_key_1.png",
+  "state": "accept"
+ },
+ "seiran/portrait": {
+  "installed": "00cb9b0c1402941b",
+  "note": "black hair with white streak, beard, arrows on back, grey robe with metal chest plate, patterned sleeve: same as model",
+  "scores": {
+   "0": 0.23,
+   "1": 0.206
+  },
+  "sha": "b420c16c38cebbb0",
+  "source": "raw/seiran_portrait_1.png",
+  "state": "accept"
+ },
+ "tenkai/key": {
+  "installed": "db0471433afec748",
+  "note": "white, gold and blue mech, sun crown head, chest sun emblem, great hammer: same as model",
+  "scores": {
+   "0": 0.113,
+   "1": 0.162
+  },
+  "sha": "8b45bc0e13694ee2",
+  "source": "raw/tenkai_key_1.png",
+  "state": "accept"
+ },
+ "tenkai/portrait": {
+  "installed": "6244df41aa631def",
+  "note": "sun-ray crown head, white and gold armour, blue panels, gold sun emblem on the chest: same as model",
+  "scores": {
+   "0": 0.244,
+   "1": 0.209,
+   "2": 0.175,
+   "3": 0.061
+  },
+  "sha": "00c145bc547f14ea",
+  "source": "raw/tenkai_portrait_3.png",
+  "state": "accept"
+ },
+ "tomoe/key": {
+  "installed": "5e4d3a0606a87af8",
+  "note": "antlers, white and gold armour, long white tabard, crescent great axe: same as model",
+  "scores": {
+   "0": 0.165,
+   "1": 0.185
+  },
+  "sha": "9aa497ad3e4fed03",
+  "source": "raw/tomoe_key_1.png",
+  "state": "accept"
+ },
+ "tomoe/portrait": {
+  "installed": "d86a0989f5d42568",
+  "note": "gold antlers, silver hair, dark skin, white and gold rose pauldrons, turquoise gems: same as model",
+  "scores": {
+   "0": 0.199,
+   "1": 0.154
+  },
+  "sha": "aa1d331fe68f9405",
+  "source": "raw/tomoe_portrait_1.png",
+  "state": "accept"
+ },
+ "vorn/key": {
+  "installed": "c4e13795e22125be",
+  "note": "grey coat with crimson shoulders, belt, dark red boots: same as model",
+  "scores": {
+   "0": 0.525,
+   "1": 0.265
+  },
+  "sha": "b376cba914096bef",
+  "source": "raw/vorn_key_1.png",
+  "state": "accept"
+ },
+ "vorn/portrait": {
+  "installed": "464e89adbf30d406",
+  "note": "grey swept hair, stern face, grey coat with crimson shoulders and collar: same as model",
+  "scores": {
+   "0": 0.319,
+   "1": 0.273
+  },
+  "sha": "1eb48a665f98a68d",
+  "source": "raw/vorn_portrait_0.png",
+  "state": "accept"
+ },
+ "yuzu/key": {
+  "installed": "c323bc2ac1997b42",
+  "note": "two buns, white and gold suit, orange boots, golden bow held in the left hand with a nocked arrow as the game model holds it",
+  "scores": {
+   "0": 0.366,
+   "1": 0.15,
+   "2": 0.194,
+   "3": 0.02
+  },
+  "sha": "e5397b5d0b6f0678",
+  "source": "raw/yuzu_key_3.png",
+  "state": "accept"
+ },
+ "yuzu/portrait": {
+  "installed": "b071bb3ab270ad8e",
+  "note": "two buns, tan skin, white suit with gold trim, gold shoulder guards, orange and gold chest harness: same as model",
+  "scores": {
+   "0": 0.344,
+   "1": 0.285,
+   "2": 0.089,
+   "3": 0.302
+  },
+  "sha": "faf3109e014a760a",
+  "source": "raw/yuzu_portrait_2.png",
+  "state": "accept"
+ }
+}
