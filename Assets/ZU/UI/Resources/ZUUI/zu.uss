@@ -589,7 +589,6 @@
 .cp .zb.hl-btn { padding: 6px 10px; font-size: 13px; letter-spacing: 1.3px; margin: 0 6px 4px 0; }
 .cp .zb.hl-btn:disabled { opacity: 0.4; }
 .cp .zb.hl-del.armed { --fill: #ff5d7a; --stroke: rgba(0, 0, 0, 0); color: #1a1206; }
-.cp .zb.hl-more { width: 140px; flex-shrink: 0; --cut: 0; --fill: rgba(255, 255, 255, 0.04); }
 .cp .hl-empty { margin: 4px 0 6px 0; }
 .cp .ctr { flex-direction: row; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.05); }
 .cp .ctr.th { border-top-width: 0; }

@@ -331,12 +331,13 @@ namespace ZU.Game.UI.Toolkit
         }
 
         // ------------------------------------------------------------------ HIGHLIGHTS (History tab)
-        // Overwatch's highlights row: the newest first, 12 at a time, each card the hero, what the play was (PLAY OF THE
-        // GAME in gold, or HIGH SCORE / LIFESAVER / SHARPSHOOTER / SHUTDOWN), the summary, map, mode, date and length,
-        // and WATCH / SAVE VIDEO / DELETE. The video quality is one stepper for the row; a save in progress shows its bar,
-        // then the file and OPEN FOLDER.
+        // Overwatch's highlights row: the newest first (Highlights keeps 10 at most, for 48 hours - the user's rule), each
+        // card the hero, what the play was (PLAY OF THE GAME in gold, or the category's label: HIGH SCORE / LIFESAVER /
+        // SHARPSHOOTER / SHUTDOWN / BEST MOMENT), the summary, map, mode, date and length, and WATCH / SAVE VIDEO / DELETE.
+        // The video quality is one stepper for the row. WATCH and SAVE VIDEO both leave the menu (the clip replays in its
+        // map; the save renders it there) and come back here: then the line under the header says where the video went.
         static readonly (int h, string label)[] QUALITY = { (1080, "1080P"), (1440, "1440P"), (2160, "4K") };
-        static int quality = 1080, shown = 12;
+        static int quality = 1080;
         static string deleteArmed;                       // the clip whose DELETE asks for a second click
 
         void HighlightsRow(VisualElement b)
@@ -344,7 +345,7 @@ namespace ZU.Game.UI.Toolkit
             var box = U.Div("hl", b);
             var head = U.Div("hl-head", box);
             U.Txt("HIGHLIGHTS", "hl-h3", head);
-            U.Txt("Your best play of every match", "hl-sub", head);
+            U.Txt($"Your best play of every match · kept for {Highlights.LIFE.TotalHours:0} hours · 10 at most", "hl-sub", head);
             var q = U.Div("hl-q", head);
             U.Txt("VIDEO", "hl-ql", q);
             int qi = Math.Max(0, Array.FindIndex(QUALITY, x => x.h == quality));
@@ -385,8 +386,7 @@ namespace ZU.Game.UI.Toolkit
             if (list.Count == 0) { U.Txt("No highlights yet - your best play of every match is kept here.", "empty hl-empty", box); return; }
             var sv = new ScrollView(ScrollViewMode.Horizontal); sv.AddToClassList("hl-scroll"); box.Add(sv);
             var row = sv.contentContainer; row.AddToClassList("hl-row");
-            foreach (var h in list.Take(shown)) Card(row, h);
-            if (list.Count > shown) U.Btn($"{list.Count - shown} MORE", "hl-more", () => { shown += 12; Render(); }, row);
+            foreach (var h in list) Card(row, h);
         }
 
         void Card(VisualElement row, HighlightInfo h)
@@ -399,15 +399,15 @@ namespace ZU.Game.UI.Toolkit
             U.Txt(string.IsNullOrEmpty(h.heroName) ? Nm(h.heroId) : h.heroName, "hl-hero", info).style.color = Col(h.heroId);
             U.Txt(h.summary ?? "", "hl-sum", info);
             string map = d.Map.TryGetValue(h.map ?? "", out var md) ? md.name : h.map;
-            string mode = CareerProfile.MODE_LABEL.TryGetValue(h.mode ?? "", out var ml) ? ml : h.mode;
+            string mode = CareerProfile.MODE_LABEL.TryGetValue(h.mode ?? "", out var ml) ? ml : string.IsNullOrEmpty(h.mode) ? "" : char.ToUpperInvariant(h.mode[0]) + h.mode.Substring(1);
             U.Txt($"{map} · {mode}", "hl-meta", info);
             var at = DateTimeOffset.FromUnixTimeMilliseconds(h.at).ToLocalTime();
             U.Txt(at.ToString("d", CultureInfo.CurrentCulture) + " " + at.ToString("HH:mm", CultureInfo.InvariantCulture), "hl-date", info);
             var btns = U.Div("hl-btns", c);
             U.Btn("WATCH", "primary hl-btn", () => Watch(h), btns);
-            var save = U.Btn("SAVE VIDEO", "hl-btn", () => { Highlights.Export(h, quality); Render(); }, btns);
+            var save = U.Btn("SAVE VIDEO", "hl-btn", () => Save(h), btns);
             save.SetEnabled(!Highlights.Exporting);
-            save.tooltip = $"Save the clip as a {QUALITY.First(x => x.h == quality).label} video in {Highlights.Folder}";
+            save.tooltip = $"Render the clip as a {QUALITY.First(x => x.h == quality).label} video into {Highlights.VideoFolder} (saved videos are kept)";
             bool armed = deleteArmed == h.path;
             var del = U.Btn(armed ? "CONFIRM?" : "DELETE", "hl-btn hl-del" + (armed ? " armed" : ""), () =>
             {
@@ -439,6 +439,15 @@ namespace ZU.Game.UI.Toolkit
             tab = "history";
             MenuState.ReturnTo = "career";
             Highlights.Watch(h, MenuView.BackToCareer);
+        }
+
+        /// <summary>SAVE VIDEO leaves the menu too (the clip renders in its map, with its own progress banner); Highlights
+        /// calls MenuView.BackToCareer when the export ends, and the status line here shows the file or the error</summary>
+        void Save(HighlightInfo h)
+        {
+            tab = "history";
+            MenuState.ReturnTo = "career";
+            Highlights.Export(h, quality);
         }
     }
 }
