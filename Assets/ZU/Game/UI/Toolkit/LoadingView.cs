@@ -91,7 +91,9 @@ namespace ZU.Game.UI.Toolkit
             else
             {
                 d.Map.TryGetValue(map, out var m);
-                Show("map_" + map, m?.name ?? map, m?.story ?? "", NextTips ?? TIPS);
+                // the training map is the Training Grounds to the player (its data name is the academy's "Proving Grounds")
+                string title = map == "training" ? "Training Grounds" : m?.name ?? map;
+                Show("map_" + map, title, m?.story ?? "", NextTips ?? TIPS);
                 NextTips = null;
             }
             UiRoot.Get().StartCoroutine(Load());

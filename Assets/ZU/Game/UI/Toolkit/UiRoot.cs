@@ -58,6 +58,11 @@ namespace ZU.Game.UI.Toolkit
             ps.match = 1;                                           // height: 1080 canvas pixels at any aspect
             ps.sortingOrder = 100;
             ps.clearColor = false;
+            // blend like the browser does: the project renders in linear space, where a translucent panel (rgba white .04),
+            // a dark overlay or a bar's fill comes out far lighter than the CSS it ports - every layer greyed and washed out,
+            // text with soft bright fringes (the user: "kinda blurry ... make it bright and visible"). Gamma-space UI keeps
+            // the web's contrast.
+            ps.forceGammaRendering = true;
             ps.themeStyleSheet = Resources.Load<ThemeStyleSheet>("ZUUI/ZUTheme");
             // a browser falls back to a system font for the arrows, triangles and symbols Orbitron and Rajdhani lack;
             // here that is a DejaVu subset (ZUSymbols-Bold) every text element can fall back to
