@@ -33,35 +33,36 @@ simulation is bit for bit what it was (checked after every change: `aimatch -zu-
 kills / deaths / damage / healing for every hero on all eight maps as the tree before the table). Online, both ends
 must run with the same setting.
 
-## Result of the tune of 2026-10-04 (480 games a pass, 12 passes, calibrated with Yuzu x2 in the pool)
+## Result of the second tune of 2026-10-04 (600 games a pass, converged in 11 passes, Yuzu x2 in the pool)
 
-Win rate at equal bot skill on the same 480 unseen games, without and with the table:
+Win rate at equal bot skill on the same 600 unseen games, without and with the table (one hero's figure on 300-500
+games has a standard error of about 0.025):
 
 | hero | role | target | before | power | taken | after | |
 |---|---|---|---|---|---|---|---|
-| Yuzu | damage | 0.60 | 0.86 | x2 (pinned) | x1.5 | 0.72 | over by 0.12: her damage is the user's x2; toughness is at its clamp |
-| Hayate | damage | 0.60 | 0.60 | x1.081 | 1 | 0.60 | on target |
-| Tenkai-Oh | tank | 0.60 | 0.56 | x1.292 | 1 | 0.68 | over by 0.08 (0.58 on the tuning games: within the noise of 240 games) |
-| Raijin | damage | 0.60 | 0.32 | x1.6 | x0.5 | 0.43 | under by 0.17 with both scalars at their clamps: his bot, not his numbers |
-| Enra | damage | 0.467 | 0.38 | x1.6 | x0.5 | 0.47 | in the band, at both clamps |
-| Seiran | damage | 0.467 | 0.45 | x1.6 | 1 | 0.44 | 0.01 under the band |
-| Kagemaru | damage | 0.467 | 0.38 | x1.523 | 1 | 0.35 | under: still moving when the passes ran out |
-| Hibiki | support | 0.467 | 0.52 | x0.869 | 1 | 0.53 | in the band |
-| Mirei | support | 0.467 | 0.59 | x0.85 | x1.5 | 0.52 | in the band, at both clamps |
-| Kaien | support | 0.467 | 0.50 | x0.982 | 1 | 0.52 | in the band |
-| Hex | support | 0.467 | 0.51 | x0.891 | 1 | 0.51 | in the band |
-| Nocturne | support | 0.467 | 0.40 | x1.49 | 1 | 0.42 | 0.03 under the band |
-| Gantetsu | tank | 0.467 | 0.57 | x0.861 | x1.11 | 0.51 | in the band |
-| Tomoe | tank | 0.467 | 0.50 | x0.893 | 1 | 0.44 | 0.01 under the band |
-| Gorgoth | tank | 0.467 | 0.36 | x1.6 | 1 | 0.37 | under by 0.08: power at its clamp, toughness not yet moved |
+| Yuzu | damage | 0.60 | 0.87 | x2 (pinned) | x1.5 | 0.68 | over by 0.08: her damage is the user's x2; toughness is at its clamp |
+| Tenkai-Oh | tank | 0.60 | 0.58 | x1.129 | 1 | 0.63 | on target (within the noise) |
+| Hayate | damage | 0.60 | 0.61 | x1.132 | 1 | 0.56 | 0.04 under (the others came up around him) |
+| Raijin | damage | 0.60 | 0.30 | x1.6 | x0.5 | 0.42 | under by 0.18 with both scalars at their clamps: his bot, not his numbers |
+| Seiran | damage | 0.467 | 0.42 | x1.6 | x0.921 | 0.49 | in the band |
+| Enra | damage | 0.467 | 0.39 | x1.6 | x0.5 | 0.46 | in the band, at both clamps |
+| Kagemaru | damage | 0.467 | 0.41 | x1.6 | 1 | 0.39 | 0.06 under the band: power reached its clamp on the last passes |
+| Mirei | support | 0.467 | 0.57 | x0.85 | x1.5 | 0.53 | in the band, at both clamps |
+| Kaien | support | 0.467 | 0.47 | x0.876 | 1 | 0.52 | in the band |
+| Hex | support | 0.467 | 0.52 | x0.85 | x1.157 | 0.49 | in the band |
+| Hibiki | support | 0.467 | 0.55 | x0.85 | x1.096 | 0.48 | in the band |
+| Nocturne | support | 0.467 | 0.39 | x1.445 | 1 | 0.47 | in the band |
+| Tomoe | tank | 0.467 | 0.50 | x0.979 | 1 | 0.48 | in the band |
+| Gantetsu | tank | 0.467 | 0.55 | x0.917 | x1.11 | 0.46 | in the band |
+| Gorgoth | tank | 0.467 | 0.37 | x1.583 | 1 | 0.43 | 0.02 under the band |
 
-Six of the eleven band heroes are inside 45-55 %, two are within 0.01 of it, three are short (Kagemaru, Nocturne,
-Gorgoth). Of the four 60 % heroes Hayate is on target, Tenkai-Oh and Yuzu are above it, Raijin is far below.
-One hero's win rate on 240-330 games has a standard error of about 0.03.
+Nine of the eleven band heroes are inside 45-55 % (six after the first tune of the day, which the 0.2.2 rebuild ships);
+Gorgoth is 0.02 under, Kagemaru 0.06. Of the four 60 % heroes Tenkai-Oh and Hayate are within 0.04, Yuzu is above
+(0.68), Raijin far below (0.42).
 
-Still to do (the next tune): more passes and more games a pass (Kagemaru, Gorgoth and Tenkai-Oh were still moving);
-Raijin's and Enra's bots (they dive and die: 28-40 deaths per 10 minutes), which no scalar fixes; Yuzu at x2 needs
-either more than x1.5 damage taken or less than x2 damage to come down to 0.60 - the user's call.
+Still to do: Raijin's and Enra's bots (they walk into melee range of a whole team and die 28-40 times per 10 minutes,
+and Raijin's ultimate asks for three enemies under open sky): with the bots fixed their x1.6 / x0.5 can come back down.
+Yuzu at x2 needs either more than x1.5 damage taken or less than x2 damage to come down to 0.60 - the user's call.
 
 ## Pinned by the user: Yuzu x2
 

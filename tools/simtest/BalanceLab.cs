@@ -102,6 +102,8 @@ namespace ZU.SimTest
                     double others = OthersTarget(data, c);
                     Print(data, c, table, $"tune {it}/{iters}: {c.games} games, seed {seed}; targets {string.Join(", ", TARGET.Select(kv => $"{kv.Key} {kv.Value:0.00}"))}, the others {others:0.000}");
                     double worst = 0; int moved = 0;
+                    // (big steps while the errors are big, then half steps: at full gain the last passes traded one hero's error for another's)
+                    double gain = it <= 4 ? GAIN : GAIN * 0.5;
                     foreach (var h in Roster(data))
                     {
                         if (!c.rows.TryGetValue(h.id, out var r) || r.games == 0) continue;
@@ -109,10 +111,10 @@ namespace ZU.SimTest
                         if (pinned && !TARGET.ContainsKey(h.id)) continue;                 // measured only
                         double err = r.wins / r.games - TargetOf(h.id, others);
                         // power first (never a pinned hero's: those numbers are the user's); once it is at its clamp, toughness
-                        double p = table[h.id], q = pinned ? p : Math.Min(P_MAX, Math.Max(P_MIN, p * Math.Exp(-GAIN * err)));
+                        double p = table[h.id], q = pinned ? p : Math.Min(P_MAX, Math.Max(P_MIN, p * Math.Exp(-gain * err)));
                         bool spent = pinned || (q == p && ((p == P_MIN && err > 0) || (p == P_MAX && err < 0)));
                         string tk = h.id + Balance.TAKEN; double t0 = table.TryGetValue(tk, out var tv) ? tv : 1, t1 = t0;
-                        if (spent) t1 = Math.Min(T_MAX, Math.Max(T_MIN, t0 * Math.Exp(GAIN * err)));
+                        if (spent) t1 = Math.Min(T_MAX, Math.Max(T_MIN, t0 * Math.Exp(gain * err)));
                         bool stuck = spent && t1 == t0 && ((t0 == T_MIN && err < 0) || (t0 == T_MAX && err > 0));
                         if (!stuck) worst = Math.Max(worst, Math.Abs(err));
                         if (Math.Abs(err) <= 0.02) continue;

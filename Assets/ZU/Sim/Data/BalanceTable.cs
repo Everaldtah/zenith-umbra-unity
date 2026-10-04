@@ -5,21 +5,21 @@ namespace ZU.Sim.Data
     {
         static readonly (string id, double power, double taken)[] SHIPPED =
         {
-            ("tenkai", 1.292, 1),
+            ("tenkai", 1.129, 1),
             ("mirei", 0.85, 1.5),
-            ("kaien", 0.982, 1),
+            ("kaien", 0.876, 1),
             ("raijin", 1.6, 0.5),
             ("yuzu", 1, 1.5),
-            ("gorgoth", 1.6, 1),
-            ("nocturne", 1.49, 1),
-            ("hex", 0.891, 1),
-            ("kagemaru", 1.523, 1),
+            ("gorgoth", 1.583, 1),
+            ("nocturne", 1.445, 1),
+            ("hex", 0.85, 1.157),
+            ("kagemaru", 1.6, 1),
             ("enra", 1.6, 0.5),
-            ("gantetsu", 0.861, 1.11),
-            ("hibiki", 0.869, 1),
-            ("tomoe", 0.893, 1),
-            ("hayate", 1.081, 1),
-            ("seiran", 1.6, 1),
+            ("gantetsu", 0.917, 1.11),
+            ("hibiki", 0.85, 1.096),
+            ("tomoe", 0.979, 1),
+            ("hayate", 1.132, 1),
+            ("seiran", 1.6, 0.921),
         };
     }
 }
