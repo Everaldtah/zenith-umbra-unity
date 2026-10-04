@@ -60,6 +60,66 @@
   "footprint_m": 10
  },
  {
+  "id": "bld_ind_chimney",
+  "style": "industry",
+  "kind": "building",
+  "archetype": "chimney",
+  "w_m": 4,
+  "d_m": 4,
+  "height_m": 40,
+  "footprint_m": 4
+ },
+ {
+  "id": "bld_ind_foundryhall",
+  "style": "industry",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 10,
+  "d_m": 18,
+  "height_m": 10,
+  "footprint_m": 18
+ },
+ {
+  "id": "bld_ind_hangar",
+  "style": "industry",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 20,
+  "d_m": 30,
+  "height_m": 12,
+  "footprint_m": 30
+ },
+ {
+  "id": "bld_ind_shed",
+  "style": "industry",
+  "kind": "building",
+  "archetype": "hall1f",
+  "w_m": 9,
+  "d_m": 14,
+  "height_m": 6,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_ind_tank",
+  "style": "industry",
+  "kind": "building",
+  "archetype": "tank",
+  "w_m": 8,
+  "d_m": 8,
+  "height_m": 12,
+  "footprint_m": 8
+ },
+ {
+  "id": "bld_ind_works",
+  "style": "industry",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 10,
+  "d_m": 14,
+  "height_m": 9,
+  "footprint_m": 14
+ },
+ {
   "id": "bld_japan_hall1f",
   "style": "japan",
   "kind": "building",
@@ -177,6 +237,16 @@
   "w_m": 10,
   "d_m": 14,
   "height_m": 9,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_kuro_tower",
+  "style": "kurogane",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 14,
+  "d_m": 14,
+  "height_m": 12,
   "footprint_m": 14
  },
  {
@@ -601,6 +671,16 @@
   "w_m": 6,
   "d_m": 1,
   "height_m": 9,
+  "footprint_m": 6
+ },
+ {
+  "id": "wal_ind",
+  "style": "industry",
+  "kind": "wall",
+  "archetype": "wall",
+  "w_m": 6,
+  "d_m": 2,
+  "height_m": 3,
   "footprint_m": 6
  },
  {
