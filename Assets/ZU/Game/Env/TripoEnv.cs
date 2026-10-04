@@ -47,6 +47,10 @@ namespace ZU.Game.Env
         }
 
         static List<Piece> all;
+        /// <summary>the manifests are read again on every play (the statics outlive a play session when the Editor skips the
+        /// domain reload)</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetCaches() { all = null; shells = null; }
         public static List<Piece> All
         {
             get
@@ -60,7 +64,17 @@ namespace ZU.Game.Env
                     // the manifest is a list, or { "pieces": [...] }
                     var tok = Newtonsoft.Json.Linq.JToken.Parse(t.text);
                     var arr = tok is Newtonsoft.Json.Linq.JArray a ? a : tok["pieces"] as Newtonsoft.Json.Linq.JArray;
-                    if (arr != null) all = arr.ToObject<List<Piece>>();
+                    // entry by entry: one bad entry is skipped with a warning, not the whole manifest (a "maps" written as a
+                    // list instead of a string once emptied every Tripo piece, 2026-10-04 - a list is accepted now)
+                    if (arr != null)
+                        foreach (var e in arr)
+                            try
+                            {
+                                if (e is Newtonsoft.Json.Linq.JObject o && o["maps"] is Newtonsoft.Json.Linq.JArray ml) o["maps"] = string.Join(", ", ml.Select(x => (string)x));
+                                var p = e.ToObject<Piece>();
+                                if (p != null) all.Add(p);
+                            }
+                            catch (System.Exception ex) { Debug.LogWarning($"[ZU] tripo_env entry {e["id"]} skipped: {ex.Message}"); }
                 }
                 catch (System.Exception e) { Debug.LogWarning("[ZU] tripo_env.json unreadable: " + e.Message); }
                 foreach (var p in all) p.prefab = Resources.Load<GameObject>("ZUProps/" + p.id);
