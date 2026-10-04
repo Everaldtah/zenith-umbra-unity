@@ -81,6 +81,10 @@ namespace ZU.Engine
             if (!started) { started = true; lastFrame = tms; return 0; }
             double raw = tms - lastFrame;
             lastFrame = tms;
+            // the clock ran backwards: Unity restarted it under us (a new play session in the Editor with domain reload off
+            // keeps this object while Time.unscaledTime starts again from 0). A negative delta here went straight into the
+            // match's step accumulator and froze every match for as long as the previous session had run - start over
+            if (raw < 0) { debt = 0; Restart(); LastRawMs = 0; return 0; }
             LastRawMs = raw;
             return Math.Min(0.1, Quantize(raw) / 1000);
         }

@@ -283,7 +283,7 @@ namespace ZU.Engine
             // and of its render submission
             if (frameT0 > 0) { double e = Math.Max(lateEnd, renderEnd); if (e > frameT0) fallbackCpuMs = e - frameT0; }
             frameT0 = now;
-            double q = pacer.Tick(tms);
+            double q = Math.Max(0, pacer.Tick(tms));     // never a negative step (see FramePacer.Tick)
             if (enabled)
             {
                 UnscaledFrameDt = (float)q;
