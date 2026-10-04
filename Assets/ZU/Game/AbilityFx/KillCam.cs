@@ -27,7 +27,7 @@ using ZU.Sim;
 namespace ZU.Game.Fx
 {
     [DefaultExecutionOrder(9000)]
-    public sealed class KillCam : MonoBehaviour, IViewHost
+    public sealed partial class KillCam : MonoBehaviour, IViewHost
     {
         /// <summary>seconds of record kept (a play is cut up to 2 s after its 10 s window closes); samples a second; the kill
         /// cam's most seconds before the death and its seconds after; the beat on the death before it starts; what must be

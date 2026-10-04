@@ -46,10 +46,12 @@ namespace ZU.Game.UI
         public static void Update(MatchRunner r)
         {
             var kb = Keyboard.current;
+            if (Highlights.Watching) return;                 // (a highlight being watched or saved: no pause menu, no result)
             bool over = r.World != null && !string.IsNullOrEmpty(r.World.winner);
             if (over && !recorded) { recorded = true; Record(r); overAt = Time.unscaledTime; }
             // the end plays out before the result screen (the TS waits 3.5 s, 2.5 s in the campaign)
-            if (over && !Paused && r.mode != "aitest" && Time.unscaledTime - overAt >= (r.mode == "campaign" ? 2.5f : 3.5f)) Set(true);
+            // (...and the Play of the Game is shown before it: PlayOfTheGame.cs)
+            if (over && !Paused && r.mode != "aitest" && Time.unscaledTime - overAt >= (r.mode == "campaign" ? 2.5f : 3.5f) && !PlayOfTheGame.Busy(r)) Set(true);
             if (kb != null && kb.escapeKey.wasPressedThisFrame && !over && !(EscTaken?.Invoke() ?? false)) Set(!Paused);
         }
 

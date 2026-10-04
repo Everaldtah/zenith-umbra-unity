@@ -53,6 +53,7 @@ namespace ZU.Game.Fx
             suns = new SunSwarm(MatchFx.Current);
             extras = new CharacterExtras(r, ViewOf);
             KillCam.Attach(r);
+            PlayOfTheGame.Attach(r);          // (the Play of the Game and the highlights cut their clips from the kill cam's record)
             // the swarm is built at match start when Hex is in it (the TS: so the preloader compiles it), else on the first puppet
             foreach (var a in r.World.actors) if (a.baseDef.id == "hex") { swarm = new PuppetSwarm(); break; }
         }
