@@ -78,7 +78,7 @@ footer { color: var(--muted); font-size: 13px; }
     <div class="row">
       <button class="bad" id="fire-raw" type="button">Fire 40 · before</button>
       <button class="primary" id="fire-chain" type="button">Fire 40 · after</button>
-      <span class="note" id="ov-status">Loads about 60 short clips on first press.</span>
+      <span class="note" id="ov-status">Loads the bank's loud one-shots on first press.</span>
     </div>
     <div class="meters">
       <div class="meter"><span class="legend">Output peak</span><span class="val" id="m-peak">−∞ dBFS</span>
@@ -357,6 +357,7 @@ footer { color: var(--muted); font-size: 13px; }
   }
 
   function hero(id) { return id.replace(/_/g, ' '); }
+  function status() { $('ov-status').textContent = `Loads the bank's ${data.stress.length} loud one-shots on first press (${(data.stressBytes / 1e6 || 2).toFixed(1)} MB).`; }
 
   function render() {
     const vo = $('voices'); vo.textContent = '';
@@ -380,6 +381,7 @@ footer { color: var(--muted); font-size: 13px; }
       }
       t.append(tb); au.append(t);
     }
+    status();
     $('built').textContent = `Built ${data.built} from the eb-audio branch · ${data.stress.length} clips in the overload test · ${data.voices.length} voice pairs.`;
   }
 
