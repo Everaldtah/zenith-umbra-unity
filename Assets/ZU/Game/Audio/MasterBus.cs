@@ -21,7 +21,9 @@ namespace ZU.Game.Audio
         {
             rate = AudioSettings.outputSampleRate;
             Chain.Prepare(rate);
-            Live = this;
+            // only a bus on a live listener speaks for the output (a copy of the camera - zu_capture --pos - carries a bus
+            // without a listener; when it went away it used to take the live pointer with it)
+            if (TryGetComponent<AudioListener>(out var l) && l.isActiveAndEnabled) Live = this;
             AudioSettings.OnAudioConfigurationChanged += Reconfigured;
         }
         void OnDisable()
