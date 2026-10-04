@@ -301,12 +301,12 @@ namespace ZU.Game.UI.Toolkit
             var c = U.Btn(null, $"hc {h.team}{(sel ? " sel" : "")} {extra}", click, parent);
             c.userData = h.id;
             var col = U.Hex(h.color);
-            U.Pic("portrait_" + h.id, "hc-img", c);
-            var glow = U.Div("hc-glow", c);
-            Grad.Set(glow, Grad.Linear(180, (new Color(0, 0, 0, 0), 0), (U.A(h.team == "zenith" ? Grad.C("#5cc8ff") : Grad.C("#ff3b5c"), 0.35f), 100)));
+            // the card, its corner cut, portrait, team tint and (selected) border as one mesh - see CardFace
+            var face = new CardFace(U.Img("portrait_" + h.id), h.team == "zenith" ? Grad.C("#5cc8ff") : Grad.C("#ff3b5c")) { Border = sel ? col : (Color?)null };
+            face.AddToClassList("hc-img");
+            c.Add(face);
             U.Txt(h.name, "hc-b", c);
             U.Txt(U.Up(h.role), "hc-s", c);
-            if (sel) { c.style.borderTopColor = c.style.borderBottomColor = c.style.borderLeftColor = c.style.borderRightColor = col; }
             // aspect-ratio 3/4
             c.RegisterCallback<GeometryChangedEvent>(e => { float hgt = e.newRect.width * 4 / 3; if (Mathf.Abs(c.resolvedStyle.height - hgt) > 0.5f) c.style.height = hgt; });
             return c;
@@ -382,8 +382,8 @@ namespace ZU.Game.UI.Toolkit
                 foreach (var c in cards)
                 {
                     bool on = (string)c.userData == id; U.Toggle(c, "sel", on);
-                    var col = on ? U.Hex(Hero((string)c.userData).color) : new Color(0, 0, 0, 0);
-                    c.style.borderTopColor = c.style.borderBottomColor = c.style.borderLeftColor = c.style.borderRightColor = col;
+                    var face = c.Q<CardFace>();
+                    if (face != null) face.Border = on ? U.Hex(Hero((string)c.userData).color) : (Color?)null;
                 }
                 detailSv.contentContainer.Clear();
                 detailSv.contentContainer.Add(HeroDetail(Hero(id)));

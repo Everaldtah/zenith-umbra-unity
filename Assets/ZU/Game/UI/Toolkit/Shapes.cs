@@ -482,4 +482,61 @@ namespace ZU.Game.UI.Toolkit
             Shape.Path(p, Hex(r, 0.02f, 0)); p.ClosePath(); p.Stroke();
         }
     }
+    /// <summary>a hero card as the web draws it: `.hc` is clip-path: polygon(0 0, 100% 0, 100% 88%, 88% 100%, 0 100%) - the
+    /// bottom-right corner cut off - over a #111 card, the portrait object-fit: cover from the top, the team tint rising from
+    /// the bottom (inset box-shadow 0 -40px 30px -10px) and, selected, a 2 px border in the hero's colour that the clip-path
+    /// cuts too (no stroke on the diagonal). USS can't clip a child to a polygon, so the whole card is one mesh.</summary>
+    public class CardFace : VisualElement
+    {
+        readonly Texture2D tex; readonly Color team; Color? border;
+        const float CUT = 0.12f;
+        public CardFace(Texture2D portrait, Color teamTint) { tex = portrait; team = teamTint; pickingMode = PickingMode.Ignore; generateVisualContent += Draw; }
+        public Color? Border { get => border; set { border = value; MarkDirtyRepaint(); } }
+
+        Vector2[] Poly(float w, float h) => new[] { new Vector2(0, 0), new Vector2(w, 0), new Vector2(w, h * (1 - CUT)), new Vector2(w * (1 - CUT), h), new Vector2(0, h) };
+
+        void Draw(MeshGenerationContext mgc)
+        {
+            float w = layout.width, h = layout.height;
+            if (!(w > 0 && h > 0)) return;
+            var P = Poly(w, h);
+            var p = mgc.painter2D;
+            p.fillColor = new Color(0x11 / 255f, 0x11 / 255f, 0x11 / 255f, 1);
+            Shape.Path(p, P); p.ClosePath(); p.Fill();
+            if (tex != null)
+            {
+                // cover, top-aligned: crop the texture's sides (wide art) or its bottom (tall art)
+                float ta = (float)tex.width / tex.height, ra = w / h, u0 = 0, u1 = 1, vSpan = 1;
+                if (ta > ra) { float k = ra / ta; u0 = 0.5f - k / 2; u1 = 0.5f + k / 2; } else vSpan = ta / ra;
+                var md = mgc.Allocate(5, 9, tex);
+                var reg = md.uvRegion;
+                for (int i = 0; i < 5; i++)
+                {
+                    float fx = P[i].x / w, fy = P[i].y / h;
+                    var uv = new Vector2(Mathf.Lerp(u0, u1, fx), 1 - fy * vSpan);
+                    md.SetNextVertex(new Vertex { position = new Vector3(P[i].x, P[i].y, Vertex.nearZ), tint = new Color(0.92f, 0.92f, 0.92f, 1), uv = reg.min + Vector2.Scale(uv, reg.size) });
+                }
+                foreach (ushort k in new ushort[] { 0, 1, 2, 0, 2, 3, 0, 3, 4 }) md.SetNextIndex(k);
+            }
+            // the team tint: clear 40 px up, .35 at the foot (the polygon's lower band, vertex colours do the fade)
+            float y0 = Mathf.Max(0, h - 40);
+            var band = new[] { new Vector2(0, y0), new Vector2(w, y0), new Vector2(w, Mathf.Max(y0, h * (1 - CUT))), new Vector2(w * (1 - CUT), h), new Vector2(0, h) };
+            var bm = mgc.Allocate(5, 9);
+            for (int i = 0; i < 5; i++)
+            {
+                float a = Mathf.InverseLerp(y0, h, band[i].y) * 0.35f;
+                bm.SetNextVertex(new Vertex { position = new Vector3(band[i].x, band[i].y, Vertex.nearZ), tint = new Color(team.r, team.g, team.b, a) });
+            }
+            foreach (ushort k in new ushort[] { 0, 1, 2, 0, 2, 3, 0, 3, 4 }) bm.SetNextIndex(k);
+            if (border is Color c)
+            {
+                // the border inside the box, every side but the cut
+                p.strokeColor = c; p.lineWidth = 2; float i = 1;
+                p.BeginPath();
+                p.MoveTo(new Vector2(w * (1 - CUT), h - i)); p.LineTo(new Vector2(i, h - i)); p.LineTo(new Vector2(i, i));
+                p.LineTo(new Vector2(w - i, i)); p.LineTo(new Vector2(w - i, h * (1 - CUT)));
+                p.Stroke();
+            }
+        }
+    }
 }
