@@ -51,7 +51,31 @@ namespace ZU.Game.FirstPerson
         /// <summary>view metres -> model space: hand targets are camera-relative; the rig sits wherever puts the grip in reach</summary>
         Vector3 ToM(Vector3 v) => v + eye;
 
+        /// <summary>captures / tests: hold any (non-archer) hero's viewmodel at a moment - "idle", "primary", "secondary", "punch",
+        /// "ability1", "ability2", "ult", "reload" - `t` seconds in (clips are scrubbed, the procedural poses read a stand-in
+        /// attack / cast stamp for the frame; the actor's own state is put back right after)</summary>
+        public static (string what, float t)? FpFreeze;
+        static string FreezeClip(string what) => what switch
+        {
+            "idle" => "fp_idle", "primary" => "fp_fire", "secondary" => "fp_alt", "punch" => "fp_melee", "ability1" => "fp_ability1",
+            "ability2" => "fp_ability2", "ult" => "fp_ult", "reload" => "fp_reload", _ => what,
+        };
+
         void Proc(Actor a, double tt, bool newAttack)
+        {
+            if (!FpFreeze.HasValue || Archer) { ProcBody(a, tt, newAttack); return; }
+            var c = a.anim; var saved = (c.attackAt, c.castAt, c.attackKind, c.castId, a.reloadUntil);
+            var (what, ft) = FpFreeze.Value; double t = tt;
+            c.attackAt = -99; c.castAt = -99; c.castId = "";
+            if (what == "primary" || what == "secondary" || what == "punch") { c.attackKind = what; c.attackAt = t - ft; }
+            else if (what == "ability1" || what == "ability2" || what == "ult")
+            { c.castId = what == "ult" ? a.def.ult.id : what == "ability2" ? a.def.ability2.id : a.def.ability1.id; c.castAt = t - ft; }
+            else if (what == "reload") a.reloadUntil = t + 0.6;
+            try { ProcBody(a, tt, false); }
+            finally { c.attackAt = saved.Item1; c.castAt = saved.Item2; c.attackKind = saved.Item3; c.castId = saved.Item4; a.reloadUntil = saved.Item5; }
+        }
+
+        void ProcBody(Actor a, double tt, bool newAttack)
         {
             float t = (float)tt;
             var S = style;
