@@ -1,0 +1,23 @@
+<!-- Headless round trip of a PlayClip through its disk format (Assets/ZU/Game/AbilityFx/PlayClip.Disk.cs): records a stretch
+     of three bot matches the way the kill cam does, saves, loads, compares every stored field, then the cases that must
+     come back null. Build with the .NET SDK bundled in the Unity editor, run bin/Release/net8.0/ClipTest.dll. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0649;CS0414;CS0169</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/ZU/Sim/**/*.cs" />
+    <Compile Include="../../Assets/ZU/Game/AbilityFx/PlayClip.cs" />
+    <Compile Include="../../Assets/ZU/Game/AbilityFx/PlayClip.Disk.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+</Project>

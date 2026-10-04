@@ -37,6 +37,13 @@ namespace ZU.Sim
                 world.point.unlockAt = 1e9;
                 return m;
             }
+            if (mode == "replay")
+            {
+                // a saved play watched from the menu (Game/AbilityFx/KillCam.Watch): the map with nobody on it and nothing to
+                // win - the views draw the clip's heroes
+                world.point.unlockAt = 1e9;
+                return m;
+            }
             if (mode == "training")
             {
                 var p = world.AddHero(playerHero ?? "raijin", "zenith");

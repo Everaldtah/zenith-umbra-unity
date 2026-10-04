@@ -17,6 +17,10 @@
 // Past(actor) -> the hero as it was; SwapProjs(world) -> the projectiles as they were; Place(camera); and
 // Hold(runner, event) keeps the live match's effects and sounds out of a replay (they are still recorded).
 // Off switch for the kill cam: `-zu-killcam=0` on the command line, or KillCam.Enabled = false (clips still play).
+// WATCH: Watch(clip, done), from the menu, loads the clip's map as a match of mode "replay" - nobody on it, nothing to win
+// (Sim Setup.CreateMatch) - and, once the loading screen has lifted, replays the clip there: every hero of the clip gets a
+// stand-in in that world under the id it had (never alive, so the world leaves it alone), which gives it a view; the
+// views draw the recorded heroes over them. A clip read from disk (PlayClip.Load) and one still in memory play the same.
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -60,6 +64,12 @@ namespace ZU.Game.Fx
         double clipT; int cur, nextEvent;
         Vector3 camPos; Quaternion camRot; bool camInit;
         readonly List<string> recap = new List<string>();
+        // a watched clip (the "replay" match): the clip waiting for the loading screen, the heroes standing in for the clip's
+        public const string REPLAY = "replay";
+        static PlayClip watchClip; static System.Action watchDone;
+        bool doneOnStop;
+        readonly List<Actor> standIns = new List<Actor>();
+        static readonly V3 AWAY = new V3(0, -500, 0);
 
         public static KillCam Attach(MatchRunner runner)
         {
@@ -102,23 +112,80 @@ namespace ZU.Game.Fx
             return true;
         }
         /// <summary>end whatever is replaying now (a clip or the kill cam); the views go back to the live match</summary>
-        public static void Stop() { var k = Current; if (k != null) k.End(false); }
+        public static void Stop()
+        {
+            // (a watched clip still behind its loading screen: it never starts, and its `done` is told)
+            if (watchClip != null) { var d = watchDone; watchClip = null; watchDone = null; d?.Invoke(); return; }
+            var k = Current; if (k != null) k.End(false);
+        }
         /// <summary>a clip or the kill cam is replaying</summary>
         public static bool Playing => Current != null && Current.clip != null;
         /// <summary>seconds into the clip being replayed (0 when none)</summary>
         public static double ClipTime => Current != null && Current.clip != null ? Current.clipT - Current.clip.t0 : 0;
 
+        /// <summary>from the menu: load the clip's map with nobody on it and replay the clip there, the lens on its focus hero
+        /// (the match camera, Camera.main, carries it). `done` is called once: when the clip has played to its end, or after
+        /// Stop(). It never leaves the scene: after it the map stands empty until the caller leaves (MatchSettings.BackToMenu)
+        /// or calls Play(runner, sameClip, ..); until then Playing / ClipTime work as in a match. A clip with no body, or of a map this build doesn't
+        /// have (a campaign level's can't be watched this way): nothing is loaded and `done` is called at once.</summary>
+        public static void Watch(PlayClip c, System.Action done)
+        {
+            if (c == null || !c.HasBody || string.IsNullOrEmpty(c.map) || !ZuData.Get().Map.ContainsKey(c.map)) { done?.Invoke(); return; }
+            watchClip = c; watchDone = done;
+            MatchSettings.Start(c.map, "", REPLAY, 0.7f, true);
+        }
+        /// <summary>this match is a watched clip's (mode "replay"): there is no game under the replay</summary>
+        public static bool Watching => Current != null && Current.r != null && Current.r.mode == REPLAY;
+
+        void StartWatch(World w, PlayClip c, System.Action done)
+        {
+            // every hero the clip ever shows, as it first appears
+            var first = new Dictionary<int, Actor>();
+            foreach (var f in c.frames) foreach (var kv in f.actors) if (!first.ContainsKey(kv.Key)) first[kv.Key] = kv.Value;
+            var by = new Dictionary<int, Actor>();
+            foreach (var kv in first)
+            {
+                var p = kv.Value;
+                var a = new Actor(p.def, p.team, kv.Key) { baseDef = p.baseDef, isRobot = p.isRobot, isBoss = p.isBoss, alive = false, deathAt = -99, respawnAt = 0, noRespawn = true, pos = AWAY };
+                w.actors.Add(a); standIns.Add(a); by[kv.Key] = a;
+            }
+            foreach (var a in standIns) { var o = first[a.id].owner; if (o != null && by.TryGetValue(o.id, out var so)) a.owner = so; }
+            // the events' heroes: the stand-ins (a clip from disk carries ids; one in memory the heroes of a match that is gone)
+            Actor Find(int id) => id != 0 && by.TryGetValue(id, out var a) ? a : null;
+            foreach (var (_, e) in c.events)
+            {
+                int ai = 0, ti = 0;
+                if (c.refs != null && c.refs.TryGetValue(e, out var ids)) { ai = ids.actor; ti = ids.target; }
+                if (e is FxEvent x) { x.actor = Find(x.actor?.id ?? ai); x.target = Find(x.target?.id ?? ti); }
+                else if (e is SfxEvent s) s.actor = Find(s.actor?.id ?? ai);
+            }
+            Begin(c, false, done);
+            doneOnStop = true;
+        }
+
+        /// <summary>the stand-ins follow the clip (where an effect that holds a hero finds it; the def a view is built for)</summary>
+        void Mirror()
+        {
+            var f = clip.frames[cur];
+            foreach (var a in standIns)
+            {
+                if (f.actors.TryGetValue(a.id, out var p)) { a.pos = p.pos; a.yaw = p.yaw; a.pitch = p.pitch; a.scale = p.scale; a.def = p.def; a.baseDef = p.baseDef; }
+                else a.pos = AWAY;
+            }
+        }
+
         void Begin(PlayClip c, bool asKillCam, System.Action done)
         {
-            clip = c; killcam = asKillCam; onDone = done;
+            clip = c; killcam = asKillCam; onDone = done; doneOnStop = false;
             clipT = c.t0; cur = 0; nextEvent = 0; camInit = false;
         }
         void End(bool finished)
         {
             if (clip == null) return;
             var done = onDone;
-            clip = null; onDone = null; killcam = false;
-            if (finished) done?.Invoke();
+            bool tell = finished || doneOnStop;
+            clip = null; onDone = null; killcam = false; doneOnStop = false;
+            if (tell) done?.Invoke();
         }
 
         // ------------------------------------------------------------------------------------------------ MatchRunner's calls
@@ -208,9 +275,18 @@ namespace ZU.Game.Fx
         {
             if (r == null || r.World == null) return;
             var w = r.World; var me = r.Player;
-            // the record goes on whatever is on screen (a world that isn't stepping adds nothing)
-            if (w.time - lastSample >= 1.0 / RATE) { lastSample = w.time; Sample(w); }
-            if (clip == null) { StartKillCam(w, me); return; }
+            if (r.mode == REPLAY)
+            {
+                // a watched clip: nothing to record here; it starts when the loading screen has lifted
+                if (watchClip != null && !UI.Toolkit.LoadingView.Open) { var c = watchClip; var done = watchDone; watchClip = null; watchDone = null; StartWatch(w, c, done); }
+                if (clip == null) return;
+            }
+            else
+            {
+                // the record goes on whatever is on screen (a world that isn't stepping adds nothing)
+                if (w.time - lastSample >= 1.0 / RATE) { lastSample = w.time; Sample(w); }
+                if (clip == null) { StartKillCam(w, me); return; }
+            }
             // replaying: the clock, the frame under it, the effects and sounds of that moment
             if (killcam)
             {
@@ -222,6 +298,7 @@ namespace ZU.Game.Fx
             else clipT += Time.deltaTime;
             if (clipT >= clip.t1) { End(true); return; }
             while (cur + 1 < clip.frames.Count && clip.frames[cur + 1].t <= clipT) cur++;
+            if (standIns.Count > 0) Mirror();
             redispatch = true;
             try { while (nextEvent < clip.events.Count && clip.events[nextEvent].t <= clipT) { var e = clip.events[nextEvent++].e; EventSink.Handle(r, e); } }
             finally { redispatch = false; }

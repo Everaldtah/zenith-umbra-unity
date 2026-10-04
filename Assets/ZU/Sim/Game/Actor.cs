@@ -113,6 +113,10 @@ namespace ZU.Sim
             if (def.id == "tenkai") barrier = new BarrierState { hp = 1400, max = 1400 };
         }
 
+        /// <summary>a hero that takes a given id instead of a fresh one: a recorded hero read back from a clip file, and its
+        /// stand-in in a replay (Game/AbilityFx/PlayClip.Disk.cs, KillCam.Watch) - never one that plays in a match</summary>
+        public Actor(HeroDef def, string team, int id) : this(def, team) { this.id = id; }
+
         public bool IsSummon => def.summoned;
         public double MaxHp => def.hp + maxArmor;
         public double Health => hp + armor;
