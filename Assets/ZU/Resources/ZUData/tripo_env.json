@@ -422,7 +422,7 @@
  {
   "id": "gnd_alpine_alpine_grass",
   "kind": "dressing",
-  "height_m": 0.3,
+  "height_m": 0,
   "footprint_m": 2.0,
   "maps": "starfall",
   "biome": "alpine",

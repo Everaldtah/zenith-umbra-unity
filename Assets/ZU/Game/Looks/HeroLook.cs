@@ -191,7 +191,9 @@ namespace ZU.Game.Looks
         static (Mesh mesh, float y0, float y1) BindMesh(Mesh src, Matrix4x4 toModel)
         {
             if (src == null) return (null, 0, 0);
-            if (bindMeshes.TryGetValue((src, toModel), out var have)) return have;
+            // (a cached copy that was destroyed - an Editor play session ended, the static cache lived on - is made again:
+            // handing it back left the hero with no neck line, so a skin recoloured the hair and face in the next session)
+            if (bindMeshes.TryGetValue((src, toModel), out var have) && (have.mesh != null || !src.isReadable)) return have;
             if (!src.isReadable) { bindMeshes[(src, toModel)] = (null, 0, 0); return (null, 0, 0); }
             var v = src.vertices; var b = new Vector3[v.Length];
             float y0 = float.PositiveInfinity, y1 = float.NegativeInfinity;
