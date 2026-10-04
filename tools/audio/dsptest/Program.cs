@@ -213,8 +213,10 @@ namespace ZU.DspTest
                 double p = 0; for (int f = SR; f < x.Length; f++) p = Math.Max(p, Math.Abs(y[f]));
                 return (float)(20 * Math.Log10(p));
             }
-            float dq = Level("default", 0.03f), dl = Level("default", 0.9f), nq = Level("night", 0.03f), nl = Level("night", 0.9f);
-            Check("night preset narrows the range", (nl - nq) < (dl - dq) - 6, $"default range {dl - dq:0.0} dB, night range {nl - nq:0.0} dB");
+            float dq = Level("normal", 0.03f), dl = Level("normal", 0.9f), nq = Level("night", 0.03f), nl = Level("night", 0.9f);
+            float hq = Level("home", 0.03f), hl = Level("home", 0.9f);
+            Check("night preset narrows the range", (nl - nq) < (dl - dq) - 6, $"normal range {dl - dq:0.0} dB, night range {nl - nq:0.0} dB");
+            Check("home theater keeps the widest range", (hl - hq) > (dl - dq), $"home range {hl - hq:0.0} dB vs normal {dl - dq:0.0} dB");
         }
 
         static void Speed()
