@@ -12,6 +12,8 @@
 .img { background-size: cover; background-position-x: center; background-position-y: center; }
 /* scroll bars: the web shows none (Chrome overlay bars) - a thin dark bar without arrow buttons, not Unity's grey one */
 .unity-scroller--vertical { width: 6px; min-width: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+/* ... and it overlays the content like Chrome's overlay scroll bar, so a scrolling column keeps the web's text width */
+.unity-scroll-view__vertical-scroller { position: absolute; top: 0; right: 0; bottom: 0; }
 .unity-scroller--horizontal { height: 6px; min-height: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
 .unity-scroller__low-button, .unity-scroller__high-button { display: none; }
 .unity-scroller .unity-base-slider__tracker { background-color: rgba(255, 255, 255, 0.04); border-width: 0; }
@@ -226,19 +228,21 @@
 .zb.power:hover { --stroke: #ffd76a; --fill: #2b1f45; --fill2: #120d1f; }
 .zb.power:disabled { opacity: 0.35; }
 .power .pw-b { font-size: 16px; color: #d9c8ff; }
-.power .pw-p { margin-top: 6px; font-size: 14px; opacity: 0.85; letter-spacing: 0; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; }
+/* .power / .it are <button>s in Armory.ts: their texts inherit the button font, Rajdhani 700 with .12em (2.16px) */
+.power .pw-p { margin-top: 6px; font-size: 14px; opacity: 0.85; }
 .ar-main { flex-grow: 1; flex-shrink: 1; min-height: 0; }
 .ar-tabs { flex-direction: row; margin-bottom: 10px; }
 .ar-tabs .ar-tab { min-width: 150px; margin-right: 8px; }
 .ar-tabs .ar-tab.on { --stroke: #ffd76a; color: #ffd76a; }
 .ar-scroll { flex-grow: 1; }
-.ar-items { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+/* a grid row: the cards of a row share its height (the price sits on the bottom edge) */
+.ar-items { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
 .zb.it { width: 220px; min-height: 120px; padding: 12px 14px; margin: 0 12px 12px 0; align-items: stretch; justify-content: flex-start; --fill: #0f1422; --stroke: #5a6479; --stroke-width: 2; color: #fff; }
 .zb.it:hover { --fill: #0f1422; translate: 0 -2px; }
 .zb.it:disabled { opacity: 0.4; translate: 0 0; }
-.it .it-b { font-size: 17px; letter-spacing: 0; }
+.it .it-b { font-size: 17px; }
 .it .it-s { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 11px; letter-spacing: 1.65px; opacity: 0.8; margin: 4px 0; }
-.it .it-p { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 14px; opacity: 0.85; flex-grow: 1; letter-spacing: 0; margin-bottom: 4px; }
+.it .it-p { font-size: 14px; opacity: 0.85; flex-grow: 1; margin-bottom: 4px; }
 .it .it-e { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; color: #7dff9a; }
 .zb.it.common { --stroke: #7dd87d; }
 .zb.it.rare { --stroke: #5cb4ff; }
@@ -373,7 +377,9 @@
 
 /* queues, maps, modes */
 .modes { position: absolute; left: 0; top: 0; right: 0; bottom: 0; padding: 30px 40px 0 40px; background-color: #05060a; }
-.modes .bar, .maps .bar, .campaign-menu .bar { margin: 18px -40px 0 -40px; }
+.modes .bar, .maps .bar { margin: 18px -40px 0 -40px; }
+/* the campaign's bar is a plain block under the squad row: inside the page padding, no gap (style.css has no margin for it) */
+.campaign-menu .bar { margin: 0; }
 .q-h3 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; letter-spacing: 2.4px; margin: 18px 0 10px 0; opacity: 0.85; }
 .roles, .diffs { flex-direction: row; flex-wrap: wrap; }
 .zb.card { --cut: 0; --fill: #0d111c; --stroke: rgba(0, 0, 0, 0); border-width: 2px; border-color: rgba(255, 255, 255, 0.14); padding: 18px 20px; align-items: center; justify-content: flex-start; min-width: 210px; margin: 0 22px 12px 0; }
@@ -408,8 +414,10 @@
 .lv .lv-img { height: 150px; }
 .lv .bimg { position: absolute; right: 6px; top: 6px; width: 38%; height: 70px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
 .lv .lv-b { padding: 6px 10px 0 10px; font-size: 17px; letter-spacing: 0; }
-.lv .lv-s { padding: 0 10px; color: #aab; letter-spacing: 0; -unity-font: url("Fonts/Rajdhani-500.ttf"); -unity-font-definition: initial; font-size: 16px; }
-.squad { flex-direction: row; flex-wrap: wrap; align-items: flex-start; flex-grow: 1; }
+.lv .lv-s { padding: 0 10px; color: #aab; letter-spacing: 0; -unity-font: url("Fonts/Rajdhani-500.ttf"); -unity-font-definition: initial; font-size: 13.33px; }   /* <small>: font-size smaller */
+.squad { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+/* a bare <h3> in the web (no .select around it): the browser's h3, bold 1.17em with 1em margins */
+.squad .s-h3 { -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; font-size: 18.72px; letter-spacing: 0; margin: 18.72px 0 18.72px 0; }
 .squad .heroes { flex-direction: row; }
 .squad .zb.hc { width: 100px; margin: 0 8px 0 0; }
 .coop { flex-grow: 1; min-width: 320px; margin-left: 16px; background-color: rgba(255, 255, 255, 0.04); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 12px 16px; }

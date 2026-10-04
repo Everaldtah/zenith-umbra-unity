@@ -430,7 +430,6 @@ namespace ZU.Game.UI.Toolkit
                     NetDriver.PlayerName = v; PlayerPrefs.SetString("zu-name", v); PlayerPrefs.Save();
                 });
                 U.Btn("GO ONLINE", null, () => { GoOnline(rerender); rerender(); }, h4);
-                U.Txt("Play the campaign with up to 3 friends (the online node links you peer-to-peer).", "st", box);
                 return;
             }
             var co = NetDriver.Coop;

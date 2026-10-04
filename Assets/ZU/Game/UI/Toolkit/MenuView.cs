@@ -103,7 +103,8 @@ namespace ZU.Game.UI.Toolkit
             var s = Show("title");
             var bg = U.Div("bg", s); U.Bg(bg, U.Sat("map_hanabi")); Filters.Set(bg, Filters.Brightness(0.55f));
             KenBurns(bg);
-            Grad.Fill(Grad.Linear(90, (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0.95f), 0), (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0.6f), 45), (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0), 80)), s, "title-shade");
+            // no left fade: style.css has one (.title::after), but its ".title > * { z-index: 1 }" also lifts the .bg
+            // above it, so the PC game shows the picture unshaded
             var logo = U.Div("logo", s);
             U.Txt("ZENITH", "lz", logo); U.Txt("//", "li", logo); U.Txt("UMBRA", "lu", logo);
             U.Txt("ELEVEN HEROES. TWO OATHS. ONE ECLIPSE.", "tag", s);
@@ -225,15 +226,20 @@ namespace ZU.Game.UI.Toolkit
             var c = U.Btn(null, "mc" + (sel ? " sel" : ""), click, parent);
             if (m != null)
             {
-                var img = U.Pic("map_" + m.id, "mc-img", c);
-                // CSS `.mc img { aspect-ratio: 16/9 }` (USS has no aspect-ratio): the height follows the card's width
-                img.RegisterCallback<GeometryChangedEvent>(e =>
-                {
-                    float h = e.newRect.width * 9f / 16f;
-                    if (h > 0 && Mathf.Abs(img.resolvedStyle.height - h) > 0.5f) img.style.height = h;
-                });
+                Wide(U.Pic("map_" + m.id, "mc-img", c));      // CSS `.mc img { aspect-ratio: 16/9 }`
             }
             return c;
+        }
+
+        /// <summary>CSS aspect-ratio: 16/9 on an image (USS has no aspect-ratio): its height follows its width</summary>
+        static VisualElement Wide(VisualElement img)
+        {
+            img.RegisterCallback<GeometryChangedEvent>(e =>
+            {
+                float h = e.newRect.width * 9f / 16f;
+                if (h > 0 && Mathf.Abs(img.resolvedStyle.height - h) > 0.5f) img.style.height = h;
+            });
+            return img;
         }
 
         /// <summary>the web's map grid is a CSS grid that fills the screen's height, its auto rows stretched: tall cards, the
@@ -520,7 +526,7 @@ namespace ZU.Game.UI.Toolkit
                 bool locked = i > prog;
                 var lv = U.Btn(null, "lv" + (l.id == cLevel ? " sel" : "") + (locked ? " locked" : ""), () => { cLevel = l.id; OnlineView.CoopSetLevel(cLevel); Campaign(); }, lvls);
                 lv.SetEnabled(!locked);
-                U.Pic("map_" + l.id, "lv-img", lv);
+                Wide(U.Pic("map_" + l.id, "lv-img", lv));     // `.lv img { aspect-ratio: 16/9 }`
                 var bi = U.Pic("key_" + l.boss, "bimg", lv);
                 d.Boss.TryGetValue(l.boss ?? "", out var boss);
                 U.Txt($"{i + 1}. {l.name}", "lv-b", lv);
