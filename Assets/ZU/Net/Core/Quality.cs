@@ -69,7 +69,8 @@ namespace ZU.Net
             {
                 var s = NetConfig.Load(SPEED_KEY); if (string.IsNullOrEmpty(s)) return null;
                 var r = JsonConvert.DeserializeObject<SpeedResult>(s);
-                return r != null && Clock.Epoch - r.at < maxAgeMs ? r : null;
+                // (rtt 999 = a test that reached no node, saved before tests like that stopped being kept)
+                return r != null && r.rtt < 999 && Clock.Epoch - r.at < maxAgeMs ? r : null;
             }
             catch { return null; }
         }
@@ -115,7 +116,10 @@ namespace ZU.Net
             // the tier you'd get as a client of a good host: latency + jitter to the node, and whether ~60 snapshots/s of
             // a full lobby (~1.4 KB each) fit in your downlink
             r.tier = TIERS[Math.Max(TierCode(Classify(r.rtt, r.jitter, 0)), TierCode(FitTier(r.downKbps * 0.5, 1400)))];
-            try { NetConfig.Save(SPEED_KEY, JsonConvert.SerializeObject(r)); } catch { /* ignore */ }
+            // a test that reached no node (no ping answered after the cold-start one) measured nothing: it is shown for this
+            // run but not kept - kept, the lobby showed "LOW 999 ms, 0.0 Mbps" for 15 minutes after the node came back, as
+            // the lobby only re-tests without a cached result (Unity-only; the TS caches every test)
+            if (ps.Count > 0) try { NetConfig.Save(SPEED_KEY, JsonConvert.SerializeObject(r)); } catch { /* ignore */ }
             return r;
         }
     }
