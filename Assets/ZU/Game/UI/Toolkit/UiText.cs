@@ -27,6 +27,9 @@ namespace ZU.Game.UI.Toolkit
         /// <summary>false: text-shadow stays as UI Toolkit draws it (clipped by the atlas padding)</summary>
         public static bool Glow = true;
 
+        /// <summary>false: letter-spacing stays as the generator applies it (scaled by fontSize / 100)</summary>
+        public static bool FixSpacing = true;
+
         /// <summary>a shadow becomes a filter when its blur is at least this many pixels...</summary>
         const float MinBlur = 8f;
         /// <summary>...and more than this share of the font size (the distance field's reach is about a tenth)</summary>
@@ -62,9 +65,23 @@ namespace ZU.Game.UI.Toolkit
                 if (te.panel == null) continue;
                 if (++s.frames < 2) continue;                 // styles resolve when the panel next updates
                 s.done = true;
+                Spacing(te);
                 if (Glow) ToFilter(te);
             }
             buf.Clear();
+        }
+
+        // The standard generator hands the USS letter-spacing (pixels) to TextCore as its character spacing, which TextCore
+        // reads in hundredths of the font size (advance += spacing * fontSize / 100). A 7.2px rule on 24px text so moved
+        // the letters 1.7px apart: every tracked label got 18-34 % of its spacing (evera-7a measured the tagline at 475px
+        // wide against the web's 679, the ARMORY heading 177 against 190). The resolved pixel value is turned into the
+        // unit TextCore expects and set on the text element itself - text elements are leaves, so nothing inherits it.
+        // An element whose font size changes later keeps the value computed here.
+        static void Spacing(TextElement te)
+        {
+            if (!FixSpacing) return;
+            float ls = te.resolvedStyle.letterSpacing, fs = te.resolvedStyle.fontSize;
+            if (Mathf.Abs(ls) > 0.01f && fs > 0.5f) te.style.letterSpacing = ls * 100f / fs;
         }
 
         static void ToFilter(TextElement te)
