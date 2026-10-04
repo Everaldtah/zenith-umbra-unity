@@ -617,6 +617,9 @@ namespace ZU.Game.UI.Toolkit
         {
             var tm = U.Div("tm " + (mine ? "mine" : "enemy"), parent);
             U.Txt(title, "h3", tm);
+            // the rows sit in one column: `.board .mine` (the player panel's row layout) also matches the team table "tm mine"
+            // - as in the web game, where it puts the team name beside its <table> - and laid the loose rows side by side
+            tm = U.Div("tbl", tm);
             var head = U.Div("tr th", tm);
             for (int i = 0; i < HEADS.Length; i++) U.Txt(HEADS[i], i == 0 ? "td h" : "td", head);
             foreach (var a in w.actors.Where(a => a.team == team && !a.isRobot))

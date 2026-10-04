@@ -63,6 +63,9 @@ namespace ZU.Game.UI.Toolkit
             return m;
         }
         static bool partyStarted;
+        /// <summary>a new play session starts clean (the Editor keeps statics across play sessions without a domain reload)</summary>
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { partyStarted = false; }
 
         /// <summary>hero select over a running Training Grounds match: SWITCH picks, BACK returns to the pause</summary>
         public static MenuView OpenSwap(VisualElement parent, Action<string> pick, Action back)

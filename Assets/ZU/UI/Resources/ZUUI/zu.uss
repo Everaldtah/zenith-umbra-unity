@@ -111,6 +111,8 @@
 .board .tm { flex-grow: 1; flex-basis: 0; margin: 0 9px; }
 .board .tm .h3 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; margin: 10px 0 4px 0; }
 .board .tm.mine .h3 { color: #5cc8ff; }
+.board .tbl { flex-grow: 1; }
+.board .tm.mine > .h3 { margin: 0 18px 0 0; }
 .board .tm.enemy .h3 { color: #ff3b5c; }
 .board .tr { flex-direction: row; align-items: center; padding: 3px 0; }
 .board .tr.me { background-color: rgba(255, 215, 106, 0.12); }

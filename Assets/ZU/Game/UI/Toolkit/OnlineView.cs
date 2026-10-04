@@ -26,6 +26,12 @@ namespace ZU.Game.UI.Toolkit
         static IVisualElementScheduledItem timer;
         static bool wired;
 
+        /// <summary>a new play session starts clean (TS: a page load): the Editor keeps statics across play sessions (Enter
+        /// Play Mode Options, no domain reload) while NetDriver closes its sessions on exit - a stale `wired` left the next
+        /// session without OnChange/OnStart (no assemble screen, the match never loaded)</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { host = null; notice = ""; testing = ""; timer = null; wired = false; coopWired = false; }
+
         static GameData D => ZuData.Get();
         static List<MapDef> Maps => MenuState.PlayMaps(D);
         static string Mmss(double s) => U.Clock(Math.Max(0, s));
