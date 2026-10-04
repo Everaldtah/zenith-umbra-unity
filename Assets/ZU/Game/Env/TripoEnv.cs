@@ -22,6 +22,7 @@ namespace ZU.Game.Env
             public bool tall;                       // dressing over ~0.35 m: wall bases and map edges only (nothing collides with it)
             public string maps;                     // vista: the maps it stands round ("gulch", "cloudstep, amatsu, campaign");
                                                     // empty = every map of its style
+            public float yaw;                       // degrees that turn the model's front to +Z (Tripo puts fronts anywhere)
             [JsonIgnore] public GameObject prefab;
             [JsonIgnore] Vector3? unit;
             /// <summary>the prefab's own bounds size at scale 1 (1 m tall, footprint as Tripo made it), measured once</summary>
@@ -150,11 +151,12 @@ namespace ZU.Game.Env
         public static GameObject FitInside(Piece p, Transform parent, Vector3 foot, float yawDeg, float w, float d, float hMax)
         {
             var u = p.Unit;
+            if (Mathf.Abs(Mathf.DeltaAngle(p.yaw, 90)) < 45 || Mathf.Abs(Mathf.DeltaAngle(p.yaw, -90)) < 45) u = new Vector3(u.z, u.y, u.x);   // turned a quarter: its footprint swaps
             float s = Mathf.Min(w / u.x, d / u.z, hMax / u.y);
             var go = Object.Instantiate(p.prefab, parent, false);
             go.name = p.id;
             go.transform.localPosition = foot;
-            go.transform.localRotation = Quaternion.Euler(0, yawDeg, 0);
+            go.transform.localRotation = Quaternion.Euler(0, yawDeg + p.yaw, 0);
             go.transform.localScale = Vector3.one * s;
             return go;
         }
@@ -165,7 +167,7 @@ namespace ZU.Game.Env
             var go = Object.Instantiate(p.prefab, parent, false);
             go.name = p.id;
             go.transform.localPosition = pos;
-            go.transform.localRotation = Quaternion.Euler(0, yawDeg, 0);
+            go.transform.localRotation = Quaternion.Euler(0, yawDeg + p.yaw, 0);
             go.transform.localScale = Vector3.one * height;
             return go;
         }
