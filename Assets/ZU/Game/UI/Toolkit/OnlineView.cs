@@ -422,6 +422,13 @@ namespace ZU.Game.UI.Toolkit
             var h4 = U.Div("row2", box);
             if (!connected)
             {
+                // the web's "Your name" input before GO ONLINE (CoopUI.ts): the name the squad sees
+                var nm = new TextField { value = PlayerName, maxLength = 20 }; nm.AddToClassList("cnm"); h4.Add(nm);
+                nm.RegisterCallback<FocusOutEvent>(_ =>
+                {
+                    string v = nm.value.Trim(); if (v.Length == 0) v = "Vanguard"; if (v.Length > 20) v = v.Substring(0, 20);
+                    NetDriver.PlayerName = v; PlayerPrefs.SetString("zu-name", v); PlayerPrefs.Save();
+                });
                 U.Btn("GO ONLINE", null, () => { GoOnline(rerender); rerender(); }, h4);
                 U.Txt("Play the campaign with up to 3 friends (the online node links you peer-to-peer).", "st", box);
                 return;
