@@ -80,7 +80,20 @@ namespace ZU.Game.Fx
         }
 
         void OnEnable() { EventSink.OnEvent += OnEvent; }
-        void OnDisable() { EventSink.OnEvent -= OnEvent; if (Current == this) Current = null; }
+        void OnDisable() { EventSink.OnEvent -= OnEvent; HudFor(false); if (Current == this) Current = null; }
+
+        // The HUD belongs to the present: while the kill cam replays it is hidden, so the round box, the "ELIMINATED" line and
+        // the voice captions do not sit on the banner and the recap (seen in the 0.2.4 player look). It comes back with the
+        // replay's end. (A clip played for the Play of the Game or a highlight hides the HUD itself.)
+        bool hudHidden;
+        void HudFor(bool replayingKillCam)
+        {
+            if (replayingKillCam == hudHidden) return;
+            hudHidden = replayingKillCam;
+            var hud = ZU.Game.UI.Toolkit.UiRoot.Existing?.HudLayer;
+            if (hud != null) hud.style.display = replayingKillCam ? UnityEngine.UIElements.DisplayStyle.None : UnityEngine.UIElements.DisplayStyle.Flex;
+        }
+        void LateUpdate() { HudFor(clip != null && killcam); }
 
         /// <summary>state in one line, for the Editor's zu_killcam_test</summary>
         public string Diag => $"enabled {Enabled} pending {pending} replaying {clip != null} killcam {killcam} t {(clip != null ? clipT - deathAt : 0):+0.00;-0.00} " +
