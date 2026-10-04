@@ -385,6 +385,8 @@ namespace ZU.Game.UI.Toolkit
         public static void Return(MenuView menu, string where)
         {
             host = menu; Sess();
+            // QUIT TO MENU into the lobby is the web's online.open(), which clears the notice (a stale "Match found" stayed)
+            if (where == "online") notice = "";
             if (where == "online-queue") Queue(lastQ.q, lastQ.role);
             Lobby();
             Refresh();
