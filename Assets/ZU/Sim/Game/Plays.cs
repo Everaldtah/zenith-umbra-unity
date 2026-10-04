@@ -207,12 +207,16 @@ namespace ZU.Sim
             var ev = log.Where(e => e.actor == a.id && e.cat == cat && e.t >= from && e.t <= to).ToList();
             for (int i = 0; i < ev.Count; i++)
             {
-                double sum = 0; int kills = 0, j = i;
+                double sum = 0, top = 0; int kills = 0, j = i;
                 for (; j < ev.Count && ev[j].t <= ev[i].t + WINDOW; j++)
                 {
                     // the multikill ladder: the second kill of a window counts 1.5 times, the third twice, ...
                     if (ev[j].kill) { sum += ev[j].pts * (1 + 0.5 * kills); kills++; } else sum += ev[j].pts;
+                    top = Math.Max(top, ev[j].pts);
                 }
+                // a hard shot is one shot: the best of the window, the others adding a quarter each (several kills in a
+                // row are the High Score's business)
+                if (cat == SHARP) sum = top + (sum - top) * 0.25;
                 if (best != null && sum <= best.score) continue;
                 best = new Play { actor = a, category = cat, score = sum, t0 = ev[i].t, t1 = ev[j - 1].t, events = ev.GetRange(i, j - i) };
             }

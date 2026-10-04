@@ -25,6 +25,7 @@ namespace ZU.SimTest
             {
                 case "smoke": return Smoke(data);
                 case "roundreset": return RoundReset(data);
+                case "plays": return PlaysTest(data);
                 case "aimatch": return AiMatch(data, args.Length > 1 ? args[1] : null, args.Length > 2 ? double.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 120);
                 case "stadium": return StadiumMatch(data, args.Length > 1 ? args[1] : "hanabi");
                 case "campaign": return Campaign(data, args.Length > 1 ? args[1] : null);
@@ -84,6 +85,74 @@ namespace ZU.SimTest
                 Check(!giant.alive, "and is retired on the next step");
             }
             Console.WriteLine(fails == 0 ? "roundreset OK" : $"roundreset FAILED ({fails})");
+            return fails == 0 ? 0 : 1;
+        }
+
+        /// <summary>the Play of the Game detector (Sim/Game/Plays.cs): scripted events with a known answer, then a real match</summary>
+        static int PlaysTest(GameData data)
+        {
+            const double DT = 1.0 / 60;
+            int fails = 0;
+            void Check(bool ok, string what) { Console.WriteLine((ok ? "  PASS " : "  FAIL ") + what); if (!ok) fails++; }
+            {
+                Rng.Seed(7);
+                var w = Setup.CreateMatch("hanabi", "aitest", null, 0.8).world;
+                var plays = Plays.Attach(w);
+                var z = w.actors.Where(a => a.team == "zenith" && !a.isRobot).ToList();
+                var u = w.actors.Where(a => a.team == "umbra" && !a.isRobot).ToList();
+                Actor A = z[0], B = z[1], C = z[2];
+                // (everyone on the ground, a few metres apart: ordinary shots, so only what the script says is scored)
+                for (int i = 0; i < w.actors.Count; i++) { var a = w.actors[i]; a.grounded = true; a.flying = false; a.vel = V3.Zero; a.pos = new V3(i * 2, 0, a.team == "zenith" ? 0 : 8); }
+                void Hit(Actor src, Actor tgt, string kind = "bullet", bool crit = false) => w.Emit(new DmgEvent { src = src, tgt = tgt, amt = 60, crit = crit, pos = tgt.Center, kind = kind });
+                void Down(Actor src, Actor tgt) { Hit(src, tgt); w.Emit(new KillEvent { src = src, tgt = tgt }); }
+                // t = 20: B takes one elimination. t = 40..44: A takes three in a row. t = 70: C stops an ultimate.
+                w.time = 20; Down(B, u[0]);
+                w.time = 40; Down(A, u[0]); w.time = 42; Down(A, u[1]); w.time = 44; Down(A, u[2]);
+                w.time = 70; u[3].ults++; w.Emit(new CastEvent { actor = u[3], id = "ult", name = "Test Ultimate" });
+                w.time = 71.5; Down(C, u[3]);
+                w.time = 90;
+                var best = plays.Best();
+                Check(best != null && best.actor == A && best.category == Plays.HIGH && best.Kills == 3, $"three eliminations in 4 s are the play (got {best?.actor.def.id} {best?.category} x{best?.Kills} {best?.score:0})");
+                Check(best != null && Math.Abs(best.t0 - 40) < 1e-6 && Math.Abs(best.t1 - 44) < 1e-6, "the play runs from its first event to its last");
+                Check(best != null && best.summary.StartsWith("3 eliminations"), $"its line reads '{best?.summary}'");
+                var pc = plays.Best(a => a == C);
+                Check(pc != null && pc.category == Plays.SHUT && pc.score >= 240, $"stopping an ultimate is a SHUTDOWN, over a single elimination (got {pc?.category} {pc?.score:0}: {pc?.summary})");
+                var pb = plays.Best(a => a == B);
+                Check(pb != null && pb.category == Plays.HIGH && pb.Kills == 1, "a single elimination is still that player's best play");
+                var none = plays.Best(a => a == z[3]);
+                Check(none == null, "a player who did nothing has no play");
+                // far apart, the same three eliminations are no multikill
+                w.time = 100; Down(B, u[0]); w.time = 115; Down(B, u[1]); w.time = 130; Down(B, u[2]);
+                w.time = 140;
+                Check(plays.Best().actor == A, "three eliminations 15 s apart do not beat three in one window");
+                // a save: u[1] has a zenith hero nearly dead when it is stopped
+                var victim = z[3]; victim.hp = victim.MaxHp * 0.1; victim.lastHitBy = u[1]; victim.lastHitAt = 149.5; u[1].alive = true;
+                w.time = 150; Down(C, u[1]);
+                var life = plays.Log.Where(e => e.cat == Plays.LIFE && e.actor == C.id).ToList();
+                Check(life.Count == 1 && life[0].pts > 200, $"stopping the one killing a teammate at 10 % health is a LIFESAVER ({life.FirstOrDefault()?.text}, {life.FirstOrDefault()?.pts:0})");
+            }
+            {
+                Rng.Seed(12345);
+                var match = Setup.CreateMatch("hanabi", "aitest", null, 0.8);
+                var w = match.world; var plays = Plays.Attach(w);
+                string err = null;
+                try { for (int i = 0; i < 150 * 60 && w.winner == null; i++) { w.Step(DT); w.events.Clear(); } }
+                catch (Exception e) { err = e.GetType().Name + ": " + e.Message; }
+                Check(err == null, "a real match runs with the detector listening" + (err != null ? " - " + err : ""));
+                var best = plays.Best();
+                Check(best != null, "a real match has a Play of the Game");
+                if (best != null)
+                {
+                    Console.WriteLine($"    PLAY OF THE GAME: {best.actor.def.name} - {best.Label} - {best.summary} ({best.score:0} pts, t {best.t0:0.0}-{best.t1:0.0})");
+                    foreach (var e in best.events.Where(e => e.text != null)) Console.WriteLine($"      {e.t,6:0.0}  {e.text}  +{e.pts:0}");
+                    Check(!best.actor.isRobot && !best.actor.IsSummon, "it belongs to a hero");
+                    Check(best.t1 - best.t0 <= Plays.WINDOW + 1e-6, "it fits the window");
+                    int withPlay = w.actors.Count(a => !a.isRobot && plays.Best(x => x == a) != null);
+                    Console.WriteLine($"    {withPlay} of {w.actors.Count(a => !a.isRobot)} heroes have a best play; {plays.Log.Count} scored events");
+                    Check(withPlay >= 6, "most heroes have a best play of their own");
+                }
+            }
+            Console.WriteLine(fails == 0 ? "plays OK" : $"plays FAILED ({fails})");
             return fails == 0 ? 0 : 1;
         }
 
