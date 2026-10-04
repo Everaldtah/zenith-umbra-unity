@@ -1,17 +1,22 @@
-// The kill cam (the user, 2026-10-04: "a camera view that shows ... what happened to you before you die and who killed you
-// ... just like overwatch does", in normal play and in Stadium). Unity only: the web game has none.
+// The match recorder, the kill cam and the clip player (the user, 2026-10-04: "a camera view that shows ... what happened
+// to you before you die and who killed you ... just like overwatch does"; then the Play of the Game and saved best plays,
+// which replay the same record). Unity only: the web game has none.
 //
-// Every match keeps the last seconds of what the views draw: 30 times a second a frozen copy of every hero (Actor.Snapshot)
-// and every projectile, and the effect / sound events with their sim times. When the local player is eliminated, after a
-// beat on the death itself, the same hero views replay that record - the seconds before the death and a moment after -
-// from behind the killer's shoulder, the lens kept on the victim, with a banner naming the killer and what each attacker
-// dealt. The simulation is never touched: the live match runs on underneath and the view returns to it when the replay
-// ends, is skipped (Space / Enter), or the hero is back.
+// RECORD: every match keeps the last KEEP seconds of what the views draw - 30 times a second a frozen copy of every hero
+// (Actor.Snapshot) and every projectile, and the effect / sound events with their sim times. It never stops, replay or not.
+// CLIP: Cut(runner, t0, t1, focus) takes a stretch of the record as a PlayClip; Play(runner, clip, done) replays a clip
+// through the same hero views - the lens behind the focus hero's shoulder, looking where it aims - in a live match or once
+// it has a winner; Stop(), Playing, ClipTime. No banner, no keys: the caller draws and decides. The clock advances by
+// Time.deltaTime and nothing else.
+// KILL CAM: when the local player is eliminated, after a beat on the death itself, the record up to it is cut and played
+// from behind the killer's shoulder, the lens turned toward the victim, with a banner naming the killer and what each
+// attacker dealt; it ends before the respawn, on Space / Enter, or when the hero is back.
+// The simulation is never touched: the live match runs on underneath and the views return to it when a replay ends.
 //
-// MatchRunner drives it through four calls (its SyncViews / Dispatch): Replay(runner) -> the cam while it plays;
+// MatchRunner drives the views through four calls (its SyncViews / Dispatch): Replay(runner) -> this while a clip plays;
 // Past(actor) -> the hero as it was; SwapProjs(world) -> the projectiles as they were; Place(camera); and
-// Hold(runner, event) keeps the live match's effects and sounds out of the replay. Without those calls nothing replays.
-// Off switch: `-zu-killcam=0` on the command line, or KillCam.Enabled = false.
+// Hold(runner, event) keeps the live match's effects and sounds out of a replay (they are still recorded).
+// Off switch for the kill cam: `-zu-killcam=0` on the command line, or KillCam.Enabled = false (clips still play).
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -24,9 +29,11 @@ namespace ZU.Game.Fx
     [DefaultExecutionOrder(9000)]
     public sealed class KillCam : MonoBehaviour, IViewHost
     {
-        /// <summary>seconds of record kept; samples a second; the replay's most seconds before the death and its seconds after;
-        /// the beat on the death before it starts; what must be left of the respawn wait for a replay to be worth it</summary>
-        const float KEEP = 9, RATE = 30, LEAD = 4.5f, TAIL = 0.5f, DELAY = 0.9f, MIN_PLAY = 1.8f;
+        /// <summary>seconds of record kept (a play is cut up to 2 s after its 10 s window closes); samples a second; the kill
+        /// cam's most seconds before the death and its seconds after; the beat on the death before it starts; what must be
+        /// left of the respawn wait for it to be worth it</summary>
+        public const float KEEP = 20, RATE = 30;
+        const float LEAD = 4.5f, TAIL = 0.5f, DELAY = 0.9f, MIN_PLAY = 1.8f;
 
         static bool? enabled;
         public static bool Enabled
@@ -36,18 +43,21 @@ namespace ZU.Game.Fx
         }
         public static KillCam Current { get; private set; }
 
-        sealed class Frame { public double t; public Dictionary<int, Actor> actors; public List<Proj> projs; }
-        struct Hit { public double t; public string who, color; public double amt; public bool crit; }
+        struct Hit { public double t; public string who; public double amt; public bool crit; }
 
         MatchRunner r;
-        readonly List<Frame> frames = new List<Frame>();
+        // the record
+        readonly List<PlayClip.Frame> ring = new List<PlayClip.Frame>();
         readonly List<(double t, SimEvent e)> events = new List<(double, SimEvent)>();
         readonly List<Hit> hits = new List<Hit>();
         double lastSample = -1;
-        // the death waiting for its replay, and the replay
+        // the death waiting for its kill cam
         double deathAt = -1; int killerId, victimId; string killerName = "", killerTitle = "", killerColor = "#ffffff";
-        bool pending, replaying, redispatch;
-        double t0, t1, replayT; int cur, nextEvent;
+        bool pending;
+        // the clip being replayed
+        PlayClip clip; System.Action onDone;
+        bool killcam, redispatch;
+        double clipT; int cur, nextEvent;
         Vector3 camPos; Quaternion camRot; bool camInit;
         readonly List<string> recap = new List<string>();
 
@@ -63,43 +73,91 @@ namespace ZU.Game.Fx
         void OnDisable() { EventSink.OnEvent -= OnEvent; if (Current == this) Current = null; }
 
         /// <summary>state in one line, for the Editor's zu_killcam_test</summary>
-        public string Diag => $"enabled {Enabled} pending {pending} replaying {replaying} t {(replaying ? replayT - deathAt : 0):+0.00;-0.00} window [{t0 - deathAt:0.00}..{t1 - deathAt:0.00}] " +
-                              $"frames {frames.Count} cur {cur} events {events.Count} hits {hits.Count} killer '{killerName}' recap {recap.Count}";
+        public string Diag => $"enabled {Enabled} pending {pending} replaying {clip != null} killcam {killcam} t {(clip != null ? clipT - deathAt : 0):+0.00;-0.00} " +
+                              $"clip [{(clip != null ? clip.t0 - deathAt : 0):0.00}..{(clip != null ? clip.t1 - deathAt : 0):0.00}] frames {(clip != null ? clip.frames.Count : 0)} cur {cur} " +
+                              $"ring {ring.Count} events {events.Count} hits {hits.Count} killer '{killerName}' recap {recap.Count}";
+
+        // ------------------------------------------------------------------------------------------------ clips
+        /// <summary>the stretch [t0, t1] of this match's record as a clip, the lens on `focusId` (null: no record here, or the
+        /// record no longer reaches back to t0)</summary>
+        public static PlayClip Cut(MatchRunner runner, double t0, double t1, int focusId)
+        {
+            var k = Current;
+            if (k == null || k.r != runner || k.ring.Count < 2 || k.ring[0].t > t0 + 0.25) return null;
+            var c = new PlayClip { focusId = focusId, t0 = System.Math.Max(t0, k.ring[0].t), at = System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() };
+            foreach (var f in k.ring) if (f.t >= t0 - 1e-6 && f.t <= t1 + 1e-6) c.frames.Add(f);          // (frames are never changed once taken: shared)
+            if (c.frames.Count < 2) return null;
+            c.t1 = System.Math.Min(t1, c.frames[c.frames.Count - 1].t);
+            foreach (var e in k.events) if (e.t >= c.t0 && e.t <= c.t1) c.events.Add(e);
+            return c;
+        }
+
+        /// <summary>replay a clip through this match's views from its start (false: no views here to play it, or an empty
+        /// clip). `done` is called once when it has played to its end - not when it is stopped.</summary>
+        public static bool Play(MatchRunner runner, PlayClip c, System.Action done)
+        {
+            var k = Current;
+            if (k == null || k.r != runner || c == null || !c.HasBody) return false;
+            k.Begin(c, false, done);
+            return true;
+        }
+        /// <summary>end whatever is replaying now (a clip or the kill cam); the views go back to the live match</summary>
+        public static void Stop() { var k = Current; if (k != null) k.End(false); }
+        /// <summary>a clip or the kill cam is replaying</summary>
+        public static bool Playing => Current != null && Current.clip != null;
+        /// <summary>seconds into the clip being replayed (0 when none)</summary>
+        public static double ClipTime => Current != null && Current.clip != null ? Current.clipT - Current.clip.t0 : 0;
+
+        void Begin(PlayClip c, bool asKillCam, System.Action done)
+        {
+            clip = c; killcam = asKillCam; onDone = done;
+            clipT = c.t0; cur = 0; nextEvent = 0; camInit = false;
+        }
+        void End(bool finished)
+        {
+            if (clip == null) return;
+            var done = onDone;
+            clip = null; onDone = null; killcam = false;
+            if (finished) done?.Invoke();
+        }
 
         // ------------------------------------------------------------------------------------------------ MatchRunner's calls
-        /// <summary>the cam while it replays for this runner (null: draw the live match)</summary>
-        public static KillCam Replay(MatchRunner runner) => Current != null && Current.r == runner && Current.replaying ? Current : null;
-        /// <summary>true: a live effect or sound that must not be shown now (the replay is on; it belongs to the present)</summary>
+        /// <summary>this while it replays for the runner (null: draw the live match)</summary>
+        public static KillCam Replay(MatchRunner runner) => Current != null && Current.r == runner && Current.clip != null ? Current : null;
+        /// <summary>true: a live effect or sound that must not be shown now (a replay is on; it belongs to the present). It is
+        /// recorded all the same.</summary>
         public static bool Hold(MatchRunner runner, SimEvent e)
         {
             var k = Current;
-            return k != null && k.r == runner && k.replaying && !k.redispatch && (e is FxEvent || e is SfxEvent);
+            if (k == null || k.r != runner || k.clip == null || k.redispatch || !(e is FxEvent || e is SfxEvent)) return false;
+            if (runner.World != null) k.events.Add((runner.World.time, e));
+            return true;
         }
-        /// <summary>the hero as it was at the replay's moment (null: not in the record - draw it live)</summary>
-        public Actor Past(Actor a) => cur < frames.Count && frames[cur].actors.TryGetValue(a.id, out var p) ? p : null;
+        /// <summary>the hero as it was at the replay's moment (null: not in the clip - draw it live)</summary>
+        public Actor Past(Actor a) => clip != null && cur < clip.frames.Count && clip.frames[cur].actors.TryGetValue(a.id, out var p) ? p : null;
         /// <summary>the same for anyone holding a live actor outside MatchRunner (the ragdolls, the lids)</summary>
         public static Actor PastOrLive(MatchRunner runner, Actor a) => Replay(runner)?.Past(a) ?? a;
-        public static float TimeOr(MatchRunner runner, float now) => Replay(runner) is KillCam k ? (float)k.replayT : now;
+        public static float TimeOr(MatchRunner runner, float now) => Replay(runner) is KillCam k ? (float)k.clipT : now;
         /// <summary>puts the recorded projectiles in the world's list for the views' sync; returns the live list to put back</summary>
         public List<Proj> SwapProjs(World w)
         {
             var live = w.projs;
-            w.projs = cur < frames.Count ? frames[cur].projs : new List<Proj>();
+            w.projs = clip != null && cur < clip.frames.Count ? clip.frames[cur].projs : new List<Proj>();
             return live;
         }
 
         // ------------------------------------------------------------------------------------------------ IViewHost: the past
-        public double SimTime => replayT;
-        public Actor Player => null;                 // (nobody is "you" in the replay: your own body is drawn)
+        public double SimTime => clipT;
+        public Actor Player => null;                 // (nobody is "you" in a replay: your own body is drawn)
         public bool ThirdPerson => true;
         public Vector3 DrawPos(Actor a)
         {
             var p0 = Conv.U(a.pos);
-            if (cur + 1 >= frames.Count || !frames[cur + 1].actors.TryGetValue(a.id, out var n)) return p0;
+            if (clip == null || cur + 1 >= clip.frames.Count || !clip.frames[cur + 1].actors.TryGetValue(a.id, out var n)) return p0;
             var p1 = Conv.U(n.pos);
             if ((p1 - p0).sqrMagnitude > 36) return p0;                 // a respawn or a blink between two samples: no slide
-            double span = frames[cur + 1].t - frames[cur].t;
-            return Vector3.Lerp(p0, p1, span > 1e-6 ? Mathf.Clamp01((float)((replayT - frames[cur].t) / span)) : 0);
+            double span = clip.frames[cur + 1].t - clip.frames[cur].t;
+            return Vector3.Lerp(p0, p1, span > 1e-6 ? Mathf.Clamp01((float)((clipT - clip.frames[cur].t) / span)) : 0);
         }
 
         // ------------------------------------------------------------------------------------------------ the record
@@ -110,9 +168,9 @@ namespace ZU.Game.Fx
             var me = r.Player;
             switch (e)
             {
-                case FxEvent _: case SfxEvent _: if (!replaying) events.Add((t, e)); break;
+                case FxEvent _: case SfxEvent _: events.Add((t, e)); break;
                 case DmgEvent d when me != null && d.tgt == me && !d.heal && d.src != null && d.src != me:
-                    hits.Add(new Hit { t = t, who = (d.src.owner ?? d.src).baseDef.name, color = (d.src.owner ?? d.src).baseDef.color, amt = d.amt, crit = d.crit });
+                    hits.Add(new Hit { t = t, who = (d.src.owner ?? d.src).baseDef.name, amt = d.amt, crit = d.crit });
                     break;
                 case KillEvent k when me != null && k.tgt == me:
                 {
@@ -128,55 +186,61 @@ namespace ZU.Game.Fx
 
         void Sample(World w)
         {
-            var f = new Frame { t = w.time, actors = new Dictionary<int, Actor>(w.actors.Count), projs = new List<Proj>(w.projs.Count) };
+            var f = new PlayClip.Frame { t = w.time, actors = new Dictionary<int, Actor>(w.actors.Count), projs = new List<Proj>(w.projs.Count) };
             foreach (var a in w.actors)
             {
                 if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;      // (the puppets are one swarm, not views)
                 f.actors[a.id] = a.Snapshot();
             }
             foreach (var p in w.projs) f.projs.Add(p.Clone());
-            frames.Add(f);
+            ring.Add(f);
             double old = w.time - KEEP;
-            int drop = 0; while (drop < frames.Count && frames[drop].t < old) drop++;
-            if (drop > 0) frames.RemoveRange(0, drop);
+            int drop = 0; while (drop < ring.Count && ring[drop].t < old) drop++;
+            if (drop > 0) ring.RemoveRange(0, drop);
             drop = 0; while (drop < events.Count && events[drop].t < old) drop++;
             if (drop > 0) events.RemoveRange(0, drop);
             drop = 0; while (drop < hits.Count && hits[drop].t < old) drop++;
             if (drop > 0) hits.RemoveRange(0, drop);
         }
 
-        // ------------------------------------------------------------------------------------------------ the replay
+        // ------------------------------------------------------------------------------------------------ every frame
         void Update()
         {
             if (r == null || r.World == null) return;
             var w = r.World; var me = r.Player;
-            if (!replaying)
+            // the record goes on whatever is on screen (a world that isn't stepping adds nothing)
+            if (w.time - lastSample >= 1.0 / RATE) { lastSample = w.time; Sample(w); }
+            if (clip == null) { StartKillCam(w, me); return; }
+            // replaying: the clock, the frame under it, the effects and sounds of that moment
+            if (killcam)
             {
-                if (w.time - lastSample >= 1.0 / RATE) { lastSample = w.time; Sample(w); }
-                if (!pending) return;
-                if (me == null || me.alive || me.id != victimId || !Enabled) { pending = false; return; }
-                if (w.time < deathAt + DELAY || PauseMenu.Paused || ModeHud.Shopping(r)) return;
-                pending = false;
-                // what is left of the wait for the respawn decides how far back the replay starts
-                double left = me.respawnAt > 0 ? me.respawnAt - w.time - 0.4 : LEAD + TAIL;
-                if (left < MIN_PLAY || frames.Count < 4) return;
-                double lead = System.Math.Min(LEAD, left - TAIL);
-                t0 = System.Math.Max(frames[0].t, deathAt - lead); t1 = deathAt + TAIL;
-                replayT = t0; cur = 0; nextEvent = 0; camInit = false;
-                while (nextEvent < events.Count && events[nextEvent].t < t0) nextEvent++;
-                Recap();
-                replaying = true;
-                return;
+                var kb = Keyboard.current;
+                bool skip = kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame);
+                if (skip || me == null || me.alive || !Enabled) { End(false); return; }
+                if (!PauseMenu.Paused) clipT += Time.deltaTime;
             }
-            // playing: the clock, the frame under it, the effects and sounds of that moment
-            var kb = Keyboard.current;
-            bool skip = kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame);
-            if (!PauseMenu.Paused) replayT += Time.deltaTime;
-            if (skip || replayT >= t1 || me == null || me.alive || !Enabled) { replaying = false; lastSample = -1; return; }
-            while (cur + 1 < frames.Count && frames[cur + 1].t <= replayT) cur++;
+            else clipT += Time.deltaTime;
+            if (clipT >= clip.t1) { End(true); return; }
+            while (cur + 1 < clip.frames.Count && clip.frames[cur + 1].t <= clipT) cur++;
             redispatch = true;
-            try { while (nextEvent < events.Count && events[nextEvent].t <= replayT) { var e = events[nextEvent++].e; EventSink.Handle(r, e); } }
+            try { while (nextEvent < clip.events.Count && clip.events[nextEvent].t <= clipT) { var e = clip.events[nextEvent++].e; EventSink.Handle(r, e); } }
             finally { redispatch = false; }
+        }
+
+        void StartKillCam(World w, Actor me)
+        {
+            if (!pending) return;
+            if (me == null || me.alive || me.id != victimId || !Enabled) { pending = false; return; }
+            if (w.time < deathAt + DELAY || PauseMenu.Paused || ModeHud.Shopping(r) || w.winner != null) return;
+            pending = false;
+            // what is left of the wait for the respawn decides how far back the replay starts
+            double left = me.respawnAt > 0 ? me.respawnAt - w.time - 0.4 : LEAD + TAIL;
+            if (left < MIN_PLAY) return;
+            double lead = System.Math.Min(LEAD, left - TAIL);
+            var c = Cut(r, System.Math.Max(ring.Count > 0 ? ring[0].t : deathAt, deathAt - lead), deathAt + TAIL, killerId != 0 ? killerId : victimId);
+            if (c == null) return;
+            Recap();
+            Begin(c, true, null);
         }
 
         void Recap()
@@ -190,13 +254,15 @@ namespace ZU.Game.Fx
             }
         }
 
-        /// <summary>the lens: behind the killer's shoulder, turned toward the victim (no killer: a slow circle round the body)</summary>
+        /// <summary>the lens: behind the focus hero's shoulder, looking where it aims; the kill cam turns it toward the victim
+        /// (and with no killer circles the body)</summary>
         public void Place(Transform cam)
         {
-            if (cur >= frames.Count) return;
-            var f = frames[cur];
-            f.actors.TryGetValue(victimId, out var v);
-            Actor k = null; if (killerId != 0) f.actors.TryGetValue(killerId, out k);
+            if (clip == null || cur >= clip.frames.Count) return;
+            var f = clip.frames[cur];
+            Actor k = null, v = null;
+            if (killcam) { f.actors.TryGetValue(victimId, out v); if (killerId != 0) f.actors.TryGetValue(killerId, out k); }
+            else f.actors.TryGetValue(clip.focusId, out k);
             Vector3 pos; Quaternion rot;
             if (k != null)
             {
@@ -214,21 +280,22 @@ namespace ZU.Game.Fx
             else if (v != null)
             {
                 var c = DrawPos(v) + Vector3.up * (float)(v.Height * 0.6);
-                float a = (float)(replayT - t0) * 0.5f;
+                float a = (float)(clipT - clip.t0) * 0.5f;
                 pos = c + new Vector3(Mathf.Sin(a) * 5, 2.2f, Mathf.Cos(a) * 5);
                 rot = Quaternion.LookRotation(c - pos);
             }
+            else if (camInit) { cam.SetPositionAndRotation(camPos, camRot); return; }       // (the focus isn't in this frame: hold the shot)
             else return;
             if (!camInit) { camPos = pos; camRot = rot; camInit = true; }
             else { float kq = 1 - Mathf.Exp(-Time.deltaTime * 10); camPos += (pos - camPos) * kq; camRot = Quaternion.Slerp(camRot, rot, kq); }
             cam.SetPositionAndRotation(camPos, camRot);
         }
 
-        // ------------------------------------------------------------------------------------------------ the banner
+        // ------------------------------------------------------------------------------------------------ the kill cam's banner
         GUIStyle title, name, line, hint; Texture2D shade;
         void OnGUI()
         {
-            if (!replaying) return;
+            if (clip == null || !killcam) return;
             float H = Screen.height, W = Screen.width, u = H / 1080f;
             if (title == null)
             {
