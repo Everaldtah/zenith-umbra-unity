@@ -1,5 +1,65 @@
 [
  {
+  "id": "bld_acad_block",
+  "style": "academy",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 20,
+  "d_m": 30,
+  "height_m": 15,
+  "footprint_m": 30
+ },
+ {
+  "id": "bld_acad_kiosk",
+  "style": "academy",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 8,
+  "d_m": 8,
+  "height_m": 3,
+  "footprint_m": 8
+ },
+ {
+  "id": "bld_goth_belltower",
+  "style": "gothic",
+  "kind": "building",
+  "archetype": "tower",
+  "w_m": 6,
+  "d_m": 6,
+  "height_m": 24,
+  "footprint_m": 6
+ },
+ {
+  "id": "bld_goth_chapel",
+  "style": "gothic",
+  "kind": "building",
+  "archetype": "hall1f",
+  "w_m": 10,
+  "d_m": 17,
+  "height_m": 6,
+  "footprint_m": 17
+ },
+ {
+  "id": "bld_goth_crypt",
+  "style": "gothic",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 8,
+  "d_m": 8,
+  "height_m": 5,
+  "footprint_m": 8
+ },
+ {
+  "id": "bld_goth_townhouse2f",
+  "style": "gothic",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 9,
+  "d_m": 10,
+  "height_m": 8,
+  "footprint_m": 10
+ },
+ {
   "id": "bld_japan_hall1f",
   "style": "japan",
   "kind": "building",
@@ -90,6 +150,223 @@
   "footprint_m": 12
  },
  {
+  "id": "bld_kuro_apartment3f",
+  "style": "kurogane",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 13,
+  "d_m": 14,
+  "height_m": 10,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_kuro_shop1f",
+  "style": "kurogane",
+  "kind": "building",
+  "archetype": "storefront",
+  "w_m": 8,
+  "d_m": 14,
+  "height_m": 6,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_kuro_substation",
+  "style": "kurogane",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 10,
+  "d_m": 14,
+  "height_m": 9,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_kuro_tower4f",
+  "style": "kurogane",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 10,
+  "d_m": 11,
+  "height_m": 14,
+  "footprint_m": 11
+ },
+ {
+  "id": "bld_obs_dome",
+  "style": "observatory",
+  "kind": "building",
+  "archetype": "tower",
+  "w_m": 8,
+  "d_m": 8,
+  "height_m": 12,
+  "footprint_m": 8
+ },
+ {
+  "id": "bld_obs_hall",
+  "style": "observatory",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 24,
+  "d_m": 32,
+  "height_m": 11,
+  "footprint_m": 32
+ },
+ {
+  "id": "bld_obs_lab",
+  "style": "observatory",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 9,
+  "d_m": 12,
+  "height_m": 9,
+  "footprint_m": 12
+ },
+ {
+  "id": "bld_sky_gate",
+  "style": "sky",
+  "kind": "building",
+  "archetype": "tower",
+  "w_m": 10,
+  "d_m": 6,
+  "height_m": 14,
+  "footprint_m": 10
+ },
+ {
+  "id": "bld_sky_hall",
+  "style": "sky",
+  "kind": "building",
+  "archetype": "hall1f",
+  "w_m": 8,
+  "d_m": 14,
+  "height_m": 6,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_sky_pavilion",
+  "style": "sky",
+  "kind": "building",
+  "archetype": "pavilion",
+  "w_m": 17,
+  "d_m": 26,
+  "height_m": 10,
+  "footprint_m": 26
+ },
+ {
+  "id": "gnd_alpine_alpine_grass",
+  "kind": "dressing",
+  "height_m": 0.3,
+  "footprint_m": 2.0,
+  "maps": "starfall",
+  "biome": "alpine",
+  "tall": false
+ },
+ {
+  "id": "gnd_alpine_boulder",
+  "kind": "dressing",
+  "height_m": 1.5,
+  "footprint_m": 2.2,
+  "maps": "starfall",
+  "biome": "alpine",
+  "tall": true
+ },
+ {
+  "id": "gnd_alpine_lichen_rocks",
+  "kind": "dressing",
+  "height_m": 0.35,
+  "footprint_m": 2.0,
+  "maps": "starfall",
+  "biome": "alpine",
+  "tall": false
+ },
+ {
+  "id": "gnd_desert_boulder_pile",
+  "kind": "dressing",
+  "height_m": 1.5,
+  "footprint_m": 2.5,
+  "maps": "mile, gulch",
+  "biome": "desert",
+  "tall": true
+ },
+ {
+  "id": "gnd_desert_cactus",
+  "kind": "dressing",
+  "height_m": 1.8,
+  "footprint_m": 1.0,
+  "maps": "mile, gulch",
+  "biome": "desert",
+  "tall": true
+ },
+ {
+  "id": "gnd_desert_dry_tuft",
+  "kind": "dressing",
+  "height_m": 0.45,
+  "footprint_m": 0.7,
+  "maps": "mile, gulch",
+  "biome": "desert",
+  "tall": false
+ },
+ {
+  "id": "gnd_desert_gravel",
+  "kind": "dressing",
+  "height_m": 0.06,
+  "footprint_m": 2.0,
+  "maps": "mile, gulch",
+  "biome": "desert",
+  "tall": false
+ },
+ {
+  "id": "gnd_desert_red_rocks",
+  "kind": "dressing",
+  "height_m": 0.3,
+  "footprint_m": 2.0,
+  "maps": "mile, gulch",
+  "biome": "desert",
+  "tall": false
+ },
+ {
+  "id": "gnd_desert_sagebrush",
+  "kind": "dressing",
+  "height_m": 0.8,
+  "footprint_m": 1.2,
+  "maps": "mile, gulch",
+  "biome": "desert",
+  "tall": true
+ },
+ {
+  "id": "gnd_gothic_dead_grass",
+  "kind": "dressing",
+  "height_m": 0.4,
+  "footprint_m": 0.8,
+  "maps": "cathedral, rift",
+  "biome": "gothic",
+  "tall": false
+ },
+ {
+  "id": "gnd_gothic_moss_bed",
+  "kind": "dressing",
+  "height_m": 0.1,
+  "footprint_m": 2.0,
+  "maps": "cathedral, rift",
+  "biome": "gothic",
+  "tall": false
+ },
+ {
+  "id": "gnd_gothic_rock_bed",
+  "kind": "dressing",
+  "height_m": 0.3,
+  "footprint_m": 2.0,
+  "maps": "cathedral, rift",
+  "biome": "gothic",
+  "tall": false
+ },
+ {
+  "id": "gnd_gothic_stone_rubble",
+  "kind": "dressing",
+  "height_m": 0.35,
+  "footprint_m": 2.0,
+  "maps": "cathedral, rift",
+  "biome": "gothic",
+  "tall": false
+ },
+ {
   "id": "gnd_temperate_boulders",
   "kind": "dressing",
   "height_m": 1.4,
@@ -150,6 +427,51 @@
   "footprint_m": 1.5,
   "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
+  "tall": false
+ },
+ {
+  "id": "gnd_urban_gravel",
+  "kind": "dressing",
+  "height_m": 0.06,
+  "footprint_m": 2.0,
+  "maps": "foundry, hangar, kurogane",
+  "biome": "urban",
+  "tall": false
+ },
+ {
+  "id": "gnd_urban_oil_moss",
+  "kind": "dressing",
+  "height_m": 0.05,
+  "footprint_m": 1.8,
+  "maps": "foundry, hangar, kurogane",
+  "biome": "urban",
+  "tall": false
+ },
+ {
+  "id": "gnd_urban_rubble",
+  "kind": "dressing",
+  "height_m": 0.35,
+  "footprint_m": 2.0,
+  "maps": "foundry, hangar, kurogane",
+  "biome": "urban",
+  "tall": false
+ },
+ {
+  "id": "gnd_urban_scrap",
+  "kind": "dressing",
+  "height_m": 1.0,
+  "footprint_m": 2.0,
+  "maps": "foundry, hangar, kurogane",
+  "biome": "urban",
+  "tall": true
+ },
+ {
+  "id": "gnd_urban_weeds",
+  "kind": "dressing",
+  "height_m": 0.3,
+  "footprint_m": 0.8,
+  "maps": "foundry, hangar, kurogane",
+  "biome": "urban",
   "tall": false
  },
  {
@@ -272,6 +594,16 @@
   "maps": "mile, gulch"
  },
  {
+  "id": "wal_goth",
+  "style": "gothic",
+  "kind": "wall",
+  "archetype": "wall",
+  "w_m": 6,
+  "d_m": 1,
+  "height_m": 9,
+  "footprint_m": 6
+ },
+ {
   "id": "wal_japan",
   "style": "japan",
   "kind": "wall",
@@ -279,6 +611,16 @@
   "w_m": 6,
   "d_m": 1,
   "height_m": 3,
+  "footprint_m": 6
+ },
+ {
+  "id": "wal_kuro",
+  "style": "kurogane",
+  "kind": "wall",
+  "archetype": "wall",
+  "w_m": 6,
+  "d_m": 5,
+  "height_m": 4,
   "footprint_m": 6
  }
 ]
