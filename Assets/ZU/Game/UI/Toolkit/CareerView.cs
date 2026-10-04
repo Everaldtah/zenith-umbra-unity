@@ -320,7 +320,7 @@ namespace ZU.Game.UI.Toolkit
                 U.Txt(CareerProfile.MODE_LABEL.TryGetValue(m.mode ?? "", out var ml) ? ml : m.mode, "ctd", tr);
                 U.Txt(d.Map.TryGetValue(m.map ?? "", out var md) ? md.name : m.map, "ctd", tr);
                 var hc = U.Div("ctd h", tr); Img(hc, m.hero, 28); U.Txt(Nm(m.hero), "hn", hc);
-                U.Txt(m.result == "win" ? "<color=#7dff9a>VICTORY</color>" : m.result == "loss" ? "<color=#ff6b81>DEFEAT</color>" : m.result == "draw" ? "DRAW" : "<alpha=#80>-</alpha>", "ctd", tr);
+                U.Txt(m.result == "win" ? "<color=#7dff9a>VICTORY</color>" : m.result == "loss" ? "<color=#ff6b81>DEFEAT</color>" : m.result == "draw" ? "DRAW" : "<alpha=#80>-<alpha=#FF>", "ctd", tr);
                 U.Txt(CareerProfile.FmtTime(m.secs), "ctd", tr);
                 U.Txt($"{m.elims:0} / {m.deaths:0}", "ctd", tr);
                 U.Txt(Int(m.damage), "ctd", tr); U.Txt(Int(m.healing), "ctd", tr); U.Txt($"{m.acc:0}%", "ctd", tr);

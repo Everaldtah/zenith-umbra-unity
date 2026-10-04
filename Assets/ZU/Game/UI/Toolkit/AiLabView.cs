@@ -170,8 +170,8 @@ namespace ZU.Game.UI.Toolkit
                 var s = kv.Value; var missing = ANIM_STATES.Where(x => !s.states.Contains(x) && x != "backpedal" && x != "strafe").ToList();
                 var tr = U.Div("lab-tr", t);
                 U.Txt(kv.Key, "lab-td", tr); U.Txt(s.rig, "lab-td", tr);
-                U.Txt($"{Ok(missing.Count == 0)} {s.states.Count}/{ANIM_STATES.Length}{(missing.Count > 0 ? $" <size=10><alpha=#99>-{string.Join(",", missing)}</alpha></size>" : "")}", "lab-td", tr);
-                U.Txt("<alpha=#99>n/a</alpha>", "lab-td", tr);
+                U.Txt($"{Ok(missing.Count == 0)} {s.states.Count}/{ANIM_STATES.Length}{(missing.Count > 0 ? $" <size=10><alpha=#99>-{string.Join(",", missing)}<alpha=#FF></size>" : "")}", "lab-td", tr);
+                U.Txt("<alpha=#99>n/a<alpha=#FF>", "lab-td", tr);
                 U.Txt($"{Ok((double)s.penetrate / Math.Max(1, s.frames) < 0.02)} {s.penetrate}", "lab-td", tr);
             }
             U.Txt(string.Join("\n", maps.Select(m => $"{m.Key}: {m.Value.winner ?? "-"} · {m.Value.kills}K · {m.Value.falls} falls · {m.Value.stuck} unstick")), "lab-maps", panel);

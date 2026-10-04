@@ -150,7 +150,7 @@ namespace ZU.Game.UI.Toolkit
         {
             var dps = t.Dps();
             Row(table, ("DAMAGE", N0(t.total), null), ("DPS", dps == null ? "—" : N0(dps.Value), live ? "live" : null));
-            Row(table, ("HITS", t.hits.ToString(), null), ("CRITS", t.crits + (t.hits > 0 ? $" <size=11><alpha=#99>{JsMath.Round((double)t.crits / t.hits * 100)}%</alpha></size>" : ""), null));
+            Row(table, ("HITS", t.hits.ToString(), null), ("CRITS", t.crits + (t.hits > 0 ? $" <size=11><alpha=#99>{JsMath.Round((double)t.crits / t.hits * 100)}%<alpha=#FF></size>" : ""), null));
             // (◆ marks a critical hit: the TS's ✦ is in none of the game's fonts)
             Row(table, ("LAST HIT", t.hits > 0 ? N0(t.last) + (t.lastCrit ? " ◆" : "") : "—", t.lastCrit ? "crit" : null), ("BIGGEST", t.hits > 0 ? N0(t.max) : "—", null));
         }
@@ -178,9 +178,9 @@ namespace ZU.Game.UI.Toolkit
             double sh = a.ShieldAmt, max = a.MaxHp + Math.Max(0, sh);
             var bar = new HpBar(); bar.AddToClassList("rg-hpb"); meter.Add(bar);
             bar.Set(Math.Max(0, a.hp), Math.Max(0, a.armor), Math.Max(0, sh), max);
-            U.Txt(a.alive ? $"{N0(a.Health + sh)} <size=12><alpha=#B3>/ {N0(a.MaxHp)}{(a.def.armor > 0 ? $" · {N0(a.armor)} armor" : "")}{(sh > 0.5 ? $" · {N0(sh)} shield" : "")}{(a.barrier.up ? $" · barrier {N0(a.barrier.hp)}" : "")}</alpha></size>"
-                : "<color=#ff5d6d>DOWN</color> <size=12><alpha=#B3>back in a moment</alpha></size>", "rg-hpn", meter);
-            U.Txt($"YOUR DAMAGE <size=11><alpha=#B3>as {me?.def.name ?? "-"}{(s.lastDist > 0 ? $" · from {U.F(s.lastDist, 1)} m" : "")}</alpha></size>", "rg-h5", meter);
+            U.Txt(a.alive ? $"{N0(a.Health + sh)} <size=12><alpha=#B3>/ {N0(a.MaxHp)}{(a.def.armor > 0 ? $" · {N0(a.armor)} armor" : "")}{(sh > 0.5 ? $" · {N0(sh)} shield" : "")}{(a.barrier.up ? $" · barrier {N0(a.barrier.hp)}" : "")}<alpha=#FF></size>"
+                : "<color=#ff5d6d>DOWN</color> <size=12><alpha=#B3>back in a moment<alpha=#FF></size>", "rg-hpn", meter);
+            U.Txt($"YOUR DAMAGE <size=11><alpha=#B3>as {me?.def.name ?? "-"}{(s.lastDist > 0 ? $" · from {U.F(s.lastDist, 1)} m" : "")}<alpha=#FF></size>", "rg-h5", meter);
             var t = U.Div("rg-table", meter);
             TallyRows(t, d, d.Active(time));
             Row(t, ("WEAPON", N0(d.by["weapon"]), null), ("ABILITIES", N0(d.by["ability"] + d.by["dot"]), null));
@@ -270,14 +270,14 @@ namespace ZU.Game.UI.Toolkit
                     U.Btn("REMOVE TARGET", "rg-remove", () => { range.Clear(); Show(); }, go);
                     U.Btn("RESET STATS", "rg-reset", () => { range.ResetStats(); Show(); }, go);
                 }
-                U.Txt("RESULTS <size=12><alpha=#99>each target you drop</alpha></size>", "rg-h5", log);
+                U.Txt("RESULTS <size=12><alpha=#99>each target you drop<alpha=#FF></size>", "rg-h5", log);
                 var L = range.stats.log;
                 if (L.Count > 0)
                 {
                     var tbl = Table(log, "YOU", "TARGET", "MODE", "DIST", "TIME TO KILL", "DAMAGE", "HITS", "CRITS", "DPS");
                     foreach (var x in L)
                         Tr(tbl, null, x.you, x.target, x.mode + (x.abilities ? "+ab" : ""), $"{x.dist} m",
-                            Secs(x.ttk) + (x.frameDown != null ? $" <size=12><alpha=#99>(frame {U.F(x.frameDown.Value, 2)})</alpha></size>" : ""),
+                            Secs(x.ttk) + (x.frameDown != null ? $" <size=12><alpha=#99>(frame {U.F(x.frameDown.Value, 2)})<alpha=#FF></size>" : ""),
                             N0(x.dmg), x.hits.ToString(), x.crits.ToString(), x.dps == null ? "—" : N0(x.dps.Value));
                 }
                 else U.Txt("Deploy a hero and drop it: every kill is logged here with your hero, the time to kill and the damage.", "rg-empty", log);

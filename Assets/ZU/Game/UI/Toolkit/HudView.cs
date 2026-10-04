@@ -208,7 +208,7 @@ namespace ZU.Game.UI.Toolkit
                 if (lastHero != me.def.id) { lastHero = me.def.id; BuildAbilities(me); }
                 double max = me.MaxHp;
                 hpBar.Set(me.hp, me.armor, me.ShieldAmt, max);
-                U.Set(hpNum, $"{Math.Ceiling(me.Health):0}<size=16><alpha=#99>/{max:0}</alpha></size>{(me.ShieldAmt > 1 ? $" <size=20><color=#7fd3ff>+{Math.Ceiling(me.ShieldAmt):0}</color></size>" : "")}");
+                U.Set(hpNum, $"{Math.Ceiling(me.Health):0}<size=16><alpha=#99>/{max:0}<alpha=#FF></size>{(me.ShieldAmt > 1 ? $" <size=20><color=#7fd3ff>+{Math.Ceiling(me.ShieldAmt):0}</color></size>" : "")}");
                 var S = me.def.secondary;
                 var cds = new List<(string k, string id)> { ("SHIFT", me.def.ability1?.id), ("E", me.def.ability2?.id) };
                 if (S != null && S.IsAbility) cds.Add(("RMB", S.id));
@@ -267,8 +267,8 @@ namespace ZU.Game.UI.Toolkit
                 string am;
                 if (P.kind == "charge") am = me.charging ? Math.Round(me.charge * 100) + "%" : "DRAW";
                 // twin chainguns: left drum | right drum (endless inside the Grand Dohyo)
-                else if (me.def.dualGuns) am = me.Has("dohyo", t) ? "∞<size=18><alpha=#99> | </alpha></size>∞" : me.reloadUntil > 0 ? "RELOADING" : $"{me.ammo:0}<size=18><alpha=#99> | </alpha></size>{me.Sv("ammo2"):0}";
-                else if (P.ammo.HasValue && P.ammo.Value > 0) am = me.reloadUntil > 0 ? "RELOADING" : $"{me.ammo:0}<size=18><alpha=#99>/{me.MaxAmmo:0}</alpha></size>";
+                else if (me.def.dualGuns) am = me.Has("dohyo", t) ? "∞<size=18><alpha=#99> | <alpha=#FF></size>∞" : me.reloadUntil > 0 ? "RELOADING" : $"{me.ammo:0}<size=18><alpha=#99> | <alpha=#FF></size>{me.Sv("ammo2"):0}";
+                else if (P.ammo.HasValue && P.ammo.Value > 0) am = me.reloadUntil > 0 ? "RELOADING" : $"{me.ammo:0}<size=18><alpha=#99>/{me.MaxAmmo:0}<alpha=#FF></size>";
                 else am = "∞";
                 U.Set(ammo, am);
                 Flight(me, t);

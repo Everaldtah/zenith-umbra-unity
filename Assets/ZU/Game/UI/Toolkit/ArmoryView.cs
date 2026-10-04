@@ -70,7 +70,7 @@ namespace ZU.Game.UI.Toolkit
             if (pending)
             {
                 var pw = U.Div("ar-powers", root);
-                U.Txt($"CHOOSE A POWER <size=14><alpha=#B3>   round {S.round} power pick - it upgrades {me.baseDef.name}'s kit for the rest of the match</alpha></size>", "ar-h3", pw);
+                U.Txt($"CHOOSE A POWER <size=14><alpha=#B3>   round {S.round} power pick - it upgrades {me.baseDef.name}'s kit for the rest of the match<alpha=#FF></size>", "ar-h3", pw);
                 var row = U.Div("pw", pw);
                 foreach (var p in powers)
                 {

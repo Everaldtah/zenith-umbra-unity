@@ -121,7 +121,7 @@ namespace ZU.Game.UI.Toolkit
             var sc = host.Screen("modes online");
             var sv = new ScrollView(ScrollViewMode.Vertical); sv.AddToClassList("mgrid-scroll"); sc.Add(sv);
             var root = sv.contentContainer;
-            U.Txt("PLAY ONLINE\n<size=16><alpha=#B3>Real players who have ZENITH//UMBRA installed, linked peer-to-peer through the online node. Two players are enough for a match - AI fills every empty seat, and every extra player replaces a bot.</alpha></size>", "m-h2", root);
+            U.Txt("PLAY ONLINE\n<size=16><alpha=#B3>Real players who have ZENITH//UMBRA installed, linked peer-to-peer through the online node. Two players are enough for a match - AI fills every empty seat, and every extra player replaces a bot.<alpha=#FF></size>", "m-h2", root);
             var others = s.Players.Where(p => p.platform == "desktop" || p.status != "squad").ToList();
             var st = U.Div("ostat", root, pick: true);
             U.Txt("● " + (s.Online ? "ONLINE" : "CONNECTING..."), s.Online ? "ok" : "bad", st);
@@ -247,7 +247,7 @@ namespace ZU.Game.UI.Toolkit
             U.Bg(head, "map_" + m.id);
             Grad.Fill(Grad.Linear(90, (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0.95f), 0), (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0.55f), 100)), head);
             var ht = U.Div("ah-t", head);
-            U.Txt($"{(s.Q == "custom" ? "CUSTOM GAME" : s.Q == "comp" ? "ONLINE COMPETITIVE" : "ONLINE QUICK PLAY")} <size=16><alpha=#B3>{m.name} · {(m.objective == "push" ? "MIKOSHI RUSH" : "CONTROL")}</alpha></size>", "m-h2", ht);
+            U.Txt($"{(s.Q == "custom" ? "CUSTOM GAME" : s.Q == "comp" ? "ONLINE COMPETITIVE" : "ONLINE QUICK PLAY")} <size=16><alpha=#B3>{m.name} · {(m.objective == "push" ? "MIKOSHI RUSH" : "CONTROL")}<alpha=#FF></size>", "m-h2", ht);
             U.Txt(s.Q == "custom" ? (s.Role == "host" ? "You host: start whenever you like - AI heroes fill the empty seats." : "Waiting for the host to start the game.")
                 : "The match stays open while the clock runs: anyone who queues now joins it. AI heroes take every seat still empty at the start.", "tips", ht);
             var clock = U.Div("clock", head);
@@ -260,7 +260,7 @@ namespace ZU.Game.UI.Toolkit
             {
                 var xs = s.Seats.Where(x => x.team == team).ToList(); int ai = Math.Max(0, 5 - xs.Count);
                 var ot = U.Div("oteam " + team, teams);
-                U.Txt($"{(team == "zenith" ? "ZENITH VANGUARD" : "UMBRA SYNDICATE")} <size=14><alpha=#99>{xs.Count} player{(xs.Count == 1 ? "" : "s")} · {ai} AI</alpha></size>", "o-h3 " + team, ot);
+                U.Txt($"{(team == "zenith" ? "ZENITH VANGUARD" : "UMBRA SYNDICATE")} <size=14><alpha=#99>{xs.Count} player{(xs.Count == 1 ? "" : "s")} · {ai} AI<alpha=#FF></size>", "o-h3 " + team, ot);
                 foreach (var x in xs) SeatRow(ot, s, x);
                 for (int i = 0; i < ai; i++)
                 {
@@ -270,7 +270,7 @@ namespace ZU.Game.UI.Toolkit
             }
             if (me != null)
             {
-                U.Txt($"CHOOSE YOUR HERO <size=14><alpha=#99>{ROLE_NAME[me.role ?? "flex"]} · {(me.team == "zenith" ? "Zenith Vanguard" : "Umbra Syndicate")}</alpha></size>", "o-h3", root);
+                U.Txt($"CHOOSE YOUR HERO <size=14><alpha=#99>{ROLE_NAME[me.role ?? "flex"]} · {(me.team == "zenith" ? "Zenith Vanguard" : "Umbra Syndicate")}<alpha=#FF></size>", "o-h3", root);
                 var pick = U.Div("row opick", root);
                 var taken = new HashSet<string>(s.Seats.Where(x => x.team == me.team && x.id != s.Me).Select(x => x.hero));
                 foreach (var d in OnlineSession.HeroPool(me.team, me.role))
@@ -401,14 +401,14 @@ namespace ZU.Game.UI.Toolkit
                 if (nm.Session.Role == null) { U.Set(el, "<color=#ff5d6d><b>● HOST LOST</b></color>"); return; }
                 var t = Quality.TIER.TryGetValue(nm.Tier ?? "", out var ts) ? ts : Quality.TIER["medium"];
                 string path = nm.Path == "node" ? "RELAY" : nm.Path == "turn" ? "TURN" : nm.Path == "lan" ? "LAN" : "P2P";
-                U.Set(el, $"<color={t.color}><b>● {nm.Rtt} ms</b></color> · {nm.SnapHz:0} Hz {t.label} · {nm.Loss * 100:0.0}% loss · {path}\n<alpha=#BF>interp {nm.InterpMs:0} ms</alpha>");
+                U.Set(el, $"<color={t.color}><b>● {nm.Rtt} ms</b></color> · {nm.SnapHz:0} Hz {t.label} · {nm.Loss * 100:0.0}% loss · {path}\n<alpha=#BF>interp {nm.InterpMs:0} ms<alpha=#FF>");
             }
             else
             {
                 var info = nm.PeerLinks();
                 int worst = info.Count > 0 ? info.Max(x => x.rtt) : 0; double outK = info.Sum(x => x.kbps);
                 string links = string.Join(" · ", info.Select(x => $"{(Quality.TIER.TryGetValue(x.tier ?? "", out var t) ? t.label : x.tier)} {x.rtt}ms"));
-                U.Set(el, $"<color=#58ffb0><b>● HOSTING</b></color> · {info.Count} player{(info.Count == 1 ? "" : "s")} · worst ping {worst} ms\n<alpha=#BF>{links} · {outK:0} kbps out</alpha>");
+                U.Set(el, $"<color=#58ffb0><b>● HOSTING</b></color> · {info.Count} player{(info.Count == 1 ? "" : "s")} · worst ping {worst} ms\n<alpha=#BF>{links} · {outK:0} kbps out<alpha=#FF>");
             }
         }
 

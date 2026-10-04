@@ -111,10 +111,10 @@ namespace ZU.Game.UI.Toolkit
             var best = new[] { "tank", "damage", "support" }.Select(r => c.roles[r]).OrderByDescending(r => r.rating * (r.games >= Career.Ranks.PLACEMENTS ? 1 : 0)).First();
             var b = U.Div("btns two", s);
             var row1 = U.Div("brow", b);
-            U.Btn("PLAY ONLINE\n<size=12><alpha=#B3>with other players</alpha></size>", "primary", () => OnlineView.Open(this), row1);
+            U.Btn("PLAY ONLINE\n<size=12><alpha=#B3>with other players<alpha=#FF></size>", "primary", () => OnlineView.Open(this), row1);
             U.Btn("QUICK PLAY", "primary", () => QueueSelect("quickplay"), U.Div("brow", b));
             void Pair(string a, Action fa, string bb, Action fb) { var r = U.Div("brow", b); U.Btn(a, null, fa, r); if (bb != null) U.Btn(bb, null, fb, r); }
-            Pair($"COMPETITIVE\n<size=12><alpha=#B3>{Career.Ranks.RankOf(best.rating, best.games).label}</alpha></size>", () => QueueSelect("competitive"), "AI QUICK MATCH", () => QueueSelect("practice"));
+            Pair($"COMPETITIVE\n<size=12><alpha=#B3>{Career.Ranks.RankOf(best.rating, best.games).label}<alpha=#FF></size>", () => QueueSelect("competitive"), "AI QUICK MATCH", () => QueueSelect("practice"));
             Pair("STADIUM", () => Mode("stadium"), "CAMPAIGN · STARFALL", Campaign);
             Pair("TRAINING GROUNDS", () => Mode("training"), "CAREER PROFILE", Career_);
             Pair("HERO VIEWER & SKINS", () => Viewer(null), "WATCH AI VS AI", () => Mode("spectate"));
@@ -154,7 +154,7 @@ namespace ZU.Game.UI.Toolkit
             {
                 var s = Show("modes queue");
                 Backdrop(s, 50, 0);
-                U.Txt("AI QUICK MATCH\n<size=16><alpha=#B3>You and four AI teammates against an AI team - best-of-3 Control or Mikoshi Rush, no rank on the line</alpha></size>", "m-h2", s);
+                U.Txt("AI QUICK MATCH\n<size=16><alpha=#B3>You and four AI teammates against an AI team - best-of-3 Control or Mikoshi Rush, no rank on the line<alpha=#FF></size>", "m-h2", s);
                 U.Txt("DIFFICULTY", "q-h3", s);
                 var diffs = U.Div("diffs", s);
                 foreach (var (n, v, desc) in DIFFS)
@@ -183,7 +183,7 @@ namespace ZU.Game.UI.Toolkit
             var blurb = new Dictionary<string, string> { ["tank"] = "Hold the space, lead the fight.", ["damage"] = "Find the kills, open the fight.", ["support"] = "Keep the team alive, turn the fight.", ["flex"] = "Any hero, any role." };
             var sc = Show("modes queue");
             Backdrop(sc, 50, 0);
-            U.Txt($"{MenuState.QUEUE_NAME[q]}\n<size=16><alpha=#B3>{(q == "competitive" ? $"Ranked, role queue - one rank per role. {Career.Ranks.PLACEMENTS} placement matches reveal it; every match after that moves it." : "Unranked, role queue or flex - a lobby matched to your skill, a random map and mode.")}</alpha></size>", "m-h2", sc);
+            U.Txt($"{MenuState.QUEUE_NAME[q]}\n<size=16><alpha=#B3>{(q == "competitive" ? $"Ranked, role queue - one rank per role. {Career.Ranks.PLACEMENTS} placement matches reveal it; every match after that moves it." : "Unranked, role queue or flex - a lobby matched to your skill, a random map and mode.")}<alpha=#FF></size>", "m-h2", sc);
             var rl = U.Div("roles", sc);
             foreach (var r in roles)
             {
@@ -362,7 +362,7 @@ namespace ZU.Game.UI.Toolkit
             }
             Ab("C", "Quick melee", "A fast punch for 40 damage - every hero has one (0.9s cooldown).");
             var rival = Hero(h.rival);
-            if (rival != null) U.Txt($"RIVAL: <b><color={rival.color}>{rival.name}</color></b>, {rival.title}.\n<size=14><alpha=#B3>{h.inspiration}</alpha></size>", "rival", info);
+            if (rival != null) U.Txt($"RIVAL: <b><color={rival.color}>{rival.name}</color></b>, {rival.title}.\n<size=14><alpha=#B3>{h.inspiration}<alpha=#FF></size>", "rival", info);
             return hd;
         }
 
@@ -393,7 +393,7 @@ namespace ZU.Game.UI.Toolkit
             }
             foreach (var (team, title, small) in new[] { ("zenith", "ZENITH VANGUARD", "heroes"), ("umbra", "UMBRA SYNDICATE", "villains") })
             {
-                U.Txt($"{title} <size=14><alpha=#99>{small}</alpha></size>", "s-h3 " + team, grid);
+                U.Txt($"{title} <size=14><alpha=#99>{small}<alpha=#FF></size>", "s-h3 " + team, grid);
                 var row = U.Div("row", grid);
                 foreach (var h in heroes.Where(x => x.team == team && RoleOk(x)))
                     cards.Add(HeroCard(row, h, h.id == HeroId, () => Pick(h.id)));
@@ -434,7 +434,7 @@ namespace ZU.Game.UI.Toolkit
         {
             var s = Show("maps");
             Backdrop(s, 50, 0);
-            U.Txt(mode == "aitest" ? "AI TEST LAB\n<size=16><alpha=#B3>bots play every map in turn while the lab checks animation, movement, physics, effects and sound</alpha></size>" : "WATCH AI VS AI", "m-h2", s);
+            U.Txt(mode == "aitest" ? "AI TEST LAB\n<size=16><alpha=#B3>bots play every map in turn while the lab checks animation, movement, physics, effects and sound<alpha=#FF></size>" : "WATCH AI VS AI", "m-h2", s);
             var sv = new ScrollView(ScrollViewMode.Vertical); sv.AddToClassList("mgrid-scroll"); s.Add(sv);
             var grid = U.Div("mgrid", sv.contentContainer);
             var cards = new List<VisualElement>();
@@ -512,7 +512,7 @@ namespace ZU.Game.UI.Toolkit
             if (!levels.ContainsKey(cLevel)) cLevel = ids[0];
             var s = Show("campaign-menu");
             Backdrop(s, 30, 10, "#1d1440");
-            U.Txt("OPERATION STARFALL\n<size=16><alpha=#B3>Third-person campaign · 5 levels · hunt the Star-Forger's colossi · solo with AI wingmates or online co-op (up to 4)</alpha></size>", "m-h2", s);
+            U.Txt("OPERATION STARFALL\n<size=16><alpha=#B3>Third-person campaign · 5 levels · hunt the Star-Forger's colossi · solo with AI wingmates or online co-op (up to 4)<alpha=#FF></size>", "m-h2", s);
             var lvls = U.Div("lvls", s);
             for (int i = 0; i < ids.Count; i++)
             {
