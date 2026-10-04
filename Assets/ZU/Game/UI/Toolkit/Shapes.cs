@@ -306,21 +306,31 @@ namespace ZU.Game.UI.Toolkit
         public Color color = new Color(1, 30 / 255f, 60 / 255f, 0.45f);
         public float size = 120;
         public Vignette() { pickingMode = PickingMode.Ignore; generateVisualContent += Draw; }
+        // Four strips along the edges, the colour at the screen edge fading to clear over `size` pixels. Drawn as a mesh
+        // with per-vertex colours, not with painter2D.fillGradient: a painter gradient loses its alpha when the panel
+        // renders in gamma space (UiGamma), and the fade came out as a solid red frame on every hit in 0.2.2. Vertex
+        // colours with alpha are what every translucent solid fill in the panel already uses.
         void Draw(MeshGenerationContext mgc)
         {
-            var p = mgc.painter2D; var r = contentRect; float s = Mathf.Min(size, r.height / 2), W = r.width, H = r.height;
-            var clear = U.A(color, 0);
-            void Strip(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Vector2 g0, Vector2 g1)
+            var r = contentRect; float W = r.width, H = r.height;
+            if (W <= 0 || H <= 0 || color.a <= 0) return;
+            float s = Mathf.Min(size, H / 2);
+            Color32 edge = color, clear = U.A(color, 0);
+            var mesh = mgc.Allocate(16, 24);
+            // each strip: two vertices on the screen edge (colour), two `s` pixels inside (clear), clockwise from the top-left
+            void Strip(Vector2 a, Vector2 b, Vector2 c, Vector2 d, bool aEdge, bool bEdge, bool cEdge, bool dEdge, int baseIndex)
             {
-                p.fillColor = Color.white;
-                p.fillGradient = FillGradient.MakeLinearGradient(color, clear, g0, g1, AddressMode.Clamp);
-                p.BeginPath(); p.MoveTo(a); p.LineTo(b); p.LineTo(c); p.LineTo(d); p.ClosePath(); p.Fill();
+                mesh.SetNextVertex(new Vertex { position = new Vector3(a.x, a.y, Vertex.nearZ), tint = aEdge ? edge : clear });
+                mesh.SetNextVertex(new Vertex { position = new Vector3(b.x, b.y, Vertex.nearZ), tint = bEdge ? edge : clear });
+                mesh.SetNextVertex(new Vertex { position = new Vector3(c.x, c.y, Vertex.nearZ), tint = cEdge ? edge : clear });
+                mesh.SetNextVertex(new Vertex { position = new Vector3(d.x, d.y, Vertex.nearZ), tint = dEdge ? edge : clear });
+                mesh.SetNextIndex((ushort)baseIndex); mesh.SetNextIndex((ushort)(baseIndex + 1)); mesh.SetNextIndex((ushort)(baseIndex + 2));
+                mesh.SetNextIndex((ushort)baseIndex); mesh.SetNextIndex((ushort)(baseIndex + 2)); mesh.SetNextIndex((ushort)(baseIndex + 3));
             }
-            Strip(new Vector2(0, 0), new Vector2(W, 0), new Vector2(W, s), new Vector2(0, s), new Vector2(0, 0), new Vector2(0, s));
-            Strip(new Vector2(0, H - s), new Vector2(W, H - s), new Vector2(W, H), new Vector2(0, H), new Vector2(0, H), new Vector2(0, H - s));
-            Strip(new Vector2(0, 0), new Vector2(s, 0), new Vector2(s, H), new Vector2(0, H), new Vector2(0, 0), new Vector2(s, 0));
-            Strip(new Vector2(W - s, 0), new Vector2(W, 0), new Vector2(W, H), new Vector2(W - s, H), new Vector2(W, 0), new Vector2(W - s, 0));
-            p.fillGradient = default;
+            Strip(new Vector2(0, 0), new Vector2(W, 0), new Vector2(W, s), new Vector2(0, s), true, true, false, false, 0);              // top
+            Strip(new Vector2(0, H - s), new Vector2(W, H - s), new Vector2(W, H), new Vector2(0, H), false, false, true, true, 4);      // bottom
+            Strip(new Vector2(0, 0), new Vector2(s, 0), new Vector2(s, H), new Vector2(0, H), true, false, false, true, 8);              // left
+            Strip(new Vector2(W - s, 0), new Vector2(W, 0), new Vector2(W, H), new Vector2(W - s, H), false, true, true, false, 12);     // right
         }
     }
 
