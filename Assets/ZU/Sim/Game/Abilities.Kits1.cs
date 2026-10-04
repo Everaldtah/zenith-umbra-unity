@@ -349,6 +349,9 @@ namespace ZU.Sim
         public const double SUNS_RING = 7, SUNS_REACH = 30, SUNS_SECS = 15, SUNS_LAND_AT = 0.5, SUNS_LAND_STEP = 0.15, SUNS_SPLIT = 1.4,
             SUNS_TICK = 0.5, SUNS_DMG = 12, SUNS_LAND_DMG = 100, SUNS_LAND_R = 3;
         public const int SUNS_N = 5;
+        /// <summary>the swarm's hit and a landing's, with the user's Yuzu multiplier (Data/UnityDivergence)</summary>
+        public static double SunsDmg => SUNS_DMG * UnityDivergence.YuzuPower;
+        public static double SunsLandDmg => SUNS_LAND_DMG * UnityDivergence.YuzuPower;
         /// <summary>where the zone's i-th giant arrow lands (sim space, on the ground under the ring)</summary>
         public static V3 SunsLanding(World w, Zone z, int i)
         {

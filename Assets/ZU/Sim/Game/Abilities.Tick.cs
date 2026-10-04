@@ -112,7 +112,7 @@ namespace ZU.Sim
                     var lp = SunsLanding(w, z, (int)landed);
                     foreach (var x in w.Enemies(z.owner))
                         if (M.Hypot(x.pos.x - lp.x, x.pos.z - lp.z) < SUNS_LAND_R + x.Radius && Math.Abs(x.pos.y - lp.y) < 3)
-                            w.Damage(z.owner, x, SUNS_LAND_DMG, new DmgOpts { kind = "ability", ability = "hundredsuns" });
+                            w.Damage(z.owner, x, SunsLandDmg, new DmgOpts { kind = "ability", ability = "hundredsuns" });
                     landed++; z.data["landed"] = landed;
                 }
                 // (its own count: the generic zone tick above moves every zone's `next` on by 0.25 s)
@@ -121,7 +121,7 @@ namespace ZU.Sim
                 {
                     ticks++; z.data["ticks"] = ticks;
                     foreach (var x in w.Enemies(z.owner))
-                        if (M.Hypot(x.pos.x - z.x, x.pos.z - z.z) < z.r) w.Damage(z.owner, x, SUNS_DMG, new DmgOpts { kind = "ability", ability = "hundredsuns" });
+                        if (M.Hypot(x.pos.x - z.x, x.pos.z - z.z) < z.r) w.Damage(z.owner, x, SunsDmg, new DmgOpts { kind = "ability", ability = "hundredsuns" });
                 }
             }
             // Gantetsu: Tachiai Rush shoves (and cracks barriers), the stomp lands, Taiko Heartbeat feeds the team's lifesteal

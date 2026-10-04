@@ -108,30 +108,7 @@
       "TR_Stun_Idle"
     ]
   },
-  "exclude": [
-    "Walk_Formal_Loop",
-    "Walk_Carry_Loop",
-    "Zombie_Walk_Fwd_Loop",
-    "Crouch_Fwd_Loop",
-    "Sprint_Loop",
-    "Jog_Fwd_Loop",
-    "MX_Jog_BwdLeft",
-    "Walk_Loop",
-    "MX_Walk_Bwd",
-    "MX_Walk_Right",
-    "MX_Walk_Left",
-    "MX_Jog_Bwd",
-    "MX_Jog_BwdRight",
-    "MX_Jog_Right",
-    "MX_Jog_FwdRight",
-    "MX_Jog_Fwd",
-    "MX_Jog_FwdLeft",
-    "MX_Jog_Left",
-    "MX_Run_Bwd",
-    "MX_Run_Right",
-    "MX_Run_Fwd",
-    "MX_Run_Left"
-  ],
+  "exclude": ["Walk_Formal_Loop", "Walk_Carry_Loop", "Zombie_Walk_Fwd_Loop", "Crouch_Fwd_Loop", "Sprint_Loop", "MX_Jog_BwdLeft", "TR_Walk_Fwd", "TR_Walk_Bwd", "TR_Walk_Left", "TR_Jog_Fwd", "TR_Jog_Bwd", "TR_Jog_Left", "TR_Run_Fwd", "TR_Run_Bwd", "TR_Run_Left"],
   "heroes": {
     "enra": {
       "melee": [

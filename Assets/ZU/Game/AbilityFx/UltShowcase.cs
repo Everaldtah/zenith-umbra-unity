@@ -35,7 +35,7 @@ namespace ZU.Game.Fx
             ["sealstorm"] = new Plan { secs = 16, wide = 0.4f, tough = 3 },  // Divine Seal Storm: bursts on every enemy within 18 m for 15 s
             ["judgment"] = new Plan { secs = 7, fight = 2.2f },
             ["susanoo"] = new Plan { secs = 11, wide = 0.6f, tough = 2.5f },
-            ["hundredsuns"] = new Plan { secs = 17, tough = 3 },   // (Unity rework) five giant arrows, then a 15 s swarm over 30 m
+            ["hundredsuns"] = new Plan { secs = 17, wide = 0.4f, tough = 9 },   // (Unity rework) five giant arrows, then a 15 s swarm over 30 m
             ["singularity"] = new Plan { secs = 4.5f, flat = true },
             ["requiem"] = new Plan { secs = 4.5f },
             ["theater"] = new Plan { secs = 17, wide = 1, tough = 2.5f },
@@ -114,7 +114,7 @@ namespace ZU.Game.Fx
         float barLeft = 1;
         // camera state (orbit offset / zoom from the mouse, smoothed focus)
         float orbit, zoom = 1, lift = 0.36f, swing; bool camInit;
-        Vector3 focus;
+        Vector3 focus, camPos;
         float? drag;
 
         void Stage(MatchRunner r)
@@ -285,8 +285,11 @@ namespace ZU.Game.Fx
             float ang = bas + swing;
             var want2 = new Vector3(F.x + Mathf.Sin(ang) * r, F.y + r * lift + H * 0.2f, F.z + Mathf.Cos(ang) * r);
             var pos = Sp.U(want2);
-            if (!camInit) { cam.position = pos; camInit = true; }
-            else { float kc = 1 - Mathf.Exp(-dt * 4); cam.position += (pos - cam.position) * kc; }
+            // (eased in its own state: MatchCamera puts the lens back on its spectate orbit every frame, so easing from the
+            // camera's position never left that orbit - every showcase was framed from 42 m out)
+            if (!camInit) { camPos = pos; camInit = true; }
+            else { float kc = 1 - Mathf.Exp(-dt * 4); camPos += (pos - camPos) * kc; }
+            cam.position = camPos;
             cam.LookAt(Sp.U(focus));
         }
 
