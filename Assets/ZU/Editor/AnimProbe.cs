@@ -3,11 +3,13 @@
 //  - slide: planted-foot drift / body speed (the TS metric: a planted foot's world XZ movement per second over the body's
 //    speed, while alive, grounded, faster than 1 m/s and not forced) - "planted" = the clip layer's contact > 0.5
 //  - clipShare: frames the clip layer drives the legs (Result.ok && legs > 0.5)
-//  - pops: the largest per-frame bone rotation (degrees) while moving without a one-shot running - blend-space pops show up
-//    as spikes; p99 and the count of frames over 20 degrees
+//  - pops: the largest per-frame bone rotation (degrees, scaled to a 60 fps frame) while moving without a one-shot running -
+//    blend-space pops show up as spikes; p99 and the count of frames over 20 degrees
 //  - turn: foot drift (m/s) while standing (speed < 0.4) and turning faster than 1.5 rad/s - feet should re-step, not skate
 //  - land: the largest per-frame bone rotation in the 0.25 s after a landing
 //  - actions: the clip one-shots seen
+// Sampled once every rendered frame from a PlayerLoop hook at the end of PostLateUpdate (after ProcAnimator wrote the bones,
+// before rendering): the editor update doesn't tick once a frame in a batch editor, which overstated every rate.
 // `zu_anim_probe_status` reports progress; the result is written to Screenshots/a1/anim_probe.json.
 using System.Collections.Generic;
 using System.IO;
@@ -15,6 +17,7 @@ using System.Linq;
 using Unity.Pipeline.Commands;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.LowLevel;
 using ZU.Game;
 using ZU.Sim;
 
@@ -33,6 +36,7 @@ namespace ZU.EditorTools
         static readonly Dictionary<string, S> stats = new Dictionary<string, S>();
         static readonly Dictionary<int, Track> tracks = new Dictionary<int, Track>();
         static double until, started; static bool running; static string result = "idle";
+        struct ZuAnimProbe { }
 
         [CliCommand("zu_anim_probe", "Measure animation quality (foot slide, pops, turning, landing, clip share) over a stretch of a running match")]
         public static string Probe([CliArg("secs", "seconds of play to measure")] float secs = 45)
@@ -40,6 +44,7 @@ namespace ZU.EditorTools
             if (!Application.isPlaying) return "enter play mode first";
             stats.Clear(); tracks.Clear();
             started = EditorApplication.timeSinceStartup; until = started + secs; running = true; result = "running";
+            Hook(true);
             EditorApplication.update -= Tick; EditorApplication.update += Tick;
             return $"probing for {secs} s";
         }
@@ -47,13 +52,36 @@ namespace ZU.EditorTools
         [CliCommand("zu_anim_probe_status", "Progress / result of the last zu_anim_probe")]
         public static string Status() => running ? $"running, {until - EditorApplication.timeSinceStartup:0} s left" : result;
 
+        /// <summary>the end of the run (the editor update: real time)</summary>
         static void Tick()
         {
             if (!running) { EditorApplication.update -= Tick; return; }
-            if (!Application.isPlaying || EditorApplication.timeSinceStartup >= until) { Finish(); return; }
+            if (!Application.isPlaying || EditorApplication.timeSinceStartup >= until) Finish();
+        }
+
+        /// <summary>add or remove the per-frame sampler at the end of PostLateUpdate</summary>
+        static void Hook(bool on)
+        {
+            var root = UnityEngine.LowLevel.PlayerLoop.GetCurrentPlayerLoop();
+            for (int i = 0; i < root.subSystemList.Length; i++)
+            {
+                if (root.subSystemList[i].type != typeof(UnityEngine.PlayerLoop.PostLateUpdate)) continue;
+                var sys = root.subSystemList[i];
+                var list = new List<PlayerLoopSystem>(sys.subSystemList ?? new PlayerLoopSystem[0]);
+                list.RemoveAll(x => x.type == typeof(ZuAnimProbe));
+                if (on) list.Add(new PlayerLoopSystem { type = typeof(ZuAnimProbe), updateDelegate = Frame });
+                sys.subSystemList = list.ToArray(); root.subSystemList[i] = sys;
+            }
+            UnityEngine.LowLevel.PlayerLoop.SetPlayerLoop(root);
+        }
+
+        static void Frame()
+        {
+            if (!running || !Application.isPlaying) return;
             var r = Object.FindAnyObjectByType<MatchRunner>();
             if (r == null || r.World == null) return;
             var w = r.World; float dt = Time.deltaTime; if (dt <= 0) return;
+            float per60 = (1f / 60) / dt;                                               // jumps scaled to a 60 fps frame
             foreach (var v in Object.FindObjectsByType<HeroView>(FindObjectsSortMode.None))
             {
                 int h = v.name.IndexOf(" #"); if (h < 0) continue;
@@ -80,9 +108,9 @@ namespace ZU.EditorTools
                 float sp = (float)System.Math.Sqrt(a.vel.x * a.vel.x + a.vel.z * a.vel.z);
                 double yawRate = tr.has ? System.Math.Abs(DeltaYaw(a.yaw, tr.yaw)) / dt : 0;
                 bool oneShot = L != null && !string.IsNullOrEmpty(L.action);
-                if (tr.has && a.grounded && sp > 1 && !oneShot) s.pops.Add(jump);
+                if (tr.has && a.grounded && sp > 1 && !oneShot) s.pops.Add(jump * per60);
                 if (a.anim.landAt > tr.lastLand) tr.lastLand = a.anim.landAt;
-                if (w.time - tr.lastLand < 0.25) s.land = Mathf.Max(s.land, jump);
+                if (tr.has && w.time - tr.lastLand < 0.25) s.land = Mathf.Max(s.land, jump * per60);
                 // feet: the TS slide metric, and skating while turning on the spot
                 for (int i = 0; i < 2; i++)
                 {
@@ -104,7 +132,7 @@ namespace ZU.EditorTools
 
         static void Finish()
         {
-            running = false; EditorApplication.update -= Tick;
+            running = false; EditorApplication.update -= Tick; Hook(false);
             var rows = stats.Values.OrderBy(s => s.id).Select(s =>
             {
                 var pops = s.pops.OrderBy(x => x).ToList();

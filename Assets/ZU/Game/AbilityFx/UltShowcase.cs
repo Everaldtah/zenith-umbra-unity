@@ -15,6 +15,9 @@ using ZU.Sim;
 
 namespace ZU.Game.Fx
 {
+    // (late: its Update places the camera after MatchRunner's has run the match camera - a shot taken between Update and
+    // LateUpdate, as the editor's capture commands are, got the spectate orbit)
+    [DefaultExecutionOrder(10000)]
     public sealed class UltShowcase : MonoBehaviour, IController
     {
         /// <summary>how each ult is shown: `secs` from the cast to the replay; `near` walks within that of a target before
@@ -211,7 +214,7 @@ namespace ZU.Game.Fx
         }
 
         // ------------------------------------------------------------------ camera
-        void LateUpdate()
+        void Update()
         {
             var cam = UnityEngine.Camera.main;
             if (cam == null || hero == null) return;
