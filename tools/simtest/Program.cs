@@ -24,6 +24,7 @@ namespace ZU.SimTest
             switch (cmd)
             {
                 case "smoke": return Smoke(data);
+                case "roundreset": return RoundReset(data);
                 case "aimatch": return AiMatch(data, args.Length > 1 ? args[1] : null, args.Length > 2 ? double.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 120);
                 case "stadium": return StadiumMatch(data, args.Length > 1 ? args[1] : "hanabi");
                 case "campaign": return Campaign(data, args.Length > 1 ? args[1] : null);
@@ -35,6 +36,57 @@ namespace ZU.SimTest
         }
 
         /// <summary>the TS tests/unit/sim.test.ts: 10 bots fight on every playable map without breaking</summary>
+        /// <summary>the round reset with a summon in the world: Raijin raises the Susanoo, the round ends, everyone goes back to
+        /// spawn. The world must keep stepping (0.2.2 threw KeyNotFoundException 'bladeAt' on every step from here on) and the
+        /// giant must be gone until its owner casts again.</summary>
+        static int RoundReset(GameData data)
+        {
+            const double DT = 1.0 / 60;
+            Rng.Seed(4242);
+            int fails = 0;
+            void Check(bool ok, string what) { Console.WriteLine((ok ? "  PASS " : "  FAIL ") + what); if (!ok) fails++; }
+            foreach (var dismissFirst in new[] { true, false })
+            foreach (var stadium in new[] { true, false })
+            {
+                var world = Setup.CreateMatch("hanabi", "aitest", null, 0.8).world;
+                for (int i = 0; i < 120; i++) { world.Step(DT); world.events.Clear(); }
+                var raijin = world.actors.FirstOrDefault(a => a.def.id == "raijin");
+                if (raijin == null) { Console.WriteLine("  FAIL no raijin in the hanabi roster"); return 1; }
+                raijin.alive = true; raijin.hp = raijin.def.hp;
+                var giant = Susanoo.RaiseSusanoo(world, raijin);
+                for (int i = 0; i < 60; i++) { world.Step(DT); world.events.Clear(); }
+                if (dismissFirst) Susanoo.DismissSusanoo(world, raijin);
+                string err = null;
+                try
+                {
+                    // (the two reset loops of the game: Stadium takes every actor, a control round every non-robot and every summon)
+                    foreach (var a in world.actors.ToList()) if (stadium || !a.isRobot || a.IsSummon) { double u = a.ult; world.RoundRespawn(a); a.ult = u; }
+                    foreach (var a in world.actors) a.ult = 0;          // (nobody casts again during the check)
+                    for (int i = 0; i < 600 && world.winner == null; i++) { world.Step(DT); world.events.Clear(); foreach (var a in world.actors) a.ult = 0; }
+                }
+                catch (Exception e) { err = e.GetType().Name + ": " + e.Message; }
+                string which = (stadium ? "Stadium, " : "control, ") + (dismissFirst ? "giant already dismissed" : "giant still up");
+                Check(err == null, $"the world steps for 10 s after the round reset ({which}){(err != null ? " - " + err : "")}");
+                Check(giant != null && !giant.alive, $"the giant is not revived by the round reset ({which})");
+                Check(raijin.alive, $"its owner is back at spawn, alive ({which})");
+            }
+            // the guard: a giant that is alive without its timeline (the 0.2.2 state) is retired, not read
+            {
+                var world = Setup.CreateMatch("hanabi", "aitest", null, 0.8).world;
+                var raijin = world.actors.First(a => a.def.id == "raijin");
+                var giant = Susanoo.RaiseSusanoo(world, raijin);
+                Susanoo.DismissSusanoo(world, raijin);
+                world.Respawn(giant, true);
+                string err = null;
+                try { for (int i = 0; i < 120; i++) { world.Step(DT); world.events.Clear(); } }
+                catch (Exception e) { err = e.GetType().Name + ": " + e.Message; }
+                Check(err == null, "a giant respawned the old way does not stop the world" + (err != null ? " - " + err : ""));
+                Check(!giant.alive, "and is retired on the next step");
+            }
+            Console.WriteLine(fails == 0 ? "roundreset OK" : $"roundreset FAILED ({fails})");
+            return fails == 0 ? 0 : 1;
+        }
+
         static int AiMatch(GameData data, string only, double secs)
         {
             const double DT = 1.0 / 60;

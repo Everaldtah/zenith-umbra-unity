@@ -60,6 +60,8 @@ namespace ZU.Sim
                 double t = w.time; var i = a.input;
                 i.fire = i.alt = i.a1 = i.a2 = i.ult = i.melee = i.reload = i.swoop = false; i.jump = false; i.jumpHeld = false;
                 i.mx = i.mz = 0;
+                // (alive without its timeline = not summoned, see TickSusanoo: retire it rather than read keys it has not got)
+                if (!a.sv.ContainsKey("bladeAt")) { a.alive = false; a.respawnAt = 0; return; }
                 var owner = a.owner; var anchor = new V3(a.sv["ax"], a.sv["ay"], a.sv["az"]);
                 var foes = w.actors.Where(x => x.alive && x.team != a.team && !x.IsSummon && !x.Has("phased", t)).ToList();
                 void Face(V3 p) { i.yaw = Math.Atan2(p.x - a.pos.x, p.z - a.pos.z); i.pitch = 0; }
