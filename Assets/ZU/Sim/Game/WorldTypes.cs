@@ -5,6 +5,7 @@ namespace ZU.Sim
 {
     public class Proj
     {
+        public Proj Clone() => (Proj)MemberwiseClone();
         public int id; public Actor owner; public string team; public V3 pos, vel;
         public double dmg, splash; public bool heal;
         public string fx; public double life, r, grav; public string special; public double crit;

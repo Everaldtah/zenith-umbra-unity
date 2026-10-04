@@ -7,6 +7,7 @@
 //  - PuppetSwarm    the 'puppet' summons                                            Hex's puppet army
 //  - SunSwarm       the 'sunswarm' zones (Unity-only rework)                        Yuzu's Hundred Suns
 //  - CharacterExtras  blinking lids / masked eye glow, ragdoll deaths              every hero view
+//  - KillCam        the last seconds replayed from the killer's side when you are eliminated (Unity only)
 //  - UltShowcase    attached when UltShowcase.Open started this match
 // Runs early in LateUpdate (order -50): after the Animator, before HeroView's held weapons and fingers and before the
 // hair / cloth solver (ZuDynamics, 500), so a ragdoll's pose is what they follow.
@@ -51,6 +52,7 @@ namespace ZU.Game.Fx
             seals = new SealStorm(MatchFx.Current);
             suns = new SunSwarm(MatchFx.Current);
             extras = new CharacterExtras(r, ViewOf);
+            KillCam.Attach(r);
             // the swarm is built at match start when Hex is in it (the TS: so the preloader compiles it), else on the first puppet
             foreach (var a in r.World.actors) if (a.baseDef.id == "hex") { swarm = new PuppetSwarm(); break; }
         }
@@ -95,7 +97,7 @@ namespace ZU.Game.Fx
                 var me = r.Player; string team = me != null ? me.team : "zenith";
                 swarm.Update(w, now, team, a => !(a.Has("stealth", now) && me != null && a.team != me.team && !a.Has("revealed", now)));
             }
-            extras.Update(w, now, dt);
+            extras.Update(w, KillCam.TimeOr(r, now), dt);      // (the kill cam's moment while it replays)
         }
 
         void OnDestroy()

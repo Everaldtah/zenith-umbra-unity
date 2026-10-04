@@ -89,8 +89,10 @@ namespace ZU.Game.Fx
 
         public void Update(World w, float time, float dt)
         {
-            foreach (var a in w.actors)
+            foreach (var live in w.actors)
             {
+                // (while the kill cam replays, the views show each hero as it was: so do the lids and the ragdolls)
+                var a = KillCam.PastOrLive(r, live);
                 if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;      // (the puppets are the swarm's)
                 var x = Bind(a);
                 if (x == null) continue;

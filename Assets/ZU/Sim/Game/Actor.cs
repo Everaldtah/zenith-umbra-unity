@@ -25,7 +25,7 @@ namespace ZU.Sim
     }
     public class Shield { public double amt, until; public string kind; public Actor src; }
     public class Wound { public Actor src; public double dps, until; }
-    public class BarrierState { public double hp, max, regenAt, brokenUntil; public bool up; }
+    public class BarrierState { public double hp, max, regenAt, brokenUntil; public bool up; public BarrierState Clone() => (BarrierState)MemberwiseClone(); }
 
     /// <summary>Stadium stat mods (src/game/stadium.ts Mods); all zero outside Stadium.</summary>
     public class Mods
@@ -37,6 +37,7 @@ namespace ZU.Sim
     /// <summary>Animation cues the renderer reads (Actor.anim).</summary>
     public class AnimCues
     {
+        public AnimCues Clone() => (AnimCues)MemberwiseClone();
         public double attackAt = -9, castAt = -9, hitAt = -9, jumpAt = -9, landAt = -9, stepPhase, fireL = -9, fireR = -9;
         public string attackKind = "primary", castId = "";
         public double attackSide = 1;
@@ -58,6 +59,16 @@ namespace ZU.Sim
         /// <summary>open wounds: damage over time that stacks per wound</summary>
         public List<Wound> wounds = new List<Wound>();
         public bool alive = true; public double respawnAt, deathAt;
+        /// <summary>a frozen copy for the kill cam (Game/AbilityFx/KillCam.cs): what a view reads of this hero right now, detached
+        /// from the live one (same id; never stepped, never in a World)</summary>
+        public Actor Snapshot()
+        {
+            var c = (Actor)MemberwiseClone();
+            c.input = input.Clone(); c.anim = anim.Clone(); c.barrier = barrier.Clone();
+            c.st = new Dictionary<string, double>(st); c.sv = new Dictionary<string, double>(sv);
+            c.controller = null;
+            return c;
+        }
         public bool grounded; public double lastGroundedAt; public int airJumps; public bool flying; public double flight = 100;
         public Dictionary<string, double> st = new Dictionary<string, double>();     // status -> until (sim time)
         public Dictionary<string, double> sv = new Dictionary<string, double>();     // status values
