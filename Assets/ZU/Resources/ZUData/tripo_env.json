@@ -94,14 +94,7 @@
   "kind": "dressing",
   "height_m": 1.4,
   "footprint_m": 2.5,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": true
  },
@@ -110,14 +103,7 @@
   "kind": "dressing",
   "height_m": 1.0,
   "footprint_m": 1.4,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": true
  },
@@ -126,14 +112,7 @@
   "kind": "dressing",
   "height_m": 0.35,
   "footprint_m": 1.5,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": false
  },
@@ -142,14 +121,7 @@
   "kind": "dressing",
   "height_m": 0.3,
   "footprint_m": 2.5,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": false
  },
@@ -158,14 +130,7 @@
   "kind": "dressing",
   "height_m": 0.5,
   "footprint_m": 0.6,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": false
  },
@@ -174,14 +139,7 @@
   "kind": "dressing",
   "height_m": 0.35,
   "footprint_m": 2.0,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": false
  },
@@ -190,14 +148,7 @@
   "kind": "dressing",
   "height_m": 0.08,
   "footprint_m": 1.5,
-  "maps": [
-   "hanabi",
-   "kagura",
-   "lantern",
-   "amatsu",
-   "cloudstep",
-   "training"
-  ],
+  "maps": "hanabi, kagura, lantern, amatsu, cloudstep, training",
   "biome": "temperate",
   "tall": false
  },
