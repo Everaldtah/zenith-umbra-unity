@@ -208,12 +208,14 @@ namespace ZU.Game.Looks
         /// TS analysePalette: the costume's two dominant hues (and their mean brightness), measured from the base-colour texture
         /// so skins can remap them: saturated texels only, skin tones excluded. (x, y) = the first [hue, value], (z, w) the
         /// second, in 0..1 (linear value); null when nothing saturated was found. The texture is drawn down to 96 x 96 on the
-        /// GPU (the TS draws it into a 96 x 96 canvas), so an unreadable texture works too; cached per texture.
+        /// GPU (the TS draws it into a 96 x 96 canvas), so an unreadable texture works too; cached per texture. A hero texture
+        /// takes the web game's own numbers from the baked table first (see Baked).
         /// </summary>
         public static Vector4? Palette(Texture tex)
         {
             if (tex == null || tex.width == 0) return null;
             if (palettes.TryGetValue(tex, out var have)) return have;
+            if (UseBakedPalettes && Baked().TryGetValue(tex.name, out var bv)) return palettes[tex] = bv;
             const int N = 96;
             Color32[] px;
             var rt = RenderTexture.GetTemporary(N, N, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
@@ -229,6 +231,36 @@ namespace ZU.Game.Looks
             }
             finally { RenderTexture.active = prev; RenderTexture.ReleaseTemporary(rt); }
             return palettes[tex] = Analyse(px);
+        }
+
+        /// <summary>off switch: false = every palette measured on the GPU as before, the baked table ignored</summary>
+        public static bool UseBakedPalettes = true;
+        static Dictionary<string, Vector4> baked;
+
+        /// <summary>
+        /// the palettes the web game measures, per texture name (Resources/ZULooks/palettes.txt, made by
+        /// tools/looks/bake_palettes.py from the full-size images, each model's base maps given its LOD1 = web texture's).
+        /// The GPU measure above can't match them: the player only has the imported texture (2048 in a Windows build) and
+        /// the blit samples its mipmaps, which average the costume texels down - the hues come out the same, the mean value
+        /// (the recolour's brightness normaliser) about 40 % low, so a skin's main colour drew up to 1.6 x brighter than the TS.
+        /// </summary>
+        static Dictionary<string, Vector4> Baked()
+        {
+            if (baked != null) return baked;
+            baked = new Dictionary<string, Vector4>();
+            var t = Resources.Load<TextAsset>("ZULooks/palettes");
+            if (t == null) return baked;
+            var inv = System.Globalization.CultureInfo.InvariantCulture; var fl = System.Globalization.NumberStyles.Float;
+            foreach (var line in t.text.Split('\n'))
+            {
+                var f = line.Trim().Split(' ');
+                if (f.Length != 5 || f[0].StartsWith("#")) continue;
+                if (float.TryParse(f[1], fl, inv, out var x) && float.TryParse(f[2], fl, inv, out var y)
+                    && float.TryParse(f[3], fl, inv, out var z) && float.TryParse(f[4], fl, inv, out var w))
+                    baked[f[0]] = new Vector4(x, y, z, w);
+            }
+            Resources.UnloadAsset(t);
+            return baked;
         }
 
         /// <summary>the histogram half of analysePalette over 8-bit sRGB texels (the canvas's bytes), number for number</summary>
