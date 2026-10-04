@@ -173,6 +173,7 @@ namespace ZU.Game.UI.Toolkit
                     var mc = MapCard(grid, m, m.id == MenuState.MapChoice, () => { MenuState.MapChoice = m.id; QueueSelect(q); });
                     U.Txt(m.name, "mc-b", mc); U.Txt(m.objective == "push" ? "MIKOSHI RUSH" : "CONTROL", "mc-p", mc);
                 }
+                StretchRows(sv, grid, 8);              // (.mapsq: repeat(auto-fill, minmax(200px, 1fr)) = 8 at 1920)
                 var bar = Bar(s);
                 U.Btn("BACK", null, Title, bar);
                 U.Btn("CHOOSE HERO", "primary", () => { MenuState.Role = "flex"; HeroSelect(); }, bar);
@@ -222,8 +223,31 @@ namespace ZU.Game.UI.Toolkit
         VisualElement MapCard(VisualElement parent, MapDef m, bool sel, Action click)
         {
             var c = U.Btn(null, "mc" + (sel ? " sel" : ""), click, parent);
-            if (m != null) { var img = U.Pic("map_" + m.id, "mc-img", c); }
+            if (m != null)
+            {
+                var img = U.Pic("map_" + m.id, "mc-img", c);
+                // CSS `.mc img { aspect-ratio: 16/9 }` (USS has no aspect-ratio): the height follows the card's width
+                img.RegisterCallback<GeometryChangedEvent>(e =>
+                {
+                    float h = e.newRect.width * 9f / 16f;
+                    if (h > 0 && Mathf.Abs(img.resolvedStyle.height - h) > 0.5f) img.style.height = h;
+                });
+            }
             return c;
+        }
+
+        /// <summary>the web's map grid is a CSS grid that fills the screen's height, its auto rows stretched: tall cards, the
+        /// art on top. Here the cards sit in a scroll view, so each card's min-height is set to its share of the view</summary>
+        static void StretchRows(ScrollView sv, VisualElement grid, int cols)
+        {
+            sv.RegisterCallback<GeometryChangedEvent>(_ =>
+            {
+                int n = grid.childCount, rows = (n + cols - 1) / cols;
+                float h = sv.contentViewport.layout.height;
+                if (rows == 0 || float.IsNaN(h) || h <= 0) return;
+                float cell = Mathf.Max(0, (h - rows * 14f) / rows);          // (each card keeps its 14 px margin below)
+                foreach (var c in grid.Children()) c.style.minHeight = cell;
+            });
         }
 
         VisualElement Bar(VisualElement s) => U.Div("bar", s, pick: true);
@@ -277,12 +301,12 @@ namespace ZU.Game.UI.Toolkit
             var c = U.Btn(null, $"hc {h.team}{(sel ? " sel" : "")} {extra}", click, parent);
             c.userData = h.id;
             var col = U.Hex(h.color);
-            U.Pic("portrait_" + h.id, "hc-img", c);
-            var glow = U.Div("hc-glow", c);
-            Grad.Set(glow, Grad.Linear(180, (new Color(0, 0, 0, 0), 0), (U.A(h.team == "zenith" ? Grad.C("#5cc8ff") : Grad.C("#ff3b5c"), 0.35f), 100)));
+            // the card, its corner cut, portrait, team tint and (selected) border as one mesh - see CardFace
+            var face = new CardFace(U.Img("portrait_" + h.id), h.team == "zenith" ? Grad.C("#5cc8ff") : Grad.C("#ff3b5c")) { Border = sel ? col : (Color?)null };
+            face.AddToClassList("hc-img");
+            c.Add(face);
             U.Txt(h.name, "hc-b", c);
             U.Txt(U.Up(h.role), "hc-s", c);
-            if (sel) { c.style.borderTopColor = c.style.borderBottomColor = c.style.borderLeftColor = c.style.borderRightColor = col; }
             // aspect-ratio 3/4
             c.RegisterCallback<GeometryChangedEvent>(e => { float hgt = e.newRect.width * 4 / 3; if (Mathf.Abs(c.resolvedStyle.height - hgt) > 0.5f) c.style.height = hgt; });
             return c;
@@ -296,7 +320,9 @@ namespace ZU.Game.UI.Toolkit
             var hd = U.Div("hd");
             var art = U.Div("art", hd);
             U.Bg(art, U.Img("key_" + h.id) != null ? "key_" + h.id : "portrait_" + h.id);
-            art.style.borderTopColor = art.style.borderBottomColor = art.style.borderLeftColor = art.style.borderRightColor = U.A(col, 0.6f);
+            // .hd .art: a hairline border (var(--line), from the USS) and box-shadow 0 0 40px -10px var(--c) - the glow in the
+            // hero's colour, as a drop-shadow filter (sigma = blur / 2, less the -10px spread)
+            Filters.Set(art, UiText.DropShadow(0, 0, 15, col));
             var info = U.Div("info", hd);
             var h2 = U.Txt(h.name, "hd-h2", info); h2.style.color = col;
             U.Txt(U.Up(h.title), "hd-sub", info);
@@ -358,8 +384,8 @@ namespace ZU.Game.UI.Toolkit
                 foreach (var c in cards)
                 {
                     bool on = (string)c.userData == id; U.Toggle(c, "sel", on);
-                    var col = on ? U.Hex(Hero((string)c.userData).color) : new Color(0, 0, 0, 0);
-                    c.style.borderTopColor = c.style.borderBottomColor = c.style.borderLeftColor = c.style.borderRightColor = col;
+                    var face = c.Q<CardFace>();
+                    if (face != null) face.Border = on ? U.Hex(Hero((string)c.userData).color) : (Color?)null;
                 }
                 detailSv.contentContainer.Clear();
                 detailSv.contentContainer.Add(HeroDetail(Hero(id)));
@@ -419,6 +445,7 @@ namespace ZU.Game.UI.Toolkit
                 ((ZButton)mc).clicked = () => { MapId = m.id; foreach (var c in cards) U.Toggle(c, "sel", (string)c.userData == m.id); };
                 U.Txt(m.name, "mc-b", mc); U.Txt(m.story, "mc-p", mc);
             }
+            StretchRows(sv, grid, 5);                  // (.mgrid: repeat(5, 1fr))
             var bar = Bar(s);
             U.Btn("BACK", null, Title, bar);
             U.Btn(mode == "aitest" ? "RUN ALL MAPS" : "WATCH", "primary go", () => { if (mode == "aitest") AiLab.Begin(MapId); Launch(); }, bar);

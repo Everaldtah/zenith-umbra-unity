@@ -115,11 +115,21 @@ namespace ZU.Game.UI.Toolkit
             s.AddToClassList("sld-in");
             box.Add(s);
             var b = U.Txt(fmt(get()), "sld-v", box);
+            // the web's <input type=range> with accent-color gold: the track filled gold up to a round gold thumb. Drawn in
+            // the tracker (so it lines up with it whatever Unity's own slider geometry is); the dragger itself is invisible
+            var fill = new VisualElement { pickingMode = PickingMode.Ignore };
+            fill.AddToClassList("sld-fill");
+            var knob = new VisualElement { pickingMode = PickingMode.Ignore };
+            knob.AddToClassList("sld-knob");
+            fill.Add(knob);
+            s.Q(className: "unity-base-slider__tracker")?.Add(fill);
+            void Fill(float x) => fill.style.width = Length.Percent(100f * Mathf.InverseLerp(s.lowValue, s.highValue, x));
+            Fill(s.value);
             s.RegisterValueChangedCallback(e =>
             {
                 double v = Math.Round((e.newValue - min) / step) * step + min;
                 v = Math.Round(v, 4);
-                set(v); b.text = fmt(v); Commit();
+                set(v); b.text = fmt(v); Commit(); Fill(e.newValue);
             });
         }
 
@@ -127,16 +137,21 @@ namespace ZU.Game.UI.Toolkit
         {
             var r = Row(label, "");
             var box = U.Div("clr", r);
-            var sw = U.Div("clr-sw", box);
+            // the web row: an <input type=color> swatch and the hex, apart; its native picker becomes the palette here,
+            // opened under the row by clicking the swatch
+            VisualElement cur = null, sw = null;
             Label b = null;
+            cur = U.Btn(null, "clr-cur", () => { sw.style.display = sw.resolvedStyle.display == DisplayStyle.None ? DisplayStyle.Flex : DisplayStyle.None; Paint(); }, box);
+            cur.style.backgroundColor = U.Hex(get());
+            b = U.Txt(get().ToUpperInvariant(), "clr-v", box);
+            sw = U.Div("clr-sw", box);
+            sw.style.display = DisplayStyle.None;
             foreach (var hex in PALETTE)
             {
-                var chip = U.Btn(null, "clr-c", () => { set(hex); b.text = hex.ToUpperInvariant(); Paint(); Commit(); }, sw);
+                var chip = U.Btn(null, "clr-c", () => { set(hex); b.text = hex.ToUpperInvariant(); cur.style.backgroundColor = U.Hex(hex); sw.style.display = DisplayStyle.None; Commit(); }, sw);
                 chip.style.backgroundColor = U.Hex(hex);
             }
-            b = U.Txt(get().ToUpperInvariant(), "clr-v", box);
             void Paint() { foreach (var c in sw.Children()) U.Toggle(c, "on", U.Css(c.resolvedStyle.backgroundColor).Equals(get(), StringComparison.OrdinalIgnoreCase)); }
-            sw.schedule.Execute(Paint);
         }
 
         void BindRow(ZuSettings.ActionDef a)
