@@ -46,6 +46,14 @@ namespace ZU.Game.UI.Toolkit
             if (QualitySettings.activeColorSpace != ColorSpace.Linear) return;      // a gamma project already blends like CSS
             var args = Environment.GetCommandLineArgs();
             if (Array.IndexOf(args, "-zu-uigamma=0") >= 0) { Debug.Log("[ZU UI] gamma panel off (-zu-uigamma=0)"); return; }
+            // the same switch for an installed build, whatever starts it (a shortcut, a launcher): a file named
+            // uigamma.off next to the game's exe - no rebuild needed if the gamma panel misbehaves on some machine
+            try
+            {
+                if (!Application.isEditor && System.IO.File.Exists(System.IO.Path.Combine(Application.dataPath, "..", "uigamma.off")))
+                { Debug.Log("[ZU UI] gamma panel off (uigamma.off next to the exe)"); return; }
+            }
+            catch (Exception) { }
             if (!SystemInfo.IsFormatSupported(GraphicsFormat.R8G8B8A8_UNorm, GraphicsFormatUsage.Render)) return;
             var sh = Resources.Load<Shader>(ShaderPath);
             if (sh == null || !sh.isSupported) { Debug.LogWarning("[ZU UI] Resources/" + ShaderPath + " is missing or unsupported - the panel blends in linear space"); return; }
