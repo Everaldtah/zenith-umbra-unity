@@ -19,7 +19,7 @@
 .zb { -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; font-size: 18px; letter-spacing: 2.2px; color: #eef2ff; padding: 12px 26px; --cut: 10; --fill: rgba(255, 255, 255, 0.06); --stroke: rgba(255, 255, 255, 0.14);
   justify-content: center; align-items: center; transition-property: translate, opacity; transition-duration: 0.15s; }
 .zb:hover { --fill: rgba(255, 255, 255, 0.16); translate: 4px 0; }
-.zb:disabled { opacity: 0.4; }
+/* (no generic :disabled fade: the web has none - a disabled READY stays gold; .power / .it / .lv.locked keep their own) */
 .zb .zb-label { margin: 0; padding: 0; -unity-text-align: middle-center; white-space: normal; }
 .zb.primary { --fill: #ffb347; --fill2: #ffd76a; --stroke: rgba(0, 0, 0, 0); color: #1a1206; }
 .zb.primary:hover { --fill: #ffbf5f; --fill2: #ffe08a; }
@@ -31,7 +31,8 @@
 .cross { position: absolute; left: 50%; top: 50%; width: 240px; height: 240px; translate: -50% -50%; }
 .hitmark { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; translate: -50% -50%; opacity: 0; }
 .hp { position: absolute; left: 40px; bottom: 40px; width: 360px; transform-origin: left bottom; }
-.hp .bar { height: 18px; --fill: rgba(0, 0, 0, 0.5); --stroke: rgba(255, 255, 255, 0.14); --skew: -18; }
+/* (the class "bar" is also the menus' action bar: the web's padding 0 here, and the shape draws the box, not a background) */
+.hp .bar { height: 18px; padding: 0; margin: 0; background-color: rgba(0, 0, 0, 0); border-width: 0; --fill: rgba(0, 0, 0, 0.5); --stroke: rgba(255, 255, 255, 0.14); --skew: -18; }
 .hp .num { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 34px; margin-top: 4px; }
 .portrait { position: absolute; left: 40px; bottom: 120px; flex-direction: row; align-items: center; transform-origin: left bottom; }
 .portrait .pimg { width: 64px; height: 64px; border-width: 2px; margin-right: 10px; background-position-y: top; }

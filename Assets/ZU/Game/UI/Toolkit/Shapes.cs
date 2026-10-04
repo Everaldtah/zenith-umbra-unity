@@ -52,9 +52,15 @@ namespace ZU.Game.UI.Toolkit
             // the border box, as a CSS background / clip-path (contentRect is inset by the padding, and the outline is
             // drawn from 0,0: a padded button got a content-sized shape up-left of its label, the label hanging under it)
             var r = new Rect(Vector2.zero, layout.size);
+            // ... inside the USS border: this mesh is painted after the element's border, so a fill over the whole box hid it
+            // (map / difficulty cards lost their hairline and their gold selected border; CSS paints the border on top)
+            var rs = resolvedStyle;
+            float bl = rs.borderLeftWidth, bt = rs.borderTopWidth, br = rs.borderRightWidth, bb = rs.borderBottomWidth;
+            r = new Rect(bl, bt, r.width - bl - br, r.height - bt - bb);
             if (r.width <= 0 || r.height <= 0) return;
             var p = mgc.painter2D;
             var poly = Outline(r.width, r.height);
+            for (int i = 0; i < poly.Length; i++) poly[i] += r.position;
             FillPoly(p, poly, Fill, fill2, r);
             StrokeEdges(p, poly);
         }
