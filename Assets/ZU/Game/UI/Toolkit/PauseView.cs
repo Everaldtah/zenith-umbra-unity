@@ -72,7 +72,7 @@ namespace ZU.Game.UI.Toolkit
             if (r.World?.mode == "training") U.Btn("SWITCH HERO", null, () => Swap(r), b);
             if (RangeView.Current != null) U.Btn("HERO RANGE · SPAR ARENA", null, () => RangeView.Current?.Show(), b);
             U.Btn("SETTINGS", null, () => Settings(r), b);
-            U.Btn("QUIT TO MENU", null, () => { MatchUi.Current?.RecordCareer("none"); ToMenu(LeaveOnline() ? "online" : "title"); }, b);
+            U.Btn("QUIT TO MENU", null, () => { MatchUi.Current?.RecordCareer("none"); LeaveOnline(); ToMenu(OnlineIdle() ? "online" : "title"); }, b);
             U.Txt("Click the game to capture the mouse · Esc pauses", "tips", s);
         }
 
@@ -102,14 +102,15 @@ namespace ZU.Game.UI.Toolkit
         }
 
         /// <summary>TS Menu.abandon: an online match left early leaves its session (quietly - the host's link drops and its
-        /// AI takes the hero; a host leaving ends the match for its clients) and goes back to the online lobby when still online</summary>
-        static bool LeaveOnline()
+        /// AI takes the hero; a host leaving ends the match for its clients)</summary>
+        static void LeaveOnline()
         {
-            var s = ZU.Net.NetMatch.Current?.Session as ZU.Net.OnlineSession;
-            if (s == null) return false;
-            s.Leave(true);
-            return s.Online;
+            if (ZU.Net.NetMatch.Current?.Session is ZU.Net.OnlineSession s) s.Leave(true);
         }
+
+        /// <summary>TS Menu quit: after ANY match, back to the online lobby when an online session exists, is idle and is still
+        /// connected (you went online, then played an AI match), else the title - without creating a session to find out</summary>
+        static bool OnlineIdle() => ZU.Net.Unity.NetDriver.Existing is { Phase: ZU.Net.Phase.Idle, Online: true };
 
         static void ToMenu(string where)
         {
