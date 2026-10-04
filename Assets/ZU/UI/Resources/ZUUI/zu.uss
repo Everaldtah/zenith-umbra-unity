@@ -10,6 +10,12 @@
 .fill { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
 .t { margin: 0; padding: 0; white-space: normal; }
 .img { background-size: cover; background-position-x: center; background-position-y: center; }
+/* scroll bars: the web shows none (Chrome overlay bars) - a thin dark bar without arrow buttons, not Unity's grey one */
+.unity-scroller--vertical { width: 6px; min-width: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+.unity-scroller--horizontal { height: 6px; min-height: 6px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
+.unity-scroller__low-button, .unity-scroller__high-button { display: none; }
+.unity-scroller .unity-base-slider__tracker { background-color: rgba(255, 255, 255, 0.04); border-width: 0; }
+.unity-scroller .unity-base-slider__dragger { background-color: rgba(255, 255, 255, 0.22); border-width: 0; border-radius: 3px; }
 .zb { -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; font-size: 18px; letter-spacing: 2.2px; color: #eef2ff; padding: 12px 26px; --cut: 10; --fill: rgba(255, 255, 255, 0.06); --stroke: rgba(255, 255, 255, 0.14);
   justify-content: center; align-items: center; transition-property: translate, opacity; transition-duration: 0.15s; }
 .zb:hover { --fill: rgba(255, 255, 255, 0.16); translate: 4px 0; }
@@ -272,8 +278,10 @@
 .opts .sel-v { flex-grow: 1; -unity-text-align: middle-center; font-size: 15px; letter-spacing: 1.2px; }
 .opts .sld { width: 360px; flex-direction: row; align-items: center; }
 .opts .sld-in { flex-grow: 1; margin: 0 12px 0 0; }
-.opts .sld-in .unity-base-slider__tracker { background-color: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.14); }
-.opts .sld-in .unity-base-slider__dragger { background-color: #ffd76a; border-color: #ffd76a; }
+.opts .sld-in .unity-base-slider__tracker { background-color: rgba(255, 255, 255, 0.22); border-width: 0; border-radius: 3px; overflow: visible; }
+.opts .sld-in .unity-base-slider__dragger { background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.opts .sld-fill { position: absolute; left: 0; top: 0; bottom: 0; background-color: #ffd76a; border-radius: 3px; }
+.opts .sld-knob { position: absolute; right: -8px; top: 50%; width: 16px; height: 16px; translate: 0 -50%; border-radius: 8px; background-color: #ffd76a; }
 .opts .sld-v, .opts .clr-v { width: 56px; -unity-text-align: middle-right; font-size: 15px; }
 .opts .clr { width: 360px; flex-direction: row; align-items: center; }
 .opts .clr-sw { flex-grow: 1; flex-direction: row; flex-wrap: wrap; }
