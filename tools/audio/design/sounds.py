@@ -192,6 +192,16 @@ s("healbeam2", "loop", 2.5, f"a low pulsing dark magic energy beam humming, cont
 s("groove_heal", "loop", 8.0, "a mellow lo-fi hip hop beat with a warm bassline and soft keys, 90 BPM, seamless loop", 4, loop=True)
 s("groove_speed", "loop", 8.0, "an energetic drum and bass breakbeat with a driving bassline, 174 BPM, seamless loop", 4, loop=True)
 
+# first-person foley (evera-f4's viewmodel calls AudioKit.PlayFp at the clip's event times; the sim's shot / draw sounds
+# stay as they are - these fill the detail between them, in your head, quiet)
+s("fp_bow_ready", "move", 0.3, f"a bow string reaching full tension, a tiny bright taut ting with a faint wooden creak, {DRY}", 8, 2)
+s("fp_quiver_reach", "move", 0.25, f"a hand sweeping up to a leather quiver, a quick cloth and leather swish, {DRY}", 8, 3)
+s("fp_arrow_draw", "move", 0.25, f"an arrow pulled out of a leather quiver, wooden arrow shafts rattling softly, {DRY}", 8, 3)
+s("fp_nock", "move", 0.2, f"an arrow nocked onto a bow string, a small crisp wooden click, {DRY}", 10, 3, layers=[{"k": "click", "n": 1, "gap": 10, "f": 2800, "db": -16}])
+s("fp_aim_in", "move", 0.2, f"raising a bow to aim, a quick leather and cloth shift with a soft creak, {DRY}", 8, 2)
+s("fp_aim_out", "move", 0.15, f"lowering a bow, a quick cloth rustle and a soft leather snap, {DRY}", 8, 2)
+s("fp_bow_kick", "move", 0.2, f"a bow limb snapping forward hard, a sharp wooden thwack, {DRY}", 8, 2, layers=[{"k": "crack", "ms": 3, "hp": 2500, "db": -14}])
+
 # Yuzu's Unity ult (evera-a0's rework: 5 giant sun arrows -> ~1000 homing arrows for 15 s)
 s("yuzuult_land", "impact", 1.2, f"a giant glowing arrow slamming into the earth, a heavy blade impact into rock with a bright solar flare whoosh, {DRY}", 10, 3,
   layers=[{"k": "sub", "f0": 80, "f1": 35, "ms": 300, "db": -6}, {"k": "debris", "ms": 700, "grain": "stone", "n": 24, "db": -19, "at": 60}])

@@ -1,0 +1,391 @@
+<title>ZU Sound Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column of console strips (overload test, voice A/B, bank audit, new effects); each strip is a panel with
+   hardware-style legends, meters on a dB scale, transport buttons. Dark graphite like a mixing desk, amber VU accent. */
+:root {
+  --bg: #141619; --panel: #1c1f23; --panel-2: #23272c; --line: #31363d; --fg: #e7e5df; --muted: #9aa0a8;
+  --accent: #f0b03c; --accent-ink: #1b1406; --ok: #4fc27a; --warn: #e8b23a; --bad: #e5533d; --a: #8fa3b8; --b: #f0b03c;
+  --display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body); margin: 0; padding-inline: 16px; padding-block: 28px 56px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 22px; }
+header { display: grid; gap: 6px; }
+.legend { font: 600 12px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(34px, 6vw, 54px)/1 var(--display); letter-spacing: .04em; margin: 0; text-transform: uppercase; text-wrap: balance; }
+h1 span { color: var(--accent); }
+h2 { font: 700 24px/1.1 var(--display); letter-spacing: .06em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 66ch; }
+.sub { color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button { font: 600 14px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; border-radius: 4px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--fg); padding: 11px 14px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.bad { border-color: var(--bad); color: #ffd9d2; }
+button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+.meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.meter { display: grid; gap: 6px; min-width: 0; }
+.meter .val { font: 500 22px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 12px; background: #0e1012; border: 1px solid var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ok); transition: width .06s linear; }
+.bar b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--fg); }
+.scale { display: flex; justify-content: space-between; font: 400 11px/1 var(--mono); color: var(--muted); }
+.verdict { font: 600 15px/1.3 var(--body); padding: 10px 12px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); }
+.verdict.ok { border-color: var(--ok); } .verdict.bad { border-color: var(--bad); }
+.voices { display: grid; gap: 8px; }
+.vrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; background: var(--panel-2); border-radius: 4px; }
+.vrow .who { font: 600 15px/1.2 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.vrow .words { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.vrow .bw { font: 400 12px/1.3 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.vrow button { padding: 8px 10px; font-size: 13px; }
+.vrow .ab-a { color: var(--a); } .vrow .ab-b { color: var(--b); }
+.spec { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.spec figure { margin: 0; display: grid; gap: 4px; }
+.spec canvas { width: 100%; height: 150px; background: #000; border-radius: 3px; display: block; }
+.spec figcaption { font: 400 12px/1.2 var(--mono); color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font: 400 13px/1.3 var(--mono); font-variant-numeric: tabular-nums; }
+th { font: 600 12px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 8px; border-bottom: 1px solid var(--line); }
+td { text-align: right; padding: 8px; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+.chip { display: inline-block; padding: 2px 7px; border-radius: 10px; font: 500 12px/1.4 var(--mono); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); color: #ffcabd; }
+.chip.ok { background: color-mix(in srgb, var(--ok) 22%, transparent); color: #c9f2d6; }
+.note { font-size: 14px; color: var(--muted); }
+footer { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<main>
+  <header>
+    <div class="legend">ZENITH//UMBRA · Unity · audio upgrade</div>
+    <h1>ZU <span>Sound</span> Lab</h1>
+    <p class="sub">Listen to what changed: the master chain that stops fights from crackling, the voice lines rebuilt from 24 kHz to 48 kHz, and every sound measured against the game's loudness standard. Headphones recommended.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="ov-h">
+    <div class="legend">Strip 1 · mix safety</div>
+    <h2 id="ov-h">Overload test</h2>
+    <p>Forty weapon, impact and ability sounds fired within a quarter of a second, three times, the way a five-on-five brawl stacks them. <b>Before</b> plays them as the v0.2.0 build did: every clip peak-normalised on import and summed straight to the output, which clips. <b>After</b> plays them at their mastered levels through the game's new master chain (glue compressor and look-ahead true-peak limiter at −1 dBTP, the same code as the game's MasterChain, ported to the browser).</p>
+    <div class="row">
+      <button class="bad" id="fire-raw" type="button">Fire 40 · before</button>
+      <button class="primary" id="fire-chain" type="button">Fire 40 · after</button>
+      <span class="note" id="ov-status">Loads about 60 short clips on first press.</span>
+    </div>
+    <div class="meters">
+      <div class="meter"><span class="legend">Output peak</span><span class="val" id="m-peak">−∞ dBFS</span>
+        <div class="bar"><i id="b-peak"></i><b style="left: calc(100% * 59 / 66)"></b></div><div class="scale"><span>−60</span><span>−1</span><span>+6</span></div></div>
+      <div class="meter"><span class="legend">Clipped samples</span><span class="val" id="m-clips">0</span>
+        <div class="bar"><i id="b-clips"></i></div><div class="scale"><span>0</span><span>clean = 0</span></div></div>
+      <div class="meter"><span class="legend">Limiter gain reduction</span><span class="val" id="m-gr">0.0 dB</span>
+        <div class="bar"><i id="b-gr" style="background: var(--accent)"></i></div><div class="scale"><span>0</span><span>12 dB</span></div></div>
+      <div class="meter"><span class="legend">Clicks detected</span><span class="val" id="m-clicks">0</span>
+        <div class="bar"><i id="b-clicks" style="background: var(--bad)"></i></div><div class="scale"><span>0</span><span>game test passes at ≤ 2</span></div></div>
+    </div>
+    <div class="verdict" id="ov-verdict">Press a button to run the test.</div>
+  </section>
+
+  <section class="panel" aria-labelledby="vo-h">
+    <div class="legend">Strip 2 · voice lines</div>
+    <h2 id="vo-h">Voices: 24 kHz → 48 kHz</h2>
+    <p>Every hero line was rendered at 24 kHz, so nothing above 12 kHz exists: the air, the breath and the edge of consonants are missing. The remaster keeps each original voice exactly as cast below 10.5 kHz and adds the top octave regenerated by AudioSR, then de-esses, compresses gently and levels every line to −16 LUFS. <b class="ab-a" style="color: var(--a)">A</b> is the line in today's build, <b style="color: var(--b)">B</b> the remaster. Open a spectrogram to see the top octave appear.</p>
+    <div class="voices" id="voices"><p class="note">Loading…</p></div>
+  </section>
+
+  <section class="panel" aria-labelledby="sfx-h" id="sfx-panel" hidden>
+    <div class="legend">Strip 3 · sound effects</div>
+    <h2 id="sfx-h">New sound effects</h2>
+    <div class="voices" id="sfx"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="au-h">
+    <div class="legend">Strip 4 · measurement</div>
+    <h2 id="au-h">Sound bank audit</h2>
+    <p>Every clip in the Unity bank measured: loudness (max momentary, BS.1770), true peak, and where its spectrum ends. A clip whose spectrum stops dead below 15 kHz is a band-limited render and sounds dull next to a full-band one.</p>
+    <div class="tablewrap" id="audit"></div>
+  </section>
+
+  <footer id="built"></footer>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  let data = null, ctx = null, chainNode = null, meter = { peak: 0, clips: 0, gr: 0, clicks: 0 };
+  const buffers = new Map();
+
+  // ------------------------------------------------------------------ the master chain (MasterChain.cs, ported)
+  const WORKLET = `
+  class ZuMaster extends AudioWorkletProcessor {
+    static get parameterDescriptors() { return []; }
+    constructor() {
+      super();
+      this.mode = 'chain';
+      this.port.onmessage = (e) => { if (e.data.mode) this.mode = e.data.mode; if (e.data.reset) this.reset(); };
+      const sr = sampleRate;
+      this.L = 96; this.H = 16; this.T = 32; this.D = this.L - 1 + this.H;
+      this.ceiling = Math.pow(10, -1 / 20);
+      this.thr = -16; this.ratio = 2; this.knee = 8;
+      this.aGA = 1 - Math.exp(-1 / (0.012 * sr)); this.aGR = 1 - Math.exp(-1 / (0.18 * sr)); this.aLR = 1 - Math.exp(-1 / (0.09 * sr));
+      this.coef = [];
+      for (let p = 1; p <= 3; p++) {
+        const c = new Float32Array(this.T); let sum = 0;
+        for (let j = 0; j < this.T; j++) {
+          const t = (j - (this.H - 1)) - p / 4, sinc = Math.abs(t) < 1e-12 ? 1 : Math.sin(Math.PI * t) / (Math.PI * t);
+          const u = (j + 1 - p / 4) / (this.T + 1), w = 0.42 - 0.5 * Math.cos(2 * Math.PI * u) + 0.08 * Math.cos(4 * Math.PI * u);
+          c[j] = sinc * w; sum += sinc * w;
+        }
+        for (let j = 0; j < this.T; j++) c[j] /= sum;
+        this.coef.push(c);
+      }
+      this.reset();
+    }
+    reset() {
+      this.delay = [new Float32Array(this.D + 1), new Float32Array(this.D + 1)];
+      this.hist = [new Float32Array(this.T), new Float32Array(this.T)];
+      this.req = new Float32Array(this.L).fill(1); this.box = new Float32Array(this.L).fill(1); this.boxSum = this.L;
+      this.dq = new Float64Array(this.L + 1); this.dqH = 0; this.dqT = 0;
+      this.n = 0; this.lim = 1; this.env = 0; this.p1 = 0; this.p2 = 0; this.cAvg = 1e-4;
+      this.peak = 0; this.clips = 0; this.gr = 0; this.clicks = 0; this.k = 0;
+    }
+    process(inputs, outputs) {
+      const inp = inputs[0], out = outputs[0];
+      if (!inp || inp.length === 0) return true;
+      const chans = Math.min(2, out.length), N = out[0].length;
+      for (let f = 0; f < N; f++) {
+        const x0 = inp[0] ? inp[0][f] : 0, x1 = inp[1] ? inp[1][f] : x0;
+        let y0, y1;
+        if (this.mode === 'raw') {
+          // an overloaded output: anything past full scale is cut off flat (what the device does)
+          y0 = Math.max(-1, Math.min(1, x0)); y1 = Math.max(-1, Math.min(1, x1));
+          if (Math.abs(x0) >= 1 || Math.abs(x1) >= 1) this.clips++;
+          this.peak = Math.max(this.peak, Math.abs(x0), Math.abs(x1));
+        } else {
+          const lvl = Math.max(Math.abs(x0), Math.abs(x1));
+          this.env += (lvl - this.env) * (lvl > this.env ? this.aGA : this.aGR);
+          const o = 20 * Math.log10(Math.max(1e-6, this.env)) - this.thr, slope = 1 - 1 / this.ratio;
+          const red = 2 * o < -this.knee ? 0 : 2 * Math.abs(o) <= this.knee ? slope * (o + this.knee / 2) ** 2 / (2 * this.knee) : slope * o;
+          const gg = Math.pow(10, -red / 20), n = this.n, T = this.T, H = this.H, L = this.L, D = this.D;
+          const xs = [x0 * gg, x1 * gg], slot = n % L, dIn = n % (D + 1), dOut = (n + 1) % (D + 1), hs = n % T;
+          let fp = 0;
+          for (let c = 0; c < 2; c++) {
+            this.delay[c][dIn] = xs[c]; this.hist[c][hs] = xs[c];
+            fp = Math.max(fp, Math.abs(this.hist[c][(n - H + T) % T]));
+            for (let p = 0; p < 3; p++) {
+              let acc = 0; const cf = this.coef[p];
+              for (let j = 0; j < T; j++) acc += this.hist[c][(n - 2 * H + 1 + j + 2 * T) % T] * cf[j];
+              fp = Math.max(fp, Math.abs(acc));
+            }
+          }
+          fp /= 0.977;
+          const r = fp > this.ceiling ? this.ceiling / fp : 1;
+          this.req[slot] = r;
+          const Q = L + 1;
+          while (this.dqH !== this.dqT && n - this.dq[this.dqH] >= L) this.dqH = (this.dqH + 1) % Q;
+          while (this.dqH !== this.dqT && this.req[this.dq[(this.dqT + L) % Q] % L] >= r) this.dqT = (this.dqT + L) % Q;
+          this.dq[this.dqT] = n; this.dqT = (this.dqT + 1) % Q;
+          const mn = this.req[this.dq[this.dqH] % L];
+          this.boxSum += mn - this.box[slot]; this.box[slot] = mn;
+          const gb = this.boxSum / L;
+          this.lim = gb <= this.lim ? gb : this.lim + (gb - this.lim) * this.aLR;
+          this.gr = Math.max(this.gr, -20 * Math.log10(this.lim));
+          y0 = Math.max(-0.999, Math.min(0.999, this.delay[0][dOut] * this.lim));
+          y1 = Math.max(-0.999, Math.min(0.999, this.delay[1][dOut] * this.lim));
+          this.n++;
+          this.peak = Math.max(this.peak, Math.abs(y0), Math.abs(y1));
+          if (Math.abs(y0) >= 0.999 || Math.abs(y1) >= 0.999) this.clips++;
+        }
+        out[0][f] = y0; if (chans > 1) out[1][f] = y1;
+        const cv = Math.abs(y0 - 2 * this.p1 + this.p2);
+        if (cv > 0.35 && cv > this.cAvg * 40) this.clicks++;
+        this.cAvg += (cv - this.cAvg) * 0.002; this.p2 = this.p1; this.p1 = y0;
+      }
+      if (++this.k % 8 === 0) { this.port.postMessage({ peak: this.peak, clips: this.clips, gr: this.gr, clicks: this.clicks }); this.peak = 0; this.gr = 0; }
+      return true;
+    }
+  }
+  registerProcessor('zu-master', ZuMaster);`;
+
+  async function audio() {
+    if (ctx) return ctx;
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000, latencyHint: 'interactive' });
+    try {
+      const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+      await ctx.audioWorklet.addModule(url);
+      chainNode = new AudioWorkletNode(ctx, 'zu-master', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [2] });
+      chainNode.port.onmessage = (e) => { const d = e.data; meter.peak = Math.max(meter.peak * 0.9, d.peak); meter.clips = d.clips; meter.gr = Math.max(meter.gr * 0.85, d.gr); meter.clicks = d.clicks; };
+      chainNode.connect(ctx.destination);
+    } catch (err) {
+      $('ov-status').textContent = 'This browser blocked the audio worklet, so the meters are off.';
+      chainNode = ctx.createGain(); chainNode.connect(ctx.destination);
+    }
+    requestAnimationFrame(draw);
+    return ctx;
+  }
+
+  async function load(url) {
+    if (buffers.has(url)) return buffers.get(url);
+    const res = await fetch(url); const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+    let pk = 0; for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) pk = Math.max(pk, Math.abs(d[i])); }
+    const v = { buf, peak: pk || 1 }; buffers.set(url, v); return v;
+  }
+
+  function rng(seed) { return () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
+
+  async function fire(mode) {
+    await audio(); if (ctx.state === 'suspended') await ctx.resume();
+    $('ov-status').textContent = 'Loading clips…';
+    const list = data.stress;
+    const all = await Promise.all(list.map(load));
+    $('ov-status').textContent = mode === 'raw' ? 'Before: peak-normalised clips, summed straight to the output.' : 'After: mastered levels through the game’s master chain.';
+    if (chainNode.port) chainNode.port.postMessage({ mode, reset: true });
+    meter = { peak: 0, clips: 0, gr: 0, clicks: 0 };
+    $('fire-raw').setAttribute('aria-pressed', mode === 'raw'); $('fire-chain').setAttribute('aria-pressed', mode === 'chain');
+    const r = rng(7), t0 = ctx.currentTime + 0.1;
+    for (let burst = 0; burst < 3; burst++)
+      for (let i = 0; i < 40; i++) {
+        const c = all[Math.floor(r() * all.length)];
+        const src = ctx.createBufferSource(); src.buffer = c.buf;
+        const g = ctx.createGain();
+        // before: Unity's import normalisation pushed every clip to full scale, the old sfx bus ran at 0.8
+        g.gain.value = (mode === 'raw' ? 0.8 / c.peak : 0.8) * (0.6 + 0.4 * r());
+        const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+        if (pan) { pan.pan.value = r() * 2 - 1; src.connect(g).connect(pan).connect(chainNode); } else src.connect(g).connect(chainNode);
+        src.start(t0 + burst * 0.6 + r() * 0.25);
+      }
+    setTimeout(() => verdict(mode), 2600);
+  }
+
+  function verdict(mode) {
+    const v = $('ov-verdict');
+    if (meter.clips > 0) { v.className = 'verdict bad'; v.textContent = `${meter.clips.toLocaleString()} samples clipped at the output, ${meter.clicks} clicks: that flat-topped distortion is the scratchy crackle.`; }
+    else { v.className = 'verdict ok'; v.textContent = `0 clipped samples, ${meter.clicks} clicks. The limiter held the peaks under −1 dBTP; every shot stays distinct.`; }
+  }
+
+  function db(x) { return 20 * Math.log10(Math.max(1e-6, x)); }
+  function draw() {
+    const pdb = db(meter.peak);
+    $('m-peak').textContent = (meter.peak < 1e-5 ? '−∞' : (pdb > 0 ? '+' : '') + pdb.toFixed(1)) + ' dBFS';
+    const bp = $('b-peak'); bp.style.width = Math.max(0, Math.min(100, (pdb + 60) / 66 * 100)) + '%';
+    bp.style.background = pdb > -1 ? 'var(--bad)' : pdb > -6 ? 'var(--warn)' : 'var(--ok)';
+    $('m-clips').textContent = meter.clips.toLocaleString(); $('b-clips').style.width = Math.min(100, meter.clips / 50) + '%';
+    $('b-clips').style.background = meter.clips ? 'var(--bad)' : 'var(--ok)';
+    $('m-gr').textContent = meter.gr.toFixed(1) + ' dB'; $('b-gr').style.width = Math.min(100, meter.gr / 12 * 100) + '%';
+    $('m-clicks').textContent = meter.clicks; $('b-clicks').style.width = Math.min(100, meter.clicks * 10) + '%';
+    requestAnimationFrame(draw);
+  }
+
+  // ------------------------------------------------------------------ playback + spectrograms
+  let playing = null;
+  async function play(url) {
+    await audio(); if (ctx.state === 'suspended') await ctx.resume();
+    if (playing) try { playing.stop(); } catch (e) {}
+    const { buf } = await load(url);
+    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(ctx.destination); s.start(); playing = s;
+  }
+
+  function fft(re, im) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+        for (let j = 0; j < len / 2; j++) { const ar = re[i + j + len / 2] * cr - im[i + j + len / 2] * ci, ai = re[i + j + len / 2] * ci + im[i + j + len / 2] * cr;
+          re[i + j + len / 2] = re[i + j] - ar; im[i + j + len / 2] = im[i + j] - ai; re[i + j] += ar; im[i + j] += ai; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } } }
+  }
+  function heat(v) { // 0..1 -> dark violet .. amber .. white
+    const r = Math.min(255, Math.max(0, 255 * (1.6 * v - 0.15))), g = Math.min(255, Math.max(0, 255 * (1.7 * v - 0.7))), b = Math.min(255, Math.max(0, 255 * (v < 0.4 ? 0.2 + v : 1.2 - v * 1.4 + Math.max(0, v - 0.85) * 4)));
+    return [r, g, b];
+  }
+  async function spectrogram(canvas, url) {
+    await audio();
+    const { buf } = await load(url);
+    const d = buf.getChannelData(0), N = 1024, hop = 256, cols = Math.max(1, Math.floor((d.length - N) / hop));
+    const w = canvas.width = Math.min(600, cols), h = canvas.height = 256, g = canvas.getContext('2d'), img = g.createImageData(w, h);
+    const win = new Float32Array(N).map((_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1)));
+    for (let x = 0; x < w; x++) {
+      const s = Math.floor(x * cols / w) * hop, re = new Float32Array(N), im = new Float32Array(N);
+      for (let i = 0; i < N; i++) re[i] = (d[s + i] || 0) * win[i];
+      fft(re, im);
+      for (let y = 0; y < h; y++) {
+        const k = Math.floor((h - 1 - y) / h * (N / 2)), mag = Math.hypot(re[k], im[k]);
+        const v = Math.max(0, Math.min(1, (20 * Math.log10(mag + 1e-9) + 90) / 90)), [r, gg, b] = heat(v), o = (y * w + x) * 4;
+        img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    // the old ceiling: 12 kHz (half of 24 kHz)
+    const y12 = h - 12000 / 24000 * h;
+    g.strokeStyle = 'rgba(240,176,60,.85)'; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(0, y12); g.lineTo(w, y12); g.stroke();
+    g.fillStyle = 'rgba(240,176,60,.95)'; g.font = '11px monospace'; g.fillText('12 kHz', 4, y12 - 4); g.fillText('24 kHz', 4, 12);
+  }
+
+  function rowFor(item, label, sub, aLabel, bLabel) {
+    const row = document.createElement('div'); row.className = 'vrow';
+    const left = document.createElement('div');
+    left.innerHTML = `<div class="who"></div><div class="words"></div><div class="bw"></div>`;
+    left.querySelector('.who').textContent = label;
+    left.querySelector('.words').textContent = sub || '';
+    left.querySelector('.bw').textContent = item.a ? `top ${(item.aTop / 1000).toFixed(1)} kHz → ${(item.bTop / 1000).toFixed(1)} kHz` : `top ${(item.bTop / 1000).toFixed(1)} kHz · ${item.bM.toFixed(1)} LUFS`;
+    const ctl = document.createElement('div'); ctl.className = 'row';
+    if (item.a) { const a = document.createElement('button'); a.type = 'button'; a.innerHTML = `<span class="ab-a">A</span> ${aLabel}`; a.onclick = () => play(item.a); ctl.append(a); }
+    const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<span class="ab-b">B</span> ${bLabel}`; b.onclick = () => play(item.b); ctl.append(b);
+    const sp = document.createElement('button'); sp.type = 'button'; sp.textContent = 'Spectrogram'; sp.setAttribute('aria-expanded', 'false');
+    const box = document.createElement('div'); box.className = 'spec'; box.hidden = true;
+    sp.onclick = async () => {
+      box.hidden = !box.hidden; sp.setAttribute('aria-expanded', String(!box.hidden));
+      if (!box.hidden && !box.dataset.done) {
+        box.dataset.done = '1';
+        for (const [u, cap] of [[item.a, aLabel], [item.b, bLabel]]) {
+          if (!u) continue;
+          const fig = document.createElement('figure'), c = document.createElement('canvas'), fc = document.createElement('figcaption');
+          fc.textContent = cap + ' · 0–24 kHz'; fig.append(c, fc); box.append(fig); spectrogram(c, u);
+        }
+      }
+    };
+    ctl.append(sp);
+    row.append(left, ctl, box);
+    return row;
+  }
+
+  function hero(id) { return id.replace(/_/g, ' '); }
+
+  function render() {
+    const vo = $('voices'); vo.textContent = '';
+    if (!data.voices.length) vo.innerHTML = '<p class="note">The voice remaster is still rendering.</p>';
+    for (const v of data.voices) vo.append(rowFor(v, `${hero(v.voice)} · ${v.key.replace(/_/g, ' ')}`, v.words ? `“${v.words}”` : '', 'Today', 'Remaster'));
+    if (data.sfx.length) {
+      $('sfx-panel').hidden = false;
+      for (const s of data.sfx) $('sfx').append(rowFor(s, s.id.replace(/_/g, ' '), s.cat, 'Today', 'New'));
+    }
+    const au = $('audit'), before = data.audit.audit, after = data.audit.audit_after;
+    if (!before) { au.innerHTML = '<p class="note">No audit yet.</p>'; }
+    else {
+      const t = document.createElement('table');
+      t.innerHTML = `<thead><tr><th>Category</th><th>Clips</th><th>Loudness (target)</th><th>True peak max</th><th>Spectrum ends</th><th>Band-limited</th>${after ? '<th>After: band-limited</th>' : ''}</tr></thead>`;
+      const tb = document.createElement('tbody');
+      for (const r of before) {
+        const a = after && after.find((x) => x.cat === r.cat), tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.cat}</td><td>${r.clips}</td><td>${r.M.toFixed(1)} (${r.target ?? '–'})</td><td>${r.tp > 0 ? '+' : ''}${r.tp.toFixed(1)} dBTP</td><td>${r.bw.toFixed(1)} kHz</td>` +
+          `<td><span class="chip ${r.dull ? 'bad' : 'ok'}">${r.dull} / ${r.clips}</span></td>` + (after ? `<td><span class="chip ${a && a.dull ? 'bad' : 'ok'}">${a ? a.dull + ' / ' + a.clips : '–'}</span></td>` : '');
+        tb.append(tr);
+      }
+      t.append(tb); au.append(t);
+    }
+    $('built').textContent = `Built ${data.built} from the eb-audio branch · ${data.stress.length} clips in the overload test · ${data.voices.length} voice pairs.`;
+  }
+
+  $('fire-raw').onclick = () => fire('raw');
+  $('fire-chain').onclick = () => fire('chain');
+  fetch('data.json').then((r) => r.json()).then((d) => { data = d; render(); })
+    .catch(() => { $('voices').innerHTML = '<p class="note">data.json did not load. Serve this folder over http (python -m http.server).</p>'; });
+})();
+</script>
