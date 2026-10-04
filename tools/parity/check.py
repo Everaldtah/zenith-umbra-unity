@@ -109,9 +109,9 @@ DIVERGENCES = {
     'Yuzu - Hundred Suns': 'the user\'s rework, 2026-10-03: five giant sword-arrows land in a ring, then a 1000-arrow swarm hunts '
                            'every enemy within 30 m for 15 s (Sim Abilities.Hundredsuns + the sunswarm tick, AbilityFx/SunSwarm.cs, '
                            'ult charge 2400 in Sim/Data/UnityDivergence.cs); the web keeps the TS 3 s arrow rain',
-    'Yuzu - x5 damage': 'the user, 2026-10-04 ("make yuzu 5 times stronger"): Dawnshot 625, Hundred Suns landings 500 and the swarm 120 '
+    'Yuzu - x2 damage': 'the user, 2026-10-04 (x5, then x3, then "put yuzu at 2x"): Dawnshot 250, Hundred Suns landings 200 and the swarm 48 '
                         'damage a second (UnityDivergence.YuzuPower)',
-    'Balance table': 'the user, 2026-10-04: a per-hero power scalar on damage and healing, tuned by tools/simtest `balance tune` '
+    'Balance table': 'the user, 2026-10-04: per-hero power (damage, healing) and toughness (damage taken) scalars, tuned by tools/simtest `balance tune` '
                      '(Sim/Data/Balance.cs + BalanceTable.cs, docs/BALANCE.md); off with -zu-balance=0',
     'Locomotion clips': 'the user, 2026-10-04 (hands dangling behind on a run): the walk / jog / run loops are the Mixamo and '
                         'Quaternius set again, not the Tripo text-to-motion loops the web game uses (docs/research/run_arm_study.md)',

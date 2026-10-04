@@ -42,6 +42,7 @@ namespace ZU.Sim
             double dmg = amount;
             // the balance table: the attacker's power scalar (Data/Balance.cs)
             if (src != null) dmg *= ZU.Sim.Data.Balance.Power(src);
+            dmg *= ZU.Sim.Data.Balance.Taken(tgt);
             // Stadium: weapon / ability power
             if (src != null) dmg *= 1 + (o.kind == "ability" || o.kind == "dot" ? src.mods.ability : src.mods.weapon);
             if (src != null && src.Has("dmgamp", t)) dmg *= 1.3;

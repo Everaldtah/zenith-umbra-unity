@@ -5,10 +5,10 @@ namespace ZU.Sim.Data
 {
     public static class UnityDivergence
     {
-        /// <summary>the user, 2026-10-04: "make yuzu 5 times stronger" - the damage of her Dawnshot and of Hundred Suns (the
-        /// landings and the swarm) times this. Pinned: the balance lab never tunes her (it sets this to 1 before the data
-        /// loads to calibrate the others against her original numbers).</summary>
-        public static double YuzuPower = 5;
+        /// <summary>the user, 2026-10-04: Yuzu twice as strong (asked as x5, then x3, then - shown she still won nine games in
+        /// ten - "put yuzu at 2x"): the damage of her Dawnshot and of Hundred Suns (the landings and the swarm) times this.
+        /// Pinned: the balance lab never moves her damage; she is one of the four 60 % heroes through her toughness.</summary>
+        public static double YuzuPower = 2;
 
         public static void Apply(GameData d)
         {
