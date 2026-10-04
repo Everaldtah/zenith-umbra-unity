@@ -17,7 +17,7 @@ namespace ZU.Game.Audio
         /// <summary>the last finished capture's report (JSON), "" until one finishes</summary>
         public static string LastReport = "";
 
-        string path; float seconds; int rate, ch, frames, maxVoices, prevCapture;
+        string path; float seconds; int rate, ch, frames, maxVoices, prevCapture, emptyFrames;
         FileStream fs; BinaryWriter bw; long dataBytes;
         NativeArray<float> buf;
 
@@ -64,6 +64,8 @@ namespace ZU.Game.Audio
                 }
             }
             maxVoices = Math.Max(maxVoices, AudioKit.Voices);
+            // a batch-mode Editor (no audio device) hands out no samples at all: give up after 2 s of game time, don't hang
+            if (frames == 0 && n <= 0 && ++emptyFrames > 120) { Finish("AudioRenderer produced no samples (no audio device: a batch-mode Editor?)"); return; }
             if (frames >= seconds * rate) Finish(null);
         }
 

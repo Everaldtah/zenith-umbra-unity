@@ -401,9 +401,11 @@ namespace ZU.Game.Audio
             if (listener == null || !listener.isActiveAndEnabled)
             {
                 listener = UnityEngine.Object.FindAnyObjectByType<AudioListener>();
+                if (listener != null && !listener.isActiveAndEnabled) listener = null;
                 if (listener != null) MasterBus.On(listener);
                 preset = null;
             }
+            else if (MasterBus.Live == null || MasterBus.Live.gameObject != listener.gameObject) { MasterBus.On(listener); preset = null; }
             // a line in Player.log every 30 s while sound plays: the smoke test's evidence (crackle = clips/clicks > 0)
             if (now >= nextLog && MasterBus.Live != null)
             {
