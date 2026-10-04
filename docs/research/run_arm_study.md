@@ -49,6 +49,35 @@ weapon forward (readability)"): a pose reads by its silhouette, so limbs stay cl
 3. The swing opposite to the legs, 0.3-0.6 arm lengths, elbows 60-90 degrees.
 4. The torso leans forward on a jog or run (10-20 degrees), never back.
 
-## 4. The game against the rule
+## 4. The game against the rule (measured with `zu_run_strip` on the animation bench, 2026-10-04)
 
-(`zu_run_strip` results per hero and the fix are added below once measured in the Editor.)
+Cause: the web game's "Movement upgraded with Tripo text-to-motion" (web commit b63cdda, 2026-10-02) replaced the
+Quaternius / Mixamo walk, jog and run loops with the Tripo ones, and the Unity port inherited the manifest. The Tripo jog
+leans back and holds the arms low and wide; the Animator's `upright` term (written to pull a mocap sprint's 28-degree
+lean back up) then tilted the torso back further, and the arms hung behind the hips.
+
+Fix 1 (data, `Resources/ZUAnim/manifest.json` exclude list): walk / jog / run are the Mixamo 8-way set plus Quaternius
+`Walk_Loop` again; the Tripo idle, jump, roll, dash and slide stay. Gaits in the Editor afterwards: walk [MX_Walk_Right,
+Walk_Loop, MX_Walk_Left, MX_Walk_Bwd], jog [the eight MX_Jog directions], run [MX_Run Fwd / Left / Right / Bwd].
+
+Fix 2 (ProcAnimator.Arms, applied by the lead): the blade-carry pose put the sword hand low and BACK
+(`(side * 0.3, -0.76, -0.3)`, the TS "samurai's run"); it is `(side * 0.34, -0.78, -0.02)` now - at the hip line.
+
+| hero | torso lean | left hand forward mean [min..max] | right hand forward | both hands behind (fix 1) | (fix 1 + 2) |
+|---|---|---|---|---|---|
+| Kagemaru | +18 deg | -0.32 [-0.80..+0.63] | +0.30 [+0.09..+0.65] | 0 % | 0 % |
+| Hex | +14 | -0.32 [-0.79..+0.60] | +0.28 | 0 % | 0 % |
+| Yuzu | +12 | -0.09 (the bow hand) | +0.29 | 0 % | 0 % |
+| Seiran | +14 | -0.12 (the bow hand) | +0.29 | 0 % | 0 % |
+| Kaien | +14 | -0.36 | +0.16 | 0 % | 0 % |
+| Nocturne | +18 | -0.33 | +0.25 | 0 % | 0 % |
+| Mirei | +18 | -0.39 | +0.22 | 0 % | 0 % |
+| Raijin | +14 | -0.31 | -0.14 -> +0.12 (the blade hand) | 27 % | 0 % |
+| Hayate | +19 | -0.42 | -0.14 -> +0.11 (the blade hand) | 30 % | 0 % |
+| Enra | +17 | -0.42 -> -0.21 | -0.15 -> +0.11 (the chain blades) | 63 % | 0 % |
+
+Against the rule of section 3: the torso leans into the run (rule 4), no hero has both hands behind (rule 1), the free
+arm swings opposite to the legs over about 1.4 arm lengths with the elbow at 60-100 degrees (rule 3: a fuller pump than
+Overwatch's sway - it is Mixamo's run). Not yet at the rule: the free hand's back swing reaches -0.8 (rule 1 asks for
+-0.3) and its mean sits behind the shoulder line; a follow-up could scale the arm swing of the run clip down on the
+clip layer. The web game still runs on the Tripo loops.
