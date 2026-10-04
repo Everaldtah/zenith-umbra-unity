@@ -412,6 +412,11 @@
 .coop { flex-grow: 1; min-width: 320px; margin-left: 16px; background-color: rgba(255, 255, 255, 0.04); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 12px 16px; }
 .coop .coop-h4 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 15px; letter-spacing: 1.5px; margin-bottom: 6px; }
 .coop .st { font-size: 13px; opacity: 0.7; }
+.coop .row2 { flex-direction: row; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.coop .row2 > * { margin-right: 8px; }
+.coop .row2 .zb { padding: 8px 16px; }
+.coop .cnm { width: 160px; }
+.coop .cnm .unity-base-field__input { background-color: #111827; border-color: rgba(255, 255, 255, 0.14); color: #fff; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 16px; }
 
 /* ---------------- hero viewer (HeroViewer.ts) */
 .viewer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; flex-direction: row; background-color: #05060a; }
@@ -633,7 +638,7 @@
 .online .oroles { flex-direction: row; flex-wrap: wrap; }
 .online .oroles .zb { flex-direction: row; padding: 10px 14px; font-size: 15px; margin: 0 8px 8px 0; }
 .online .oroles .zb .ri { width: 20px; height: 20px; margin-right: 8px; }
-.online .zb.orole { flex-grow: 1; min-width: 90px; padding: 10px 6px; margin: 0 8px 0 0; --cut: 0; --fill: rgba(0, 0, 0, 0.25); --stroke: rgba(0, 0, 0, 0); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
+.online .zb.orole { flex-grow: 1; flex-basis: 0; flex-direction: column; align-items: center; min-width: 90px; padding: 10px 6px; margin: 0 8px 0 0; --cut: 0; --fill: rgba(0, 0, 0, 0.25); --stroke: rgba(0, 0, 0, 0); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
 .online .zb.orole:hover { --fill: rgba(255, 255, 255, 0.1); translate: 0 0; }
 .online .orole > * { margin-bottom: 4px; }
 .online .orole .ri { width: 26px; height: 26px; }

@@ -59,6 +59,10 @@ namespace ZU.Game.UI.Toolkit
         // ------------------------------------------------------------------ images (the PC game's public/img)
         static readonly Dictionary<string, Texture2D> imgs = new Dictionary<string, Texture2D>();
         /// <summary>public/img/{name}.webp, imported as Resources/ZUImg/{name} (null if the game has no such image)</summary>
+        /// <summary>the copy of a picture with the web's constant saturate(1.2) baked in (`<name>_sat`: .title .bg and .loading .bg;
+        /// UI Toolkit has no saturate filter), else the picture itself</summary>
+        public static string Sat(string name) => name != null && Img(name + "_sat") != null ? name + "_sat" : name;
+
         public static Texture2D Img(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;

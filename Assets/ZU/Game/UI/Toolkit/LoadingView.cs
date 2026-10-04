@@ -30,7 +30,7 @@ namespace ZU.Game.UI.Toolkit
             Close();
             var ui = UiRoot.Get();
             root = U.Div("loading", ui.OverlayLayer, pick: true);
-            bg = U.Div("bg", root); U.Bg(bg, img);
+            bg = U.Div("bg", root); U.Bg(bg, U.Sat(img));
             bg.style.opacity = bgOpacity;
             Filters.Set(bg, Filters.Brightness(0.55f));
             U.Txt(title, "ld-h2", root);

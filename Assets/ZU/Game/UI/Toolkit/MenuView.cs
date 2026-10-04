@@ -101,7 +101,7 @@ namespace ZU.Game.UI.Toolkit
         public void Title()
         {
             var s = Show("title");
-            var bg = U.Div("bg", s); U.Bg(bg, "map_hanabi"); Filters.Set(bg, Filters.Brightness(0.55f));
+            var bg = U.Div("bg", s); U.Bg(bg, U.Sat("map_hanabi")); Filters.Set(bg, Filters.Brightness(0.55f));
             KenBurns(bg);
             Grad.Fill(Grad.Linear(90, (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0.95f), 0), (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0.6f), 45), (new Color(5 / 255f, 6 / 255f, 10 / 255f, 0), 80)), s, "title-shade");
             var logo = U.Div("logo", s);
@@ -282,7 +282,7 @@ namespace ZU.Game.UI.Toolkit
                 timer.Pause();
                 Sfx("announce");
                 var f = Show("loading find found");
-                var bg2 = U.Div("bg", f); U.Bg(bg2, "map_" + MapId); Filters.Set(bg2, Filters.Brightness(0.55f));
+                var bg2 = U.Div("bg", f); U.Bg(bg2, U.Sat("map_" + MapId)); Filters.Set(bg2, Filters.Brightness(0.55f));
                 U.Txt("MATCH FOUND", "mf", f);
                 U.Txt(m.name, "ld-h2", f);
                 U.Txt(m.objective == "push" ? "MIKOSHI RUSH · push the festival float through the enemy gate" : "CONTROL · best of 3 rounds on the capture point", "obj", f);
