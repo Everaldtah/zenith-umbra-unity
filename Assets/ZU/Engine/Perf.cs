@@ -16,6 +16,12 @@
 // checks: then the game sees Time.deltaTime, a plain cap, no dynamic resolution and no Governor. URP properties are
 // written only when they change (a renderScale write re-allocates the render targets) and, in the Editor, only when
 // AllowAssetWrites is set (the pipeline asset is the project's file on disk there - the same rule SettingsApply had).
+// Play mode without a domain reload (the lead's Editor: Enter Play Mode Options, domain + scene reload off): the statics
+// survive from one play to the next while Time.unscaledTime restarts at 0, so every ms clock kept here would read the
+// previous play's length backwards (the first FrameDt was -18 s, MatchRunner's accumulator went to -18 and World.time
+// froze). One reset path: ResetRun, from a SubsystemRegistration hook (the standard pattern), puts Perf and every engine
+// class back to first-run state and unsubscribes the old play's handlers before Init subscribes again; Frame does the
+// same if its clock ever goes backwards without that hook. Built players start fresh: ResetRun there is a no-op.
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -84,7 +90,7 @@ namespace ZU.Engine
         static string upActive = "off";
         static int appliedVSync = -1, appliedTarget = int.MinValue;
         static double appliedRefresh;
-        static double frameMs = 1000.0 / 60, lastCapCheck = double.NegativeInfinity;
+        static double frameMs = 1000.0 / 60, lastCapCheck = double.NegativeInfinity, lastTms = double.NegativeInfinity;
         // the fallback CPU measurement: the frame's Update start, the end of its scripted work, the end of its render submission
         static double frameT0, lateEnd, renderEnd, fallbackCpuMs;
         static Action<ScriptableRenderContext, List<Camera>> onEndContext;
@@ -222,6 +228,31 @@ namespace ZU.Engine
 
         // ------------------------------------------------------------------ the frame (PerfDriver)
 
+        // the standard hook for Enter Play Mode without a domain reload: runs before BeforeSceneLoad (PerfDriver.Boot) on
+        // every play, and once at a built player's start-up, where everything is at its defaults already
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void OnSubsystemRegistration() => ResetRun();
+
+        /// <summary>a new run: every static back to its first-run state, the old play's handlers unsubscribed (Init subscribes
+        /// again, never twice), every engine class reset (the pacer keeps its refresh estimate, the Governor restores the base
+        /// lodBias + tierScale 1 if still applied, the sharpen material is kept). capSet goes false: SettingsApply calls
+        /// SetCap on the new play. The cap / asset values themselves are left as they are (the Governor's Restore excepted).</summary>
+        internal static void ResetRun()
+        {
+            if (onEndContext != null) { RenderPipelineManager.endContextRendering -= onEndContext; onEndContext = null; }
+            inited = false; enabled = true; allowAssetWrites = false; dynOn = false; capVsync = true; capSet = false;
+            dynLive = false; isEditor = false;
+            capFps = 0; liveVSync = 0; liveTarget = -1;
+            baseScale = 1; renderScale = 1; sharp = 0.9f; sharpen = 0;
+            upMode = Upscaler.Auto; upActive = "off";
+            appliedVSync = -1; appliedTarget = int.MinValue; appliedRefresh = 0;
+            frameMs = 1000.0 / 60; lastCapCheck = lastTms = double.NegativeInfinity;
+            frameT0 = lateEnd = renderEnd = fallbackCpuMs = 0;
+            FrameDt = UnscaledFrameDt = 0; CpuMs = 0;
+            pacer.ResetRun(); timing.ResetRun(); dynres.ResetRun(); AnimBudget.Shared.ResetRun();
+            Governor.ResetRun(); MemoryWatch.ResetRun(); SharpenPass.ResetRun(); PerfDriver.ResetRun();
+        }
+
         internal static void Init()
         {
             if (inited) return;
@@ -276,8 +307,12 @@ namespace ZU.Engine
         /// <summary>start of the frame (PerfDriver.Update, order -10000)</summary>
         internal static void Frame()
         {
-            Init();
             double tms = Time.unscaledTimeAsDouble * 1000;
+            // belt and braces: the clock went backwards without the SubsystemRegistration hook = a new run (the pacer would
+            // otherwise see the previous play's length as a negative delta); reset, then boot again. FrameDt is never negative.
+            if (tms < lastTms) ResetRun();
+            lastTms = tms;
+            Init();
             double now = Time.realtimeSinceStartupAsDouble * 1000;
             // the previous frame's own CPU work (the fallback): from its Update start to the later of the end of its scripts
             // and of its render submission

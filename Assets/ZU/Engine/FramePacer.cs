@@ -72,10 +72,16 @@ namespace ZU.Engine
         /// <summary>restart the cadence measurement (the cap mode changed), keeping the refresh estimate</summary>
         public void Restart() { n = 0; VSynced = false; }
 
+        /// <summary>a new run (the Editor's play mode without a domain reload: the clock restarts at 0 while this object
+        /// survives): forget the stamps and the debt, restart the cadence; the refresh estimate stays (same display)</summary>
+        internal void ResetRun() { hasT = false; started = false; lastT = lastFrame = 0; debt = 0; LastRawMs = 0; Restart(); }
+
         /// <summary>called once per frame with the frame's start time (ms, Time.unscaledTimeAsDouble * 1000): the
-        /// unscaled delta (s) for this frame, quantized when vsynced, clamped to 0.1 s (a stall is not a 2 s step)</summary>
+        /// unscaled delta (s) for this frame, quantized when vsynced, clamped to 0..0.1 s (a stall is not a 2 s step, and a
+        /// clock that went backwards - a new play without a domain reload - is a new run: 0 for that frame, never negative)</summary>
         public double Tick(double tms)
         {
+            if (hasT && tms < lastT) ResetRun();
             if (hasT) Sample(tms - lastT);
             lastT = tms; hasT = true;
             if (!started) { started = true; lastFrame = tms; return 0; }
@@ -85,8 +91,10 @@ namespace ZU.Engine
             // keeps this object while Time.unscaledTime starts again from 0). A negative delta here went straight into the
             // match's step accumulator and froze every match for as long as the previous session had run - start over
             if (raw < 0) { debt = 0; Restart(); LastRawMs = 0; return 0; }
+            // (the tms < lastT check above already restarted the run for that case - lastFrame == lastT once started, so
+            // this branch is the lead's belt and braces and never fires on top of it)
             LastRawMs = raw;
-            return Math.Min(0.1, Quantize(raw) / 1000);
+            return Math.Max(0, Math.Min(0.1, Quantize(raw) / 1000));
         }
 
         /// <summary>the TS capInterval rule: the cap as a whole number k of vblanks when it divides the refresh closely

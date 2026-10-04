@@ -42,6 +42,15 @@ namespace ZU.Engine
         /// <summary>a new view's slot, starting at a spread of phases so the reduced-rate ones don't all update together</summary>
         public Slot NewSlot() => new Slot { acc = (seq++ % 4) * FAR / 4 };
 
+        /// <summary>a new run (Perf.ResetRun: play mode without a domain reload): the frame stamp, the counts, the camera and
+        /// the Governor's knob back to first-run state (the views and their slots are the new scene's)</summary>
+        internal void ResetRun()
+        {
+            enabled = true; tierScale = 1;
+            Updated = Held = LastUpdated = LastHeld = 0;
+            hasCam = false; seq = 0; frame = -1;
+        }
+
         /// <summary>once a frame, before the views: the camera that will show them. Step calls it itself with Camera.main
         /// on the first view of a new frame, so a driver only needs it to pick another camera.</summary>
         public void Begin(Camera cam)

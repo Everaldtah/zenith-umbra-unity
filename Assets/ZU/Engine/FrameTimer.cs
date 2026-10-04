@@ -50,5 +50,8 @@ namespace ZU.Engine
         }
 
         void Clear() { GpuMs = GpuLast = CpuMainMs = CpuRenderMs = PresentWaitMs = CpuFrameMs = -1; }
+
+        /// <summary>a new run (play mode without a domain reload): the old play's figures and EMA are not this run's</summary>
+        internal void ResetRun() { Clear(); Supported = false; }
     }
 }

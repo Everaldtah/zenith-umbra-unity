@@ -72,6 +72,17 @@ namespace ZU.Engine
             RenderPipelineManager.beginCameraRendering += onBegin;
         }
 
+        /// <summary>a new run (Perf.ResetRun: play mode without a domain reload): drop the old play's camera hook (Init
+        /// re-subscribes once; never two handlers), slider back to 0. The material is kept when it survived (HideAndDontSave,
+        /// no leak: one per domain); a destroyed one is reloaded on demand.</summary>
+        internal static void ResetRun()
+        {
+            if (onBegin != null) RenderPipelineManager.beginCameraRendering -= onBegin;
+            onBegin = null; inst = null; inited = false;
+            amount = 0;
+            if (mat != null) mat.SetFloat(amountId, 0); else loadTried = false;
+        }
+
         /// <summary>the slider fraction 0..1; the material gets amount x 0.6, written only on change</summary>
         internal static void SetAmount(float amount01)
         {
