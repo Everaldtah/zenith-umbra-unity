@@ -9,6 +9,10 @@ namespace ZU.Game
     {
         Camera cam;
         float orbit;
+        // the spectate orbit: how far out and how steeply it looks down right now (eased), see Place
+        float specDist = SpecDist, specPitch = SpecPitches[0];
+        const float SpecDist = 42, SpecClear = 0.6f;
+        static readonly float[] SpecPitches = { 28, 40, 52, 64, 76 };
 
         public static MatchCamera Ensure(MatchRunner r)
         {
@@ -57,9 +61,31 @@ namespace ZU.Game
             var w = r.World;
             var p = w.rules == "push" ? Conv.U(w.push.pos) : Conv.U(w.map.point[0], w.map.point[1], w.map.point[2]);
             orbit += Time.deltaTime * 6;
-            var off = Quaternion.Euler(28, orbit, 0) * new Vector3(0, 0, -42);
-            transform.position = p + off;
+            // ...kept out of the level. The orbit was a fixed 42 m at 28 degrees; in a canyon (Iron Gulch) or under a roof that
+            // point is inside the rock and the spectator stared at a wall. From the objective outwards, the lowest of five
+            // elevations with a clear line wins; when none is clear, the one that gets furthest out; the view then closes
+            // in to where the level begins. Elevation and distance are eased, and the eased view is checked once more.
+            var hub = p + Vector3.up * 3;
+            float bestPitch = SpecPitches[0], bestDist = -1;
+            foreach (float pitch in SpecPitches)
+            {
+                float d = SpecFree(hub, pitch, SpecDist);
+                if (d > bestDist + 0.5f) { bestDist = d; bestPitch = pitch; }
+                if (d >= SpecDist - 0.5f) break;
+            }
+            float dt = Time.deltaTime, slow = 1 - Mathf.Exp(-dt * 2.5f), fast = 1 - Mathf.Exp(-dt * 10);
+            specPitch = Mathf.Lerp(specPitch, bestPitch, slow);
+            specDist = Mathf.Lerp(specDist, bestDist, bestDist < specDist ? fast : slow);       // in quickly, out gently
+            float dist = Mathf.Max(4, Mathf.Min(specDist, SpecFree(hub, specPitch, specDist)));
+            transform.position = hub + Quaternion.Euler(specPitch, orbit, 0) * Vector3.back * dist;
             transform.LookAt(p + Vector3.up * 2);
+        }
+
+        /// <summary>how far the spectate camera can go from the pivot at this elevation before the level is in the way</summary>
+        float SpecFree(Vector3 pivot, float pitch, float max)
+        {
+            var dir = Quaternion.Euler(pitch, orbit, 0) * Vector3.back;
+            return Physics.SphereCast(pivot, SpecClear, dir, out var hit, max, ~0, QueryTriggerInteraction.Ignore) ? Mathf.Max(0, hit.distance - 0.3f) : max;
         }
     }
 }
