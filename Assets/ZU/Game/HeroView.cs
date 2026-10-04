@@ -164,7 +164,9 @@ namespace ZU.Game
         /// the feet along the push)</summary>
         internal void Animate()
         {
-            transform.localScale = baseScale;          // last frame's squash off before the pose is read
+            // TS-PARITY CharacterView.ts:853 inner.scale.setScalar(a.scale): the sim's size (Tenkai's Dawn Colossus, a x1.25 form)
+            float simScale = actor != null ? (float)actor.scale : 1f;
+            transform.localScale = baseScale * simScale;          // last frame's squash off before the pose is read
             var a = actor;
             if (a == null || proc == null) return;
             // the dead belong to the Animator's death state and the ragdoll (AbilityFx); the hidden aren't worth posing
@@ -220,7 +222,7 @@ namespace ZU.Game
             else downYaw = null;
             var yawQ = Conv.Yaw(yaw);
             transform.SetPositionAndRotation(drawPos + yawQ * ProcAnimator.M(pos), yawQ * ProcAnimator.M(q));
-            transform.localScale = Vector3.Scale(baseScale, new Vector3(proc.sqXZ, proc.sqY, proc.sqXZ));
+            transform.localScale = Vector3.Scale(baseScale * simScale, new Vector3(proc.sqXZ, proc.sqY, proc.sqXZ));
             // a heavy strike's impact frame (TS Game onImpact): the striker's own camera kicks, anyone near feels the shake
             // (proc.impact is a per-update flag: a held frame must not fire it again)
             if (updated && proc.impact > 0 && Fx.MatchFx.Current != null)
