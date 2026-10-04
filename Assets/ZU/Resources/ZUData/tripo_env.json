@@ -260,6 +260,16 @@
   "footprint_m": 11
  },
  {
+  "id": "bld_obs_annex",
+  "style": "observatory",
+  "kind": "building",
+  "archetype": "hall1f",
+  "w_m": 10,
+  "d_m": 16,
+  "height_m": 5,
+  "footprint_m": 16
+ },
+ {
   "id": "bld_obs_dome",
   "style": "observatory",
   "kind": "building",
@@ -318,6 +328,96 @@
   "d_m": 26,
   "height_m": 10,
   "footprint_m": 26
+ },
+ {
+  "id": "bld_sky_teahouse2f",
+  "style": "sky",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 8,
+  "d_m": 10,
+  "height_m": 9,
+  "footprint_m": 10
+ },
+ {
+  "id": "bld_west_bank",
+  "style": "west",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 8,
+  "d_m": 10,
+  "height_m": 5,
+  "footprint_m": 10
+ },
+ {
+  "id": "bld_west_barn",
+  "style": "west",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 12,
+  "d_m": 18,
+  "height_m": 9,
+  "footprint_m": 18
+ },
+ {
+  "id": "bld_west_canopy",
+  "style": "west",
+  "kind": "building",
+  "archetype": "pavilion",
+  "w_m": 7,
+  "d_m": 12,
+  "height_m": 6,
+  "footprint_m": 12
+ },
+ {
+  "id": "bld_west_depot",
+  "style": "west",
+  "kind": "building",
+  "archetype": "hall1f",
+  "w_m": 10,
+  "d_m": 16,
+  "height_m": 6,
+  "footprint_m": 16
+ },
+ {
+  "id": "bld_west_headframe",
+  "style": "west",
+  "kind": "building",
+  "archetype": "tower",
+  "w_m": 3,
+  "d_m": 10,
+  "height_m": 8,
+  "footprint_m": 10
+ },
+ {
+  "id": "bld_west_saloon2f",
+  "style": "west",
+  "kind": "building",
+  "archetype": "storefront",
+  "w_m": 10,
+  "d_m": 16,
+  "height_m": 9,
+  "footprint_m": 16
+ },
+ {
+  "id": "bld_west_store1f",
+  "style": "west",
+  "kind": "building",
+  "archetype": "storefront",
+  "w_m": 9,
+  "d_m": 14,
+  "height_m": 6,
+  "footprint_m": 14
+ },
+ {
+  "id": "bld_west_watertower",
+  "style": "west",
+  "kind": "building",
+  "archetype": "watertower",
+  "w_m": 6,
+  "d_m": 6,
+  "height_m": 12,
+  "footprint_m": 6
  },
  {
   "id": "gnd_alpine_alpine_grass",
@@ -700,6 +800,16 @@
   "archetype": "wall",
   "w_m": 6,
   "d_m": 5,
+  "height_m": 4,
+  "footprint_m": 6
+ },
+ {
+  "id": "wal_west",
+  "style": "west",
+  "kind": "wall",
+  "archetype": "wall",
+  "w_m": 6,
+  "d_m": 3,
   "height_m": 4,
   "footprint_m": 6
  }
