@@ -22,6 +22,9 @@
 // froze). One reset path: ResetRun, from a SubsystemRegistration hook (the standard pattern), puts Perf and every engine
 // class back to first-run state and unsubscribes the old play's handlers before Init subscribes again; Frame does the
 // same if its clock ever goes backwards without that hook. Built players start fresh: ResetRun there is a no-op.
+// The VRAM tier (VramBudget: a floor under the texture mipmap limit from the card's memory, 6 GB cards and below) is primed
+// from the same SubsystemRegistration hook - before the first scene's textures load - and finished from Init; it is
+// independent of -zu-engine=0 (a memory guard, not an optimisation; its own switch is -zu-texfloor=0).
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -49,14 +52,16 @@ namespace ZU.Engine
         public readonly MemoryWatch.Pressure Pressure;
         /// <summary>the native-scale sharpen pass runs this frame (slider &gt; 0, render scale &gt;= 0.99, shader loaded)</summary>
         public readonly bool SharpenActive;
+        /// <summary>the VRAM tier's floor under the texture mipmap limit (0 none, 1 = 4K from 2K, 2 = 4K from 1K)</summary>
+        public readonly int TextureMipFloor;
 
         public PerfStats(bool enabled, bool vsynced, bool timingSupported, float baseScale, float dynScale, float renderScale, string upscaler,
             double refreshHz, double budgetMs, double gpuMs, double gpuLast, double cpuMs, double cpuMainMs, double cpuRenderMs, double presentWaitMs,
             double frameMs, int targetFrameRate, int vSyncCount, float frameDt, float unscaledFrameDt,
             Governor.Bottleneck bottleneck, int governorLevel, int animUpdated, int animHeld, float memAvailMB, MemoryWatch.Pressure pressure,
-            bool sharpenActive)
+            bool sharpenActive, int textureMipFloor)
         {
-            SharpenActive = sharpenActive;
+            SharpenActive = sharpenActive; TextureMipFloor = textureMipFloor;
             Enabled = enabled; VSynced = vsynced; TimingSupported = timingSupported;
             BaseScale = baseScale; DynScale = dynScale; RenderScale = renderScale; Upscaler = upscaler;
             RefreshHz = refreshHz; BudgetMs = budgetMs; GpuMs = gpuMs; GpuLast = gpuLast; CpuMs = cpuMs; CpuMainMs = cpuMainMs; CpuRenderMs = cpuRenderMs;
@@ -116,6 +121,12 @@ namespace ZU.Engine
         /// <summary>the native-scale sharpen pass runs this frame: Sharpen &gt; 0, RenderScale &gt;= 0.99 (below that FSR's RCAS
         /// sharpens instead) and its shader loaded. Independent of Enabled: a setting, not an optimisation.</summary>
         public static bool SharpenActive => SharpenPass.Active;
+        /// <summary>the VRAM tier's floor under QualitySettings.globalTextureMipmapLimit (VramBudget): 0 on 8 GB cards and up
+        /// (unchanged), 1 on 6 GB (4K textures from their 2K mip), 2 below (or a Low hardware tier); -zu-texfloor=N forces it.
+        /// The settings hook keeps the player's choice at or above it: `Mathf.Max(setting, Perf.TextureMipFloor)`.</summary>
+        public static int TextureMipFloor => VramBudget.TextureMipFloor;
+        /// <summary>the Options row label for the floor: "2K on this card" / "1K on this card", null when there is none</summary>
+        public static string TextureFloorNote => VramBudget.TextureFloorNote;
         /// <summary>the display's refresh (Hz): reported, then measured from the vsync cadence</summary>
         public static double RefreshHz => pacer.RefreshHz;
         /// <summary>the frame cadence is vsync-locked (deltas are quantized)</summary>
@@ -146,7 +157,7 @@ namespace ZU.Engine
             frameMs, capSet ? appliedTarget : Application.targetFrameRate, capSet ? appliedVSync : QualitySettings.vSyncCount,
             FrameDt, UnscaledFrameDt,
             Governor.Current, Governor.Level, AnimBudget.Shared.LastUpdated, AnimBudget.Shared.LastHeld, MemoryWatch.AvailMB, MemoryWatch.pressure,
-            SharpenPass.Active);
+            SharpenPass.Active, VramBudget.TextureMipFloor);
 
         // ------------------------------------------------------------------ switches
 
@@ -229,9 +240,10 @@ namespace ZU.Engine
         // ------------------------------------------------------------------ the frame (PerfDriver)
 
         // the standard hook for Enter Play Mode without a domain reload: runs before BeforeSceneLoad (PerfDriver.Boot) on
-        // every play, and once at a built player's start-up, where everything is at its defaults already
+        // every play, and once at a built player's start-up, where everything is at its defaults already. The VRAM tier's
+        // mipmap floor is primed here too: the earliest point, before the first scene's textures load (no asset write, no log)
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void OnSubsystemRegistration() => ResetRun();
+        static void OnSubsystemRegistration() { ResetRun(); VramBudget.Prime(); }
 
         /// <summary>a new run: every static back to its first-run state, the old play's handlers unsubscribed (Init subscribes
         /// again, never twice), every engine class reset (the pacer keeps its refresh estimate, the Governor restores the base
@@ -250,7 +262,7 @@ namespace ZU.Engine
             frameT0 = lateEnd = renderEnd = fallbackCpuMs = 0;
             FrameDt = UnscaledFrameDt = 0; CpuMs = 0;
             pacer.ResetRun(); timing.ResetRun(); dynres.ResetRun(); AnimBudget.Shared.ResetRun();
-            Governor.ResetRun(); MemoryWatch.ResetRun(); SharpenPass.ResetRun(); PerfDriver.ResetRun();
+            Governor.ResetRun(); MemoryWatch.ResetRun(); SharpenPass.ResetRun(); PerfDriver.ResetRun(); VramBudget.ResetRun();
         }
 
         internal static void Init()
@@ -267,6 +279,7 @@ namespace ZU.Engine
             onEndContext = EndRender;
             RenderPipelineManager.endContextRendering += onEndContext;
             Governor.Init();
+            VramBudget.Init();                             // after the hardware line: the mipmap floor again, the shadow atlas, its log line
             SharpenPass.Init();                            // the camera hook only; the shader loads on the first frame the slider is > 0
         }
 
@@ -284,6 +297,25 @@ namespace ZU.Engine
             }
             catch (Exception) { /* no command line here: default on */ }
             return false;
+        }
+
+        /// <summary>the integer the command line carries as `name=N` (or `name N`), else fallback (absent, not a number,
+        /// no command line): the valued switches, -zu-texfloor=1</summary>
+        internal static int FlagInt(string name, int fallback)
+        {
+            try
+            {
+                var a = Environment.GetCommandLineArgs();
+                for (int i = 0; i < a.Length; i++)
+                {
+                    string v = null;
+                    if (a[i].Length > name.Length + 1 && a[i][name.Length] == '=' && a[i].StartsWith(name, StringComparison.OrdinalIgnoreCase)) v = a[i].Substring(name.Length + 1);
+                    else if (string.Equals(a[i], name, StringComparison.OrdinalIgnoreCase) && i + 1 < a.Length) v = a[i + 1];
+                    if (v != null && int.TryParse(v, out int n)) return n;
+                }
+            }
+            catch (Exception) { /* no command line here: the fallback */ }
+            return fallback;
         }
 
         // until SetCap is called the cap is whoever's wrote it last: the pacer's divisor follows the real vSyncCount, so a
@@ -362,7 +394,8 @@ namespace ZU.Engine
 
         // ------------------------------------------------------------------ apply
 
-        static UniversalRenderPipelineAsset Asset => GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+        /// <summary>the URP asset in effect (null outside URP); written only while AllowAssetWrites (VramBudget's atlas too)</summary>
+        internal static UniversalRenderPipelineAsset Asset => GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
 
         static void ApplyCap()
         {

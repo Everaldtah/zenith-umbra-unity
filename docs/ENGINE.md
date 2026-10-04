@@ -29,6 +29,7 @@ the static facade everything else calls.
 | - | `Governor.cs` | bottleneck-directed quality ladder + memory pressure (no TS original) |
 | - | `HardwareProfile.cs` | one-off machine snapshot: tier Low / Mid / High |
 | - | `MemoryWatch.cs` | machine free RAM (kernel32) + Unity's memory counters |
+| - | `VramBudget.cs` | the VRAM tier: a floor under the texture mipmap limit from the card's memory (no TS original) |
 
 Each `.cs` starts with the TS file's reasoning, condensed, and says where it deviates and why.
 
@@ -75,6 +76,8 @@ float  Perf.RenderScale        // URP renderScale as applied = base x dynamic
 string Perf.UpscalerActive     // "off" (no resampling) | "linear" | "fsr" | "stp"
 float  Perf.Sharpen            // the Image Sharpening slider as a fraction 0..1
 bool   Perf.SharpenActive      // the sharpen pass runs this frame: Sharpen > 0, RenderScale >= 0.99, shader loaded (independent of Enabled)
+int    Perf.TextureMipFloor    // the VRAM tier's floor under globalTextureMipmapLimit: 0 (>= 8 GB), 1 (6 GB: 4K from 2K), 2 (below / Low tier); -zu-texfloor=N forces
+string Perf.TextureFloorNote   // "2K on this card" / "1K on this card" / null: the Options row label
 double Perf.RefreshHz          // the display's refresh: reported, then measured from the vsync cadence
 bool   Perf.VSynced            // the cadence is vblank-locked (deltas are quantized)
 double Perf.BudgetMs           // from the cap in effect (re-read once a second, whoever set it): vSyncCount k (player) = refresh / k; else targetFrameRate > 0 = min(targetFrameRate, refresh) (the TS updateDynRes); else refresh
@@ -114,7 +117,69 @@ written only when they change (a renderScale write re-allocates the render targe
 
 `PerfStats` fields: `Enabled, VSynced, TimingSupported, BaseScale, DynScale, RenderScale, Upscaler, RefreshHz,
 BudgetMs, GpuMs, GpuLast, CpuMs, CpuMainMs, CpuRenderMs, PresentWaitMs, FrameMs, TargetFrameRate, VSyncCount, FrameDt,
-UnscaledFrameDt, Bottleneck, GovernorLevel, AnimUpdated, AnimHeld, MemAvailMB, Pressure, SharpenActive`.
+UnscaledFrameDt, Bottleneck, GovernorLevel, AnimUpdated, AnimHeld, MemAvailMB, Pressure, SharpenActive, TextureMipFloor`.
+
+#### The VRAM tier (`VramBudget`)
+
+**What.** A floor under `QualitySettings.globalTextureMipmapLimit`, picked once per process from the card's VRAM
+(`HardwareProfile.Current.vramMB` = `SystemInfo.graphicsMemorySize`), so a 6 GB card draws the project's 4K textures
+from their 2K mip and never holds the full set. Big cards are untouched: quality is never a hidden cap.
+
+**Why.** QA on an RTX 3050 6 GB (default ULTRA preset, a 1280x720 window): every match load peaked at 5.6-5.8 GB of
+VRAM, an AI-vs-AI match held 5.1-5.2 GB - 0.3 GB of headroom, so a 6 GB player with Chrome open sat at the edge of a
+D3D out-of-memory crash on load. The cause is texture resolution: 386 of the project's 1044 textures import at
+4096x4096 BC7 (about 22 MB each with mips; the Default platform block says 4096, the Standalone override is off), and
+one match loads one map's props plus 10 heroes - roughly 4 GB of textures. Render targets are about 0.25 GB at 1080p
+(render scale 125 %, 4x MSAA HDR, a 4096 main-light shadow atlas with 4 cascades, a 2048 additional-light atlas).
+Mipmap limit 1 (the 2K mip) is a quarter of the texture memory; 2 (the 1K mip) a sixteenth.
+
+**Thresholds** (`VramBudget.FullVramMB` / `HalfVramMB`, public for tests):
+
+| VRAM | floor | textures |
+|---|---|---|
+| >= 7680 MB (8 GB cards and up) | 0 | unchanged (full resolution) |
+| >= 4608 MB (6 GB) | 1 | 4K drawn from their 2K mip |
+| below (4 GB and smaller) | 2 | 4K drawn from their 1K mip |
+| any, `HardwareProfile` tier Low | >= 1 | an integrated GPU reports shared memory as VRAM; the RAM / core floors catch it |
+
+**Main-light shadow atlas.** On a floor tier (computed floor >= 1) an atlas above 2048 is lowered to 2048 (the
+project's PC asset ships 4096: a quarter of that atlas). Based on the computed floor only - never on the player's texture
+choice (which may sit above the floor), never at 7680 MB and up - and only where `Perf.AllowAssetWrites` is true: in the
+Editor the URP asset is the project's file on disk and is never written, so Editor runs keep 4096 (and log no shadow
+note). The additional-lights atlas is left alone.
+
+**When.** Two steps, so the FIRST scene's textures already load at the floor and the full-size upload never happens:
+`VramBudget.Prime()` from `Perf`'s `SubsystemRegistration` hook (the earliest managed hook, before the first scene:
+computes the floor, raises the limit; no asset write, no log; skipped silently if `graphicsMemorySize` still reads 0),
+then `VramBudget.Init()` from `Perf.Init` (`PerfDriver.Boot`, `BeforeSceneLoad`, after the hardware line): the limit
+again, the atlas, the one log line. The floor is a per-process constant; `Init` runs once per play (`ResetRun`). It is
+independent of `-zu-engine=0` (a memory guard, not a frame-time optimisation).
+**Editor plays** keep the floor (the real 2K result is seen in Play mode) but restore the project's limit when the play
+stops: `QualitySettings` is the project's asset in the Editor and Unity does not revert it on exiting Play mode, so the
+limit as it was before the first write of a play is captured once per run and written back on `Application.quitting`
+(undoing the settings hook's in-play writes too; a built player captures and restores nothing).
+
+**Switch.** `-zu-texfloor=N` (or `-zu-texfloor N`; 0, 1 or 2) forces the floor. `0` = off = the old behaviour, the A/B
+switch for the before / after measurement; it flips the atlas step too, so the two runs differ by this file only. Other
+values are ignored.
+
+**Log line** (once, at start-up): `[ZU.Engine] VRAM tier: 6.0 GB -> texture floor 1 (4K -> 2K), -zu-texfloor=0 to
+disable, main-light shadows 4096 -> 2048`; floor 2 reads `(4K -> 1K)`; no floor reads `[ZU.Engine] VRAM tier: 12.0 GB
+-> no texture floor (full resolution)`; the shadow note only when the atlas was lowered; a forced floor says `, forced
+by -zu-texfloor=N` in place of the disable hint.
+
+**The settings hook** (`SettingsApply.Apply`, the settings owner; in place of the plain mipmap-limit write). The
+player's texture setting sits on top of the floor, and an explicit top choice ignores it:
+
+```csharp
+QualitySettings.globalTextureMipmapLimit = v.textures == "ultra" ? 0 : Mathf.Max(v.textures == "low" ? 2 : v.textures == "medium" ? 1 : 0, Perf.TextureMipFloor);
+```
+
+`Perf.TextureFloorNote` (`"2K on this card"` / `"1K on this card"` / null) labels the Options row.
+
+**To measure** (RTX 3050 6 GB, ULTRA, 1280x720, the same map and roster; `-zu-texfloor=0` vs the default): peak VRAM
+on match load (was 5.6-5.8 GB; expected about 2.6-2.9 GB with the textures at a quarter plus the atlas at a quarter),
+the held figure in an AI-vs-AI match (was 5.1-5.2 GB), the load time, and the Hero Viewer close-ups for softness.
 
 #### The sharpen pass (`SharpenPass`, `Resources/ZUEngine/Sharpen.shader`)
 
@@ -197,6 +262,17 @@ HardwareProfile HardwareProfile.Current        // taken on first access (main th
 enum Tier { Low, Mid, High }; Tier tier        // Low: VRAM < 3 GB or RAM < 8 GB or < 4 cores; High: >= 8 GB VRAM, >= 16 GB RAM, >= 8 cores
 string gpuName, gpuVendor, cpuType, os;  GraphicsDeviceType api;  int vramMB, shaderLevel, cores, cpuMHz, ramMB;  bool compute, frameTiming;  float refreshHz
 string Summary()                               // one log line
+```
+
+### `VramBudget` (static)
+
+```csharp
+int    VramBudget.TextureMipFloor      // the floor as applied (the switch's value when forced); = Perf.TextureMipFloor
+int    VramBudget.TierFloor            // what the VRAM / tier rule computed before the switch
+bool   VramBudget.Forced               // -zu-texfloor was given
+string VramBudget.TextureFloorNote     // = Perf.TextureFloorNote
+int    VramBudget.ShadowAtlasFrom, ShadowAtlasTo   // the main-light atlas as this process lowered it (-1, -1 when it did not)
+int    VramBudget.FullVramMB = 7680, HalfVramMB = 4608;  const int SHADOW_ATLAS_FLOOR = 2048
 ```
 
 ### `MemoryWatch` (static)
@@ -313,6 +389,7 @@ The Governor's lodBias ladder (1 -> 0.6) moves these thresholds together; it nev
 |---|---|
 | `-zu-engine=0` (command line) | `Perf.Enabled = false`: `FrameDt = Time.deltaTime`, no quantizing, a plain vsync-or-target cap, no dynamic resolution, no Governor, no animation LOD (every view every frame, the TS `anim.enabled = this.on`). The web `?engine=0`, for A/B checks. The sharpen pass still runs (a setting). |
 | `-zu-governor=0` | `Governor.Enabled = false`: no ladder, no memory actions; the readouts still run. |
+| `-zu-texfloor=N` (0, 1, 2) | forces the VRAM tier's texture mipmap floor; `0` = off = full-resolution textures and the 4096 atlas (the before / after A/B switch). Independent of `-zu-engine`. |
 | `Perf.AllowAssetWrites` | default `!Application.isEditor`. In the Editor the URP asset is the project's file on disk, so renderScale / upscaler writes are skipped unless a test opts in. |
 
 ## Editor verification checklist
@@ -340,6 +417,7 @@ Nothing here has run inside the Editor yet (the compile check is the asmdef-boun
 - [ ] `ProfilerRecorder` memory counters may be invalid in release players (`MemoryWatch` then shows -1 for the Unity figures; the kernel32 machine figures still drive the pressure).
 - [ ] `MemoryWatch.Pressure` thresholds on this 32 GB PC: Elevated at < 3 GB free; verify one `Resources.UnloadUnusedAssets` after 5 s (log `[ZU.Engine]` LastAction on the HUD) and no hitch worth noticing.
 - [ ] Critical back-off: with the RAM squeezed by other processes (open a second Editor / Chrome tabs until < 1.5 GB free), the warnings read "next in 20 s", then 40, 80, 160 s with "last unload freed <128 MB"; back to 20 s once the pressure drops to None. `SystemUsedMB` must be valid for the check (else `TotalUsedMB`; both -1 = the interval never adapts).
+- [ ] VRAM tier on the RTX 3050 6 GB: the start-up log reads `[ZU.Engine] VRAM tier: 6.0 GB -> texture floor 1 (4K -> 2K), -zu-texfloor=0 to disable` (plus `, main-light shadows 4096 -> 2048` in a player only); `QualitySettings.globalTextureMipmapLimit` reads 1 from the first frame (the Options "high" preset included), `ultra` sets it back to 0; peak VRAM on match load against the 5.6-5.8 GB baseline (`-zu-texfloor=0`) in Task Manager / the memory profiler's Gfx figure; a second Play logs the line once more but does not re-lower an atlas already at 2048.
 - [ ] Start-up log line `[ZU.Engine] Mid | NVIDIA GeForce RTX ... | ... | RAM ...` appears once per play session (no domain reload: statics persist - check a second Play does not log twice or double-boot `PerfDriver`).
 - [ ] **Enter Play Mode without domain reload** (the lead's Editor: domain + scene reload off). The statics survive between plays while `Time.unscaledTime` restarts at 0, so `Perf.ResetRun` runs from a `SubsystemRegistration` hook on every play (and `Perf.Frame` runs it itself if its clock ever goes backwards): it unsubscribes the old play's handlers (`endContextRendering`, `beginCameraRendering`, `Application.quitting` x2) and resets Perf (cap / scale / sharpen state, `capSet` false - SettingsApply sets the cap again), `FramePacer` (stamps, debt, cadence; the refresh estimate stays), `FrameTimer`, `DynamicResolution` (scale 1, all clocks), `Governor` (base lodBias + tierScale 1 restored if still applied, ladder / memory clocks, `PressureChanged` cleared), `MemoryWatch` (counters stopped, sample clock), `AnimBudget.Shared`, `SharpenPass` (hook, slider 0; material kept) and `PerfDriver.inst` (the driver is no longer DontSave: play exit destroys it). A second Play must show `World.time` advancing and `FrameDt > 0` from the first frames (the very first frame of a run is 0), `dyn` 1.00 with the 3 s warm-up, and the Governor / memory actions responding on the new play's clock. A built player starts fresh: the reset is a no-op there.
 
