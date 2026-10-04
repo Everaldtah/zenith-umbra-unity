@@ -43,6 +43,8 @@ namespace ZU.Game
             m = TsMaterial(kind);
             if (m == null) m = EnvKit.Surface(map, kind);
             if (m == null) m = Resources.Load<Material>("ZUEnv/common_" + kind);
+            // the PC game's own painting wherever the material has no albedo (training grid, facades, trim, maps with no set)
+            m = EnvKit.Paint(map, kind, m);
             if (m == null && kind == "water") m = Resources.Load<Material>("ZUEnv/water");
             if (m == null)
             {
