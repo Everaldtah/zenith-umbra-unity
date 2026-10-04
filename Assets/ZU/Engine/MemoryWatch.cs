@@ -88,6 +88,15 @@ namespace ZU.Engine
             LastSampleTime = -1;           // (the Editor keeps statics across play sessions without a domain reload: start afresh)
         }
 
+        /// <summary>a new run (Perf.ResetRun: play mode without a domain reload): Stop (counters, the quitting handler, the
+        /// sample clock - Time.unscaledTime restarts at 0) and forget the readouts; the next Sample starts again</summary>
+        internal static void ResetRun()
+        {
+            Stop();
+            AvailMB = TotalMB = LoadPct = -1;
+            pressure = Pressure.None;
+        }
+
         // a counter a release player doesn't carry reads as invalid (or 0 before its first frame): -1 says "unknown" to the HUD
         static long Read(ProfilerRecorder r) => r.Valid && r.CurrentValue > 0 ? r.CurrentValue >> 20 : -1;
 

@@ -30,6 +30,11 @@ namespace ZU.Engine
         /// <summary>settings applied: start over from this scale (the load history described another resolution)</summary>
         public void Reset(double scale) { Scale = scale; ema = -1; over = 0; }
 
+        /// <summary>a new run (play mode without a domain reload: the ms clock restarts at 0 while this object survives): back
+        /// to scale 1 with every clock forgotten, so the old play's holdUntil / lastCall / lastChange can't stall this one. The
+        /// configuration (Min, Max, Headroom, Warmup) stays; the next Update starts the normal warm-up.</summary>
+        internal void ResetRun() { Scale = 1; ema = -1; over = 0; lastChange = 0; lastCall = double.NegativeInfinity; holdUntil = 0; }
+
         /// <param name="now">ms clock</param>
         /// <param name="gpuMs">measured GPU time of the last frames (-1 = unknown)</param>
         /// <param name="cpuMs">CPU time the frame's own work took (main thread)</param>
