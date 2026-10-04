@@ -107,6 +107,9 @@ namespace ZU.Game.Fx
             var rot = size.y >= size.x && size.y >= size.z ? Matrix4x4.identity
                 : size.x >= size.z ? Matrix4x4.Rotate(Quaternion.AngleAxis(90, Vector3.forward)) : Matrix4x4.Rotate(Quaternion.AngleAxis(-90, Vector3.right));
             p.Normalise(Matrix4x4.Scale(Vector3.one / Mathf.Max(1e-4f, h)) * rot * Matrix4x4.Translate(-p.bounds.center));
+            // tip up: the Tripo exports don't agree on which end is up (the giant arrow came tip-down), so the narrower end
+            // of the long axis - the point - is turned to +Y
+            if (TipDown(p)) p.Normalise(Matrix4x4.Rotate(Quaternion.AngleAxis(180, Vector3.right)));
             foreach (var part in p.parts)
             {
                 var m = AbilityKit.Lit();
@@ -118,6 +121,23 @@ namespace ZU.Game.Fx
                 list.Add(new Pool(part.mesh, m, part.pre));
             }
             return list;
+        }
+
+        /// <summary>true when the stood-up prop (long axis +Y, centred, length 1) is wider at its top 6% than at its bottom 6%:
+        /// the point is at the bottom. Unreadable meshes (a player build without Read/Write) are left as they are.</summary>
+        static bool TipDown(PropParts p)
+        {
+            float top = 0, bottom = 0;
+            foreach (var part in p.parts)
+            {
+                if (part.mesh == null || !part.mesh.isReadable) continue;
+                foreach (var v in part.mesh.vertices)
+                {
+                    var q = part.pre.MultiplyPoint3x4(v); float w = Mathf.Max(Mathf.Abs(q.x), Mathf.Abs(q.z));
+                    if (q.y > 0.44f) top = Mathf.Max(top, w); else if (q.y < -0.44f) bottom = Mathf.Max(bottom, w);
+                }
+            }
+            return top > bottom * 1.15f;
         }
 
         /// <summary>a small arrow, 1 long along +Y, centred: a flat leaf head, a thin shaft, two crossed fins (~50 tris)</summary>
