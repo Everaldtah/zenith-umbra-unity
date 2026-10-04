@@ -56,6 +56,7 @@ namespace ZU.Game.UI.Toolkit
             else if (to == "find" && MenuState.Queue != null) m.FindMatch();
             else if (to == "campaign") m.Campaign();
             else if (to.StartsWith("viewer:")) m.Viewer(to.Substring(7));
+            else if (to == "career") { m.Title(); m.Career_(); }               // back from a highlight's replay
             else if (to == "online" || to == "online-queue") OnlineView.Return(m, to);
             else m.Title();
             // started from a Zenith.net launcher party: once per run, straight to Starfall co-op online (TS Menu.partyCoop)
@@ -63,6 +64,18 @@ namespace ZU.Game.UI.Toolkit
             return m;
         }
         static bool partyStarted;
+
+        /// <summary>a highlight's replay ended (Highlights.Watch's done): Career > History again - on the menu that is up, or on
+        /// the next one to open</summary>
+        public static void BackToCareer()
+        {
+            if (current != null && current.root.panel != null)
+            {
+                MenuState.ReturnTo = "title";
+                if (CareerView.Current == null) { current.Title(); current.Career_(); }
+            }
+            else MenuState.ReturnTo = "career";
+        }
         /// <summary>a new play session starts clean (the Editor keeps statics across play sessions without a domain reload)</summary>
         [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { partyStarted = false; }

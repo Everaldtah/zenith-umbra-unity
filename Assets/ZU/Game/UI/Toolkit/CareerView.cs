@@ -1,7 +1,8 @@
 // CAREER PROFILE (src/client/CareerUI.ts), laid out after Overwatch 2's: OVERVIEW (time played, time per mode and role,
 // Top Heroes with the Hero Comparison dropdown), STATISTICS (Total / Avg per 10 min / Best tables for a mode and a
 // hero), HERO RATINGS (Season 18's Hero Skill Rating per hero, per ranked queue), PROGRESSION (hero levels) and
-// HISTORY. The numbers are Career/Profile.cs's.
+// HISTORY (with the HIGHLIGHTS row: the best play of every match, as Overwatch keeps them). The numbers are
+// Career/Profile.cs's; the clips are ZU.Game.Highlights'.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -307,6 +308,7 @@ namespace ZU.Game.UI.Toolkit
         // ------------------------------------------------------------------ HISTORY
         void History(VisualElement b)
         {
+            HighlightsRow(b);
             var rows = Enumerable.Reverse(p.matches).Take(40).ToList();
             var t = U.Div("ctable hist2", b);
             var hr = U.Div("ctr th", t);
@@ -326,6 +328,117 @@ namespace ZU.Game.UI.Toolkit
                 U.Txt(Int(m.damage), "ctd", tr); U.Txt(Int(m.healing), "ctd", tr); U.Txt($"{m.acc:0}%", "ctd", tr);
                 U.Txt(m.sr.HasValue ? $"{Int(m.sr.Value)} <color={((m.srDelta ?? 0) >= 0 ? "#7dff9a" : "#ff6b81")}>{((m.srDelta ?? 0) >= 0 ? "+" : "")}{m.srDelta ?? 0:0}</color>" : "-", "ctd", tr);
             }
+        }
+
+        // ------------------------------------------------------------------ HIGHLIGHTS (History tab)
+        // Overwatch's highlights row: the newest first, 12 at a time, each card the hero, what the play was (PLAY OF THE
+        // GAME in gold, or HIGH SCORE / LIFESAVER / SHARPSHOOTER / SHUTDOWN), the summary, map, mode, date and length,
+        // and WATCH / SAVE VIDEO / DELETE. The video quality is one stepper for the row; a save in progress shows its bar,
+        // then the file and OPEN FOLDER.
+        static readonly (int h, string label)[] QUALITY = { (1080, "1080P"), (1440, "1440P"), (2160, "4K") };
+        static int quality = 1080, shown = 12;
+        static string deleteArmed;                       // the clip whose DELETE asks for a second click
+
+        void HighlightsRow(VisualElement b)
+        {
+            var box = U.Div("hl", b);
+            var head = U.Div("hl-head", box);
+            U.Txt("HIGHLIGHTS", "hl-h3", head);
+            U.Txt("Your best play of every match", "hl-sub", head);
+            var q = U.Div("hl-q", head);
+            U.Txt("VIDEO", "hl-ql", q);
+            int qi = Math.Max(0, Array.FindIndex(QUALITY, x => x.h == quality));
+            U.Btn("◄", "hl-step", () => { quality = QUALITY[(qi + QUALITY.Length - 1) % QUALITY.Length].h; Render(); }, q);
+            U.Txt(QUALITY[qi].label, "hl-qv", q);
+            U.Btn("►", "hl-step", () => { quality = QUALITY[(qi + 1) % QUALITY.Length].h; Render(); }, q);
+
+            var status = U.Div("hl-status", box);
+            void Status()
+            {
+                status.Clear();
+                if (Highlights.Exporting)
+                {
+                    U.Txt($"SAVING VIDEO · {Math.Round(Highlights.ExportProgress * 100):0}%", "hl-st", status);
+                    var bar = U.Div("hl-pbar", status); var fill = U.Div("hl-pfill", bar);
+                    fill.style.width = new Length(Mathf.Clamp01((float)Highlights.ExportProgress) * 100f, LengthUnit.Percent);
+                }
+                else if (!string.IsNullOrEmpty(Highlights.LastExportError)) U.Txt("Couldn't save the video: " + Highlights.LastExportError, "hl-st bad", status);
+                else if (!string.IsNullOrEmpty(Highlights.LastExportPath))
+                {
+                    U.Txt("Saved: " + Highlights.LastExportPath, "hl-st ok", status);
+                    U.Btn("OPEN FOLDER", "hl-btn", () => Highlights.OpenFolder(), status);
+                }
+                U.Show(status, status.childCount > 0);
+            }
+            Status();
+            // the save runs while the screen is up: the bar follows it, and the row re-renders once it ends (SAVE VIDEO back on)
+            bool wasExporting = Highlights.Exporting;
+            status.schedule.Execute(() =>
+            {
+                bool now = Highlights.Exporting;
+                if (now) Status();
+                else if (wasExporting) { wasExporting = false; Render(); return; }
+                wasExporting = now;
+            }).Every(250);
+
+            var list = Highlights.List()?.OrderByDescending(h => h.at).ToList() ?? new List<HighlightInfo>();
+            if (list.Count == 0) { U.Txt("No highlights yet - your best play of every match is kept here.", "empty hl-empty", box); return; }
+            var sv = new ScrollView(ScrollViewMode.Horizontal); sv.AddToClassList("hl-scroll"); box.Add(sv);
+            var row = sv.contentContainer; row.AddToClassList("hl-row");
+            foreach (var h in list.Take(shown)) Card(row, h);
+            if (list.Count > shown) U.Btn($"{list.Count - shown} MORE", "hl-more", () => { shown += 12; Render(); }, row);
+        }
+
+        void Card(VisualElement row, HighlightInfo h)
+        {
+            var c = U.Div("hl-card" + (h.potg ? " potg" : ""), row);
+            var thumb = U.Pic("portrait_" + h.heroId, "hl-thumb", c);
+            U.Txt(CatLabel(h), "hl-cat", thumb);
+            U.Txt(CareerProfile.FmtTime(h.seconds), "hl-len", thumb);
+            var info = U.Div("hl-info", c);
+            U.Txt(string.IsNullOrEmpty(h.heroName) ? Nm(h.heroId) : h.heroName, "hl-hero", info).style.color = Col(h.heroId);
+            U.Txt(h.summary ?? "", "hl-sum", info);
+            string map = d.Map.TryGetValue(h.map ?? "", out var md) ? md.name : h.map;
+            string mode = CareerProfile.MODE_LABEL.TryGetValue(h.mode ?? "", out var ml) ? ml : h.mode;
+            U.Txt($"{map} · {mode}", "hl-meta", info);
+            var at = DateTimeOffset.FromUnixTimeMilliseconds(h.at).ToLocalTime();
+            U.Txt(at.ToString("d", CultureInfo.CurrentCulture) + " " + at.ToString("HH:mm", CultureInfo.InvariantCulture), "hl-date", info);
+            var btns = U.Div("hl-btns", c);
+            U.Btn("WATCH", "primary hl-btn", () => Watch(h), btns);
+            var save = U.Btn("SAVE VIDEO", "hl-btn", () => { Highlights.Export(h, quality); Render(); }, btns);
+            save.SetEnabled(!Highlights.Exporting);
+            save.tooltip = $"Save the clip as a {QUALITY.First(x => x.h == quality).label} video in {Highlights.Folder}";
+            bool armed = deleteArmed == h.path;
+            var del = U.Btn(armed ? "CONFIRM?" : "DELETE", "hl-btn hl-del" + (armed ? " armed" : ""), () =>
+            {
+                if (deleteArmed == h.path) { deleteArmed = null; Highlights.Delete(h); }
+                else deleteArmed = h.path;
+                Render();
+            }, btns);
+            if (armed) del.schedule.Execute(() => { if (deleteArmed == h.path) { deleteArmed = null; Render(); } }).StartingIn(3000);
+        }
+
+        static string CatLabel(HighlightInfo h)
+        {
+            if (h.potg) return "PLAY OF THE GAME";
+            string k = (h.category ?? "").Replace("_", " ").Replace("-", " ").Trim();
+            switch (k.Replace(" ", "").ToLowerInvariant())
+            {
+                case "highscore": return "HIGH SCORE";
+                case "lifesaver": return "LIFESAVER";
+                case "sharpshooter": return "SHARPSHOOTER";
+                case "shutdown": return "SHUTDOWN";
+                case "playofthegame": case "potg": return "PLAY OF THE GAME";
+                default: return k.ToUpperInvariant();
+            }
+        }
+
+        /// <summary>WATCH leaves the menu for the clip's replay; the menu comes back on Career > History</summary>
+        void Watch(HighlightInfo h)
+        {
+            tab = "history";
+            MenuState.ReturnTo = "career";
+            Highlights.Watch(h, MenuView.BackToCareer);
         }
     }
 }
