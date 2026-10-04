@@ -225,9 +225,12 @@ namespace ZU.Game
                 if (rt != null) { rt.Release(); Destroy(rt); }
                 if (tex != null) Destroy(tex);
                 Exporting = false; Watching = false;
-                var d = done; done = null;
+                // back to where the highlight was opened: the caller's route (Career > History), then the menu scene if the
+                // replay's match scene is still up. A saved video has no caller waiting: it returns to Career > History too.
+                var d = done ?? UI.Toolkit.MenuView.BackToCareer; done = null;
                 Destroy(gameObject);
                 d?.Invoke();
+                if (FindFirstObjectByType<MatchRunner>() != null) UI.MatchSettings.BackToMenu();
             }
 
             void OnGUI()
