@@ -199,7 +199,11 @@ namespace ZU.Game.UI.Toolkit
             Slider("Image Sharpening", () => v.sharpen, x => v.sharpen = x, 0, 100, 1, x => $"{x:0}");
             Head("GRAPHICS QUALITY");
             Select("Graphics Quality", () => v.quality, x => { if (x != "custom") ZuSettings.ApplyPreset(s, x); }, new[] { ("low", "LOW"), ("medium", "MEDIUM"), ("high", "HIGH"), ("ultra", "ULTRA"), ("custom", "CUSTOM") }, "Sets every detail option below; changing any of them makes it CUSTOM.", true);
-            Select("Texture Quality", () => v.textures, x => { v.textures = x; Custom(); }, Lv("low", "medium", "high"), "Applies to the next map loaded.");
+            // the card's VRAM floor is shown, not hidden: a level it lowers reads "HIGH (2K ON THIS CARD)"; ULTRA (full 4K) is
+            // the opt-out, which no preset picks
+            string TexLabel(string x) => x == "ultra" ? "ULTRA (FULL 4K)" : x.ToUpperInvariant() + (ZU.Engine.Perf.TextureFloorNote != null && ZU.Engine.Perf.TextureMipFloor > SettingsApply.TexLevel(x) ? $" ({ZU.Engine.Perf.TextureFloorNote.ToUpperInvariant()})" : "");
+            Select("Texture Quality", () => v.textures, x => { v.textures = x; Custom(); }, new[] { "low", "medium", "high", "ultra" }.Select(x => (x, TexLabel(x))).ToArray(),
+                "Applies to the next map loaded. ULTRA: full-resolution textures; on cards under 8 GB this can run out of video memory with other apps open.");
             Select("Texture Filtering Quality", () => v.texFilter, x => { v.texFilter = x; Custom(); }, new[] { (1.0, "LOW - 1X"), (2.0, "MEDIUM - 2X"), (4.0, "HIGH - 4X"), (8.0, "HIGH - 8X"), (16.0, "EPIC - 16X") });
             Select("Fog Detail", () => v.fog, x => { v.fog = x; Custom(); }, Lv("low", "medium", "high"));
             Select("Dynamic Reflections", () => v.reflections, x => { v.reflections = x; Custom(); }, Lv("off", "low", "medium", "high", "ultra"));

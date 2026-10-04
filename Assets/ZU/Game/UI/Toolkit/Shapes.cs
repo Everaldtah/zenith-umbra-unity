@@ -157,17 +157,32 @@ namespace ZU.Game.UI.Toolkit
             FillPoly(p, box, Fill);
             float sum = h + a + s, k = sum > 1 ? 1 / sum : 1, x = 1;          // 1px inside the border
             float inner = W - 2;
-            void Seg(float frac, Color top, Color bottom)
+            // the segments are one mesh with the vertical gradient in the vertex colours, not painter fills: under the
+            // Stadium Armory's veil the armour segment's painter fill came out pure black in 0.2.2 (QA), while the
+            // vertex-coloured fills in the panel blend right
+            int segs = (h > 0 ? 1 : 0) + (a > 0 ? 1 : 0) + (s > 0 ? 1 : 0);
+            if (segs > 0)
             {
-                if (frac <= 0) return;
-                float x1 = x + frac * k * inner;
-                var q = new[] { Sk(x, 1, H), Sk(x1, 1, H), Sk(x1, H - 1, H), Sk(x, H - 1, H) };
-                if (top == bottom) FillPoly(p, q, top); else FillPolyV(p, q, top, bottom, 1, H - 1);
-                x = x1;
+                var md = mgc.Allocate(4 * segs, 6 * segs);
+                int v = 0;
+                void Seg(float frac, Color top, Color bottom)
+                {
+                    if (frac <= 0) return;
+                    float x1 = x + frac * k * inner;
+                    // clockwise from the top left
+                    Vector2 q0 = Sk(x, 1, H), q1 = Sk(x1, 1, H), q2 = Sk(x1, H - 1, H), q3 = Sk(x, H - 1, H);
+                    md.SetNextVertex(new Vertex { position = new Vector3(q0.x, q0.y, Vertex.nearZ), tint = top });
+                    md.SetNextVertex(new Vertex { position = new Vector3(q1.x, q1.y, Vertex.nearZ), tint = top });
+                    md.SetNextVertex(new Vertex { position = new Vector3(q2.x, q2.y, Vertex.nearZ), tint = bottom });
+                    md.SetNextVertex(new Vertex { position = new Vector3(q3.x, q3.y, Vertex.nearZ), tint = bottom });
+                    md.SetNextIndex((ushort)v); md.SetNextIndex((ushort)(v + 1)); md.SetNextIndex((ushort)(v + 2));
+                    md.SetNextIndex((ushort)v); md.SetNextIndex((ushort)(v + 2)); md.SetNextIndex((ushort)(v + 3));
+                    v += 4; x = x1;
+                }
+                Seg(h, Color.white, new Color32(0xcf, 0xe8, 0xff, 0xff));
+                Seg(a, new Color32(0xff, 0xb3, 0x47, 0xff), new Color32(0xff, 0xb3, 0x47, 0xff));
+                Seg(s, new Color32(0x7f, 0xd3, 0xff, 0xff), new Color32(0x7f, 0xd3, 0xff, 0xff));
             }
-            Seg(h, Color.white, new Color32(0xcf, 0xe8, 0xff, 0xff));
-            Seg(a, new Color32(0xff, 0xb3, 0x47, 0xff), new Color32(0xff, 0xb3, 0x47, 0xff));
-            Seg(s, new Color32(0x7f, 0xd3, 0xff, 0xff), new Color32(0x7f, 0xd3, 0xff, 0xff));
             StrokeEdges(p, box);
         }
     }
@@ -300,37 +315,53 @@ namespace ZU.Game.UI.Toolkit
         }
     }
 
-    /// <summary>.hud.hurt: box-shadow inset 0 0 120px rgba(255,30,60,.45) - four edge gradients</summary>
+    /// <summary>.hud.hurt: box-shadow inset 0 0 120px rgba(255,30,60,.45)</summary>
     public sealed class Vignette : VisualElement
     {
         public Color color = new Color(1, 30 / 255f, 60 / 255f, 0.45f);
         public float size = 120;
         public Vignette() { pickingMode = PickingMode.Ignore; generateVisualContent += Draw; }
-        // Four strips along the edges, the colour at the screen edge fading to clear over `size` pixels. Drawn as a mesh
-        // with per-vertex colours, not with painter2D.fillGradient: a painter gradient loses its alpha when the panel
-        // renders in gamma space (UiGamma), and the fade came out as a solid red frame on every hit in 0.2.2. Vertex
-        // colours with alpha are what every translucent solid fill in the panel already uses.
+        // A mesh of nested frames with the alpha in the vertex colours (a painter2D fillGradient loses its alpha in the gamma
+        // panel - the solid red frame of 0.2.2). The frames follow the CSS shadow's falloff: an inset blur of 120px is a
+        // Gaussian with sigma 60 across the edge, so at depth d the glow is colour.a * erfc(d / (sigma * sqrt 2)) / 2 - half
+        // strength at the edge, ~3 % of it one blur radius in - and the corners are mitered, not two strips on top of each other.
+        const int RINGS = 12;
         void Draw(MeshGenerationContext mgc)
         {
             var r = contentRect; float W = r.width, H = r.height;
             if (W <= 0 || H <= 0 || color.a <= 0) return;
-            float s = Mathf.Min(size, H / 2);
-            Color32 edge = color, clear = U.A(color, 0);
-            var mesh = mgc.Allocate(16, 24);
-            // each strip: two vertices on the screen edge (colour), two `s` pixels inside (clear), clockwise from the top-left
-            void Strip(Vector2 a, Vector2 b, Vector2 c, Vector2 d, bool aEdge, bool bEdge, bool cEdge, bool dEdge, int baseIndex)
+            float sigma = size * 0.5f, reach = Mathf.Min(size * 1.5f, Mathf.Min(W, H) * 0.5f);
+            var md = mgc.Allocate(4 * (RINGS + 1), 24 * RINGS);
+            for (int k = 0; k <= RINGS; k++)
             {
-                mesh.SetNextVertex(new Vertex { position = new Vector3(a.x, a.y, Vertex.nearZ), tint = aEdge ? edge : clear });
-                mesh.SetNextVertex(new Vertex { position = new Vector3(b.x, b.y, Vertex.nearZ), tint = bEdge ? edge : clear });
-                mesh.SetNextVertex(new Vertex { position = new Vector3(c.x, c.y, Vertex.nearZ), tint = cEdge ? edge : clear });
-                mesh.SetNextVertex(new Vertex { position = new Vector3(d.x, d.y, Vertex.nearZ), tint = dEdge ? edge : clear });
-                mesh.SetNextIndex((ushort)baseIndex); mesh.SetNextIndex((ushort)(baseIndex + 1)); mesh.SetNextIndex((ushort)(baseIndex + 2));
-                mesh.SetNextIndex((ushort)baseIndex); mesh.SetNextIndex((ushort)(baseIndex + 2)); mesh.SetNextIndex((ushort)(baseIndex + 3));
+                float d = reach * k / RINGS;
+                float a = k == RINGS ? 0 : color.a * 0.5f * Erfc(d / (sigma * 1.41421356f));
+                var tint = new Color(color.r, color.g, color.b, a);
+                // clockwise from the top left
+                md.SetNextVertex(new Vertex { position = new Vector3(d, d, Vertex.nearZ), tint = tint });
+                md.SetNextVertex(new Vertex { position = new Vector3(W - d, d, Vertex.nearZ), tint = tint });
+                md.SetNextVertex(new Vertex { position = new Vector3(W - d, H - d, Vertex.nearZ), tint = tint });
+                md.SetNextVertex(new Vertex { position = new Vector3(d, H - d, Vertex.nearZ), tint = tint });
             }
-            Strip(new Vector2(0, 0), new Vector2(W, 0), new Vector2(W, s), new Vector2(0, s), true, true, false, false, 0);              // top
-            Strip(new Vector2(0, H - s), new Vector2(W, H - s), new Vector2(W, H), new Vector2(0, H), false, false, true, true, 4);      // bottom
-            Strip(new Vector2(0, 0), new Vector2(s, 0), new Vector2(s, H), new Vector2(0, H), true, false, false, true, 8);              // left
-            Strip(new Vector2(W - s, 0), new Vector2(W, 0), new Vector2(W, H), new Vector2(W - s, H), false, true, true, false, 12);     // right
+            for (int k = 0; k < RINGS; k++)
+            {
+                int o = 4 * k, n = o + 4;
+                for (int c = 0; c < 4; c++)
+                {
+                    int c1 = (c + 1) % 4;
+                    // the side from corner c to c1: along the outer frame, then back along the inner one
+                    md.SetNextIndex((ushort)(o + c)); md.SetNextIndex((ushort)(o + c1)); md.SetNextIndex((ushort)(n + c1));
+                    md.SetNextIndex((ushort)(o + c)); md.SetNextIndex((ushort)(n + c1)); md.SetNextIndex((ushort)(n + c));
+                }
+            }
+        }
+
+        /// <summary>the complementary error function, x >= 0 (Abramowitz and Stegun 7.1.26, error under 1.5e-7)</summary>
+        static float Erfc(float x)
+        {
+            float t = 1f / (1f + 0.3275911f * x);
+            float y = t * (0.254829592f + t * (-0.284496736f + t * (1.421413741f + t * (-1.453152027f + t * 1.061405429f))));
+            return y * Mathf.Exp(-x * x);
         }
     }
 

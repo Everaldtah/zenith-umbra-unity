@@ -234,7 +234,11 @@ namespace ZU.Game.Env
             var tm = Resources.Load<Material>("ZUEnv/terrain");
             if (tm != null) t.materialTemplate = tm;
             t.heightmapPixelError = 3; t.basemapDistance = 500; t.shadowCastingMode = ShadowCastingMode.On;
-            t.drawInstanced = true;
+            // not instanced: in the 0.2.2 player the outer terrain drew nothing at all (QA, high cameras: the town's houses
+            // stood on invisible hills over the sky colour) while the Editor drew it - the build keeps 4 of TerrainLit's
+            // vertex variants and the instanced heightmap path is the one a player can lose. The CPU patch path needs none.
+            t.drawInstanced = false;
+            Debug.Log($"[ZU] outer terrain: {res}px, {hi - lo:0} m relief, material {(t.materialTemplate != null ? t.materialTemplate.shader.name + (t.materialTemplate.shader.isSupported ? "" : " (UNSUPPORTED)") : "default")}, instanced {t.drawInstanced}");
             var col = go.GetComponent<TerrainCollider>(); if (col != null) Object.Destroy(col);   // the camera collides with the level, not the hills
         }
 

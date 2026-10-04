@@ -357,14 +357,14 @@
 .hc .hc-b { position: absolute; left: 6px; bottom: 18px; font-size: 16px; text-shadow: 0 2px 4px #000; letter-spacing: 0; }
 .hc .hc-s { position: absolute; left: 6px; bottom: 4px; font-size: 11px; opacity: 0.8; letter-spacing: 1.1px; }
 .hd { flex-direction: row; }
-/* the key art is a 3D render (864 x 1184) on a flat #282b32 backdrop; the panel stretches with the sheet (~390 x 950 px), so
-   CSS's cover cut wide heroes (Tenkai-Oh's hammer and shoulders) - contained on the render's own backdrop colour instead */
-.hd .art { width: 38%; min-height: 756px; margin-right: 24px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-size: contain; background-position-y: center; background-color: #282b32; flex-shrink: 0; }
+.hd .art { width: 38%; min-height: 756px; margin-right: 24px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-size: cover; background-position-y: top; flex-shrink: 0; }
 .hd .info { flex-grow: 1; flex-shrink: 1; }
 .hd .hd-h2 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 40px; }
 .hd .hd-sub { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 18px; color: #c9d2ff; letter-spacing: 3.6px; }
-/* the chips keep an 8 px row gap (CSS gap) and the row 10 px below in all: 8 + 2 */
-.meta { flex-direction: row; flex-wrap: wrap; margin: 10px 0 2px 0; }
+/* the chips keep an 8 px row gap (CSS gap) and the row 10 px below in all: 8 + 2. 7 px above, not 10: the subtitle-to-chip
+   gap comes out ~3 px taller in TextCore than in Chrome (measured on the hero sheet), and those 3 px pushed the sheet's last
+   line under the bottom bar */
+.meta { flex-direction: row; flex-wrap: wrap; margin: 7px 0 2px 0; }
 .meta .chip { background-color: rgba(255, 255, 255, 0.08); padding: 3px 10px; font-size: 13px; letter-spacing: 1.3px; margin: 0 8px 8px 0; }
 .meta .chip.zenith { color: #5cc8ff; }
 .meta .chip.umbra { color: #ff3b5c; }

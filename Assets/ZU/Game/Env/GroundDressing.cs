@@ -204,6 +204,8 @@ namespace ZU.Game.Env
         // ------------------------------------------------------------------------------------------------ drawing
         void Update()
         {
+            // no graphics device (-batchmode -nographics): nothing to draw, and RenderMeshInstanced throws every frame
+            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) { enabled = false; return; }
             var cam = Camera.main;
             if (cam == null) return;
             var eye = cam.transform.position;
@@ -238,7 +240,8 @@ namespace ZU.Game.Env
                     layer = gameObject.layer,
                     worldBounds = new Bounds(transform.position, Vector3.one * 2000),
                 };
-                Graphics.RenderMeshInstanced(rp, part.mesh, part.sub, tmp, n);
+                if (SystemInfo.supportsInstancing) Graphics.RenderMeshInstanced(rp, part.mesh, part.sub, tmp, n);
+                else for (int i = 0; i < n; i++) Graphics.RenderMesh(rp, part.mesh, part.sub, tmp[i]);   // a device without instancing
             }
         }
     }

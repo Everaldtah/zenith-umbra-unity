@@ -15,6 +15,9 @@ namespace ZU.Game.UI.Toolkit
         /// saved display mode</summary>
         static readonly bool screenSwitch = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-screen-fullscreen") >= 0;
 
+        /// <summary>the Texture Quality setting's own mip level (0 high, 1 medium, 2 low; ultra 0)</summary>
+        public static int TexLevel(string textures) => textures == "low" ? 2 : textures == "medium" ? 1 : 0;
+
         public static void Apply(ZuSettings s)
         {
             var v = s.video;
@@ -31,7 +34,9 @@ namespace ZU.Game.UI.Toolkit
             int af = Mathf.Clamp((int)v.texFilter, 1, 16);
             QualitySettings.anisotropicFiltering = af > 1 ? AnisotropicFiltering.ForceEnable : AnisotropicFiltering.Disable;
             Texture.SetGlobalAnisotropicFilteringLimits(af, af);
-            QualitySettings.globalTextureMipmapLimit = v.textures == "low" ? 2 : v.textures == "medium" ? 1 : 0;
+            // the card's VRAM tier sets a floor under it (ZU.Engine VramBudget: 4K -> 2K mips on 6 GB cards), shown in the
+            // Options row; ULTRA is the player's explicit opt-out - full 4K whatever the card
+            QualitySettings.globalTextureMipmapLimit = v.textures == "ultra" ? 0 : Mathf.Max(TexLevel(v.textures), Perf.TextureMipFloor);
             // the render pipeline asset (the player changes its in-memory copy; in the editor that would rewrite the
             // project's asset, so the editor keeps its own)
             if (!Application.isEditor && GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset a)
