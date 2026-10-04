@@ -158,7 +158,7 @@ namespace ZU.Game
             c.category = p.Label; c.summary = p.summary; c.score = p.score;
             c.lines = p.events.Where(e => e.text != null).Select(e => e.text).Take(8).ToArray();
             c.mine = p.actor == me;
-            c.playerName = c.mine ? "YOU" : hero.name;
+            c.playerName = c.mine ? "YOU" : ZU.Net.PlayerNames.Of(p.actor) ?? hero.name;      // (online: the username, or "Bot 3")
             s = new Slot { play = p, clip = c };
         }
 
@@ -211,7 +211,8 @@ namespace ZU.Game
                 heroName.normal.textColor = new Color(heroCol.r, heroCol.g, heroCol.b, k);
                 GUI.Label(new Rect(tx, ty + 104 * u, tw, 70 * u), hero.name.ToUpperInvariant(), heroName);
                 sub.normal.textColor = new Color(0.86f, 0.89f, 0.96f, k);
-                GUI.Label(new Rect(tx, ty + 178 * u, tw, 40 * u), (mineToo ? "YOUR PLAY  ·  " : "") + (hero.title ?? "").ToUpperInvariant(), sub);
+                string who = mineToo ? "YOUR PLAY" : potg.clip.playerName != null && potg.clip.playerName != hero.name ? potg.clip.playerName.ToUpperInvariant() : null;
+                GUI.Label(new Rect(tx, ty + 178 * u, tw, 40 * u), (who != null ? who + "  ·  " : "") + (hero.title ?? "").ToUpperInvariant(), sub);
                 // the category chip and what the play was
                 var chip = new Rect(tx, ty + 250 * u, Mathf.Min(tw, 26 * u * p.Label.Length + 50 * u), 50 * u);
                 Box(chip, new Color(gold.r, gold.g, gold.b, 0.95f * k));
