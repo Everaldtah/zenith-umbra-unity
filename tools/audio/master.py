@@ -17,7 +17,7 @@ Per clip:
   6. true-peak limit at -1 dBTP (look-ahead, the same construction as the game's MasterChain, vectorised)
   7. edges: leading silence trimmed to a 2 ms pre-roll, the tail cut once it's 70 dB down, 0.5 ms fade in / 8 ms out
 """
-import argparse, glob, json, os, subprocess, sys
+import argparse, glob, json, os, shutil, subprocess, sys
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -78,7 +78,7 @@ def merge_sr(orig, sr, xover):
     if sr.shape[1] != orig.shape[1]: sr = np.repeat(sr.mean(1, keepdims=True), orig.shape[1], 1)
     sr, lag = align(orig, sr)
     k = band_rms(orig, xover * 0.72, xover * 0.95) / band_rms(sr, xover * 0.72, xover * 0.95)
-    k = float(np.clip(k, 0.5, 2.0))
+    k = float(np.clip(k, 0.71, 1.41))      # +-3 dB: past that the band match is unreliable (little shared content)
     low = lin_lowpass(orig, xover)
     high = sr * k - lin_lowpass(sr * k, xover)
     return low + high, {"lag": lag, "hf_gain_db": round(20 * np.log10(k), 2)}
@@ -215,9 +215,12 @@ def voices(args):
         rel = os.path.relpath(p, os.path.join(BANK, "vo")).replace("\\", "/")
         if args.only and rel.split("/")[0] not in args.only.split(","): continue
         srp = os.path.join(args.sr, os.path.splitext(rel)[0] + ".wav") if args.sr else None
-        jobs.append({"src": p, "dst": None if args.dry else os.path.join(out, rel), "cat": "voice", "sr_path": srp, "fmt": "ogg"})
+        # always from the line as it shipped (once installed, the bank holds the remaster: never process twice)
+        orig = os.path.join(HERE, "out", "kaggle_in", "vo", rel)
+        jobs.append({"src": orig if os.path.exists(orig) else p, "dst": None if args.dry else os.path.join(out, rel), "cat": "voice",
+                     "sr_path": srp, "fmt": "ogg", "_bank": p})
     with ProcessPoolExecutor(args.workers) as ex:
-        reps = list(ex.map(_job, jobs, chunksize=4))
+        reps = list(ex.map(_job, [{k: v for k, v in j.items() if k != "_bank"} for j in jobs], chunksize=4))
     json.dump(reps, open(os.path.join(HERE, "out", "master_voices.json"), "w"), indent=1)
     ok = [r for r in reps if "error" not in r]
     err = [r for r in reps if "error" in r]
@@ -227,17 +230,57 @@ def voices(args):
         print(f"  M  {med('M', 'before'):.1f} -> {med('M', 'after'):.1f} LUFS   tp max {max(r['after']['tp'] for r in ok):+.2f} dBTP   "
               f"top {med('top', 'before') / 1000:.1f} -> {med('top', 'after') / 1000:.1f} kHz   with SR: {sum('lag' in r for r in ok)}")
     for r in err[:5]: print("  error", r)
+    if args.install and not args.dry:
+        # same file names (.ogg) as the bank: the clips keep their GUIDs and import settings
+        n = 0
+        for j in jobs:
+            if j["dst"] and os.path.exists(j["dst"]): shutil.copyfile(j["dst"], j["_bank"]); n += 1
+        print(f"  installed {n} remastered lines into {os.path.join(BANK, 'vo')}")
+
+
+def sfx(args):
+    """every sound effect, remastered in place: AudioSR's top above each clip's own cliff (crossover at 88% of where its
+    spectrum ends), then the category chain; same file names (.ogg) so the clips keep their GUIDs"""
+    bank = json.load(open(os.path.join(ROOT, "Assets", "ZU", "Resources", "ZUData", "sfxbank.json"), encoding="utf-8"))
+    out = os.path.join(HERE, "out", "master", "sfx")
+    jobs = []
+    for p in sorted(glob.glob(os.path.join(BANK, "sfx", "*", "*.ogg"))):
+        rel = os.path.relpath(p, os.path.join(BANK, "sfx")).replace("\\", "/").replace(os.sep, "/")
+        sid = rel.split("/")[0]
+        if args.only and sid not in args.only.split(","): continue
+        cat = bank["sfx"].get(sid, {}).get("cat", "ability")
+        orig = os.path.join(HERE, "out", "kaggle_in", "sfx", rel)
+        src = orig if os.path.exists(orig) else p
+        a, sr0 = sf.read(src, always_2d=True)
+        top = meter.bandwidth(a, sr0)["top"]
+        srp = os.path.join(args.sr, os.path.splitext(rel)[0] + ".wav") if args.sr else None
+        jobs.append({"src": src, "dst": None if args.dry else os.path.join(out, rel), "cat": cat, "sr_path": srp,
+                     "xover": max(6000.0, min(16000.0, 0.88 * top)), "fmt": "ogg", "_bank": p})
+    with ProcessPoolExecutor(args.workers) as ex:
+        reps = list(ex.map(_job, [{k: v for k, v in j.items() if k != "_bank"} for j in jobs], chunksize=4))
+    json.dump(reps, open(os.path.join(HERE, "out", "master_sfx.json"), "w"), indent=1)
+    ok = [r for r in reps if "error" not in r]
+    print(f"{len(ok)} sfx clips mastered, {len(reps) - len(ok)} errors")
+    if args.install and not args.dry:
+        n = 0
+        for j in jobs:
+            if j["dst"] and os.path.exists(j["dst"]): shutil.copyfile(j["dst"], j["_bank"]); n += 1
+        print(f"  installed {n} remastered clips into {os.path.join(BANK, 'sfx')}")
 
 
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("voices"); v.add_argument("--sr"); v.add_argument("--only"); v.add_argument("--dry", action="store_true")
+    v.add_argument("--install", action="store_true", help="copy the remastered lines over the bank's")
     v.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) // 2))
+    x = sub.add_parser("sfx"); x.add_argument("--sr"); x.add_argument("--only"); x.add_argument("--dry", action="store_true")
+    x.add_argument("--install", action="store_true"); x.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) // 2))
     f = sub.add_parser("file"); f.add_argument("src"); f.add_argument("dst"); f.add_argument("--cat", default="ability"); f.add_argument("--sr")
     f.add_argument("--xover", type=float, default=10500)
     a = ap.parse_args()
     if a.cmd == "voices": voices(a)
+    elif a.cmd == "sfx": sfx(a)
     else: print(json.dumps(master(a.src, a.dst, a.cat, a.sr, a.xover, "ogg" if a.dst.endswith(".ogg") else "wav"), indent=1))
 
 

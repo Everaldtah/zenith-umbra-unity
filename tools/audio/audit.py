@@ -27,6 +27,16 @@ OUT = os.path.join(HERE, "out")
 # docs/audio/AUDIO_STANDARD.md for why each sits where it does
 TARGET_M = {"weapon": -14, "impact": -16, "ability": -15, "move": -21, "step": -22, "feedback": -16, "loop": -20, "amb": -26, "voice": -16}
 TP_MAX = -1.0
+# one-shots are judged by the RMS of their active part (dBFS): a 400 ms loudness window under-reads short sounds
+RMS_TARGET = {"weapon": -15, "impact": -17, "ability": -16, "move": -21, "step": -22, "feedback": -17}
+
+
+def active_rms_db(a):
+    m = a if a.ndim == 1 else a.mean(1)
+    blk = 480
+    e = np.array([np.sqrt(np.mean(m[i:i + blk] ** 2)) for i in range(0, max(1, len(m) - blk), blk)]) + 1e-12
+    act = e[e > e.max() * 0.1]
+    return float(20 * np.log10(np.sqrt(np.mean(act ** 2))))
 
 
 def measure(job):
@@ -40,6 +50,7 @@ def measure(job):
          "ch": 1 if a.ndim == 1 else a.shape[1], "dur": round(len(a) / sr, 3)}
     r.update(meter.loudness(a, sr))
     r["tp"] = round(meter.true_peak(a), 2)
+    r["rms"] = round(active_rms_db(a), 2)
     r["peak"] = round(meter.sample_peak(a), 2)
     r.update(meter.bandwidth(a, sr))
     r["hf"] = round(meter.hf_share(a, sr), 3)
@@ -56,8 +67,11 @@ def measure(job):
     if r["top"] < 15000: warns.append(f"dull<{r['top'] // 1000}k")
     if r["saturate"] > 0.004: warns.append("squashed")
     if r["hf"] > 0.3: warns.append("fizz")
-    t = TARGET_M.get(cat)
-    if t is not None and abs(r["M"] - t) > 3: warns.append(f"level{r['M'] - t:+.0f}")
+    if cat in RMS_TARGET and not loop:
+        if abs(r["rms"] - RMS_TARGET[cat]) > 3: warns.append(f"level{r['rms'] - RMS_TARGET[cat]:+.0f}")
+    else:
+        t = TARGET_M.get(cat)
+        if t is not None and abs((r["I"] if loop else r["M"]) - t) > 3: warns.append(f"level{(r['I'] if loop else r['M']) - t:+.0f}")
     r["fail"] = fails; r["warn"] = warns
     return r
 
@@ -107,6 +121,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=BANK)
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--name", default="audit", help="report name: out/<name>.json + .md (audit_after for the Sound Lab's after column)")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 4) // 2))
     args = ap.parse_args()
     if args.selftest: return selftest()
@@ -115,7 +130,7 @@ def main():
     with ProcessPoolExecutor(args.workers) as ex:
         rows = list(ex.map(measure, js, chunksize=8))
     rows = [r for r in rows if "error" not in r] + [r for r in rows if "error" in r]
-    json.dump(rows, open(os.path.join(OUT, "audit.json"), "w"), indent=1)
+    json.dump(rows, open(os.path.join(OUT, args.name + ".json"), "w"), indent=1)
     ok = [r for r in rows if "error" not in r]
     n = len(ok)
     fails = [r for r in ok if r["fail"]]
@@ -139,8 +154,8 @@ def main():
     lines += ["", "## Failing clips", "", "| clip | cat | fails | warns | M | tp | top |", "|---|---|---|---|---|---|---|"]
     for r in sorted(fails, key=lambda r: (-len(r["fail"]), r["path"]))[:200]:
         lines.append(f"| {r['path']} | {r['cat']} | {', '.join(r['fail'])} | {', '.join(r['warn'])} | {r['M']} | {r['tp']} | {r['top']} |")
-    open(os.path.join(OUT, "audit.md"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
-    print(f"failing clips: {len(fails)} -> {os.path.join(OUT, 'audit.md')}")
+    open(os.path.join(OUT, args.name + ".md"), "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    print(f"failing clips: {len(fails)} -> {os.path.join(OUT, args.name + '.md')}")
 
 
 if __name__ == "__main__":

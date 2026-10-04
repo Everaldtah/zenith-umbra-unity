@@ -430,7 +430,8 @@ namespace ZU.Game.Audio
             if (range != preset && MasterBus.Live != null) { preset = range; MasterBus.Live.Chain.SetPreset(range); }
             // warm the sound bank a few ids a frame (a clip's first Resources.Load on the main thread mid-fight is a hitch,
             // and a hitch starves the audio thread)
-            if (sfx != null && warmIds == null) { warmIds = new List<string>(); foreach (var kv in sfx) warmIds.Add(kv.Key); }
+            // (not the ambience beds: a minute of stereo each, only the current map's is ever needed - it loads on first use)
+            if (sfx != null && warmIds == null) { warmIds = new List<string>(); foreach (var kv in sfx) if ((string)kv.Value?["cat"] != "amb") warmIds.Add(kv.Key); }
             for (int i = 0; warmIds != null && warm < warmIds.Count && i < 6; i++, warm++)
             {
                 var id = warmIds[warm]; var meta = sfx[id];
