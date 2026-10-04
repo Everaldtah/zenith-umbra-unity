@@ -12,6 +12,13 @@ namespace ZU.SimTest
         static int Main(string[] args)
         {
             var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
+            // (before the data loads: the balance lab measures with the user's Yuzu multiplier at a given value)
+            {
+                int y = Array.IndexOf(args, "--yuzu");
+                if (y >= 0 && y + 1 < args.Length) UnityDivergence.YuzuPower = double.Parse(args[y + 1], System.Globalization.CultureInfo.InvariantCulture);
+                // (`-zu-balance=0` is read by Balance itself from the process's command line; neither is a command's own argument)
+                if (args.Length > 0 && args[0] != "balance") args = args.Where((x, i) => x != "-zu-balance=0" && !(y >= 0 && (i == y || i == y + 1))).ToArray();
+            }
             var data = GameData.Load(Path.Combine(root, "Assets/ZU/Resources/ZUData"));
             var cmd = args.Length > 0 ? args[0] : "smoke";
             switch (cmd)
@@ -20,7 +27,9 @@ namespace ZU.SimTest
                 case "aimatch": return AiMatch(data, args.Length > 1 ? args[1] : null, args.Length > 2 ? double.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 120);
                 case "stadium": return StadiumMatch(data, args.Length > 1 ? args[1] : "hanabi");
                 case "campaign": return Campaign(data, args.Length > 1 ? args[1] : null);
-                case "training": return Training.Run(data);
+                // (the Training Grounds checks assert the kits' own numbers - a 100-damage hit is 100: the balance table off)
+                case "training": Balance.Enabled = false; return Training.Run(data);
+                case "balance": return BalanceLab.Run(data, root, args);
                 default: Console.Error.WriteLine("unknown command " + cmd); return 2;
             }
         }

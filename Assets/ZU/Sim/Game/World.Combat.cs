@@ -40,6 +40,8 @@ namespace ZU.Sim
                 return 0;
             }
             double dmg = amount;
+            // the balance table: the attacker's power scalar (Data/Balance.cs)
+            if (src != null) dmg *= ZU.Sim.Data.Balance.Power(src);
             // Stadium: weapon / ability power
             if (src != null) dmg *= 1 + (o.kind == "ability" || o.kind == "dot" ? src.mods.ability : src.mods.weapon);
             if (src != null && src.Has("dmgamp", t)) dmg *= 1.3;
@@ -154,7 +156,7 @@ namespace ZU.Sim
         public double Heal(Actor src, Actor tgt, double amount, bool quiet = false)
         {
             if (!tgt.alive || amount <= 0 || tgt.team != src.team) return 0;
-            double amt = amount * (1 + src.mods.healing);
+            double amt = amount * (1 + src.mods.healing) * ZU.Sim.Data.Balance.Power(src);
             if (tgt.Has("antiheal", time)) amt *= 0.2;
             if (tgt.Has("healcut", time)) amt *= 1 - HEALCUT;          // hit by a damage hero in the last 2 s
             double room = tgt.def.hp - tgt.hp;
