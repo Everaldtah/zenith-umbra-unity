@@ -41,6 +41,9 @@ namespace ZU.EditorTools
             var t = (TextureImporter)assetImporter;
             string n = Path.GetFileNameWithoutExtension(assetPath).ToLowerInvariant();
             t.maxTextureSize = 4096; t.textureCompression = TextureImporterCompression.CompressedHQ; t.mipmapEnabled = true;
+            // a texture arriving with a bare .meta (guid only, from tools/metas.py) was imported as a Cubemap: Texture2D loads
+            // of it returned null and the prop materials came out with no base map or normal map (white in the fog)
+            t.textureShape = TextureImporterShape.Texture2D;
             if (n.Contains("normal")) t.textureType = TextureImporterType.NormalMap;
             else if (n.Contains("_rm") || n.Contains("rough") || n.Contains("metal") || n.EndsWith("_mask")) { t.textureType = TextureImporterType.Default; t.sRGBTexture = false; }
         }
