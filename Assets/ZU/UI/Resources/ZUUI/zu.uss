@@ -107,7 +107,7 @@
 .status { position: absolute; left: 50%; bottom: 130px; translate: -50% 0; flex-direction: row; transform-origin: center bottom; }
 .status .chip { border-width: 1px; padding: 2px 8px; margin: 0 3px; font-size: 13px; background-color: rgba(0, 0, 0, 0.5); }
 .board { position: absolute; left: 50%; top: 50%; translate: -50% -50%; background-color: rgba(10, 14, 24, 0.78); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 20px 30px; min-width: 640px; }
-.board.ow2 { min-width: 980px; padding: 18px 24px; background-color: rgba(8, 10, 18, 0.9); }
+.board.ow2 { min-width: 1080px; padding: 18px 24px; background-color: rgba(8, 10, 18, 0.9); }
 .board .h2 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 28px; -unity-text-align: upper-center; margin-bottom: 10px; }
 .board .h2.win { color: #5cffa7; }
 .board .h2.loss { color: #ff5d7a; }
@@ -118,16 +118,18 @@
 .board .tm .h3 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; margin: 10px 0 4px 0; }
 .board .tm.mine .h3 { color: #5cc8ff; }
 .board .tbl { flex-grow: 1; }
-.board .tm.mine > .h3 { margin: 0 18px 0 0; }
+/* the team table of the player's side carries "tm mine": it must not take the player panel's row layout (.board .mine below) -
+   title above its rows, like the enemy table (as a row the title took the width and the name column collapsed to one letter) */
+.board .tm.mine { flex-direction: column; align-items: stretch; margin-top: 0; padding-top: 0; border-top-width: 0; }
 .board .tm.enemy .h3 { color: #ff3b5c; }
 .board .tr { flex-direction: row; align-items: center; padding: 3px 0; }
 .board .tr.me { background-color: rgba(255, 215, 106, 0.12); }
 .board .tr.dead { opacity: 0.45; }
-.board .td { width: 58px; padding: 0 8px; font-size: 15px; -unity-text-align: middle-right; }
-.board .td.h { flex-grow: 1; width: auto; flex-direction: row; align-items: center; -unity-text-align: middle-left; }
+.board .td { width: 46px; padding: 0 5px; font-size: 15px; -unity-text-align: middle-right; flex-shrink: 0; }
+.board .td.h { flex-grow: 1; flex-shrink: 1; width: auto; min-width: 150px; flex-direction: row; align-items: center; -unity-text-align: middle-left; overflow: hidden; }
 .board .th .td { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 12px; opacity: 0.7; }
 .board .ti { width: 24px; height: 24px; margin-right: 6px; background-position-y: top; }
-.board .tn { font-size: 15px; }
+.board .tn { font-size: 15px; white-space: nowrap; }
 .board .u, .board .up { margin-left: auto; -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 11px; opacity: 0.75; padding-left: 6px; }
 .board .u { color: #ffd76a; opacity: 1; }
 .board .mine { flex-direction: row; align-items: center; margin-top: 12px; padding-top: 12px; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
