@@ -33,42 +33,77 @@ simulation is bit for bit what it was (checked after every change: `aimatch -zu-
 kills / deaths / damage / healing for every hero on all eight maps as the tree before the table). Online, both ends
 must run with the same setting.
 
-## Result of the second tune of 2026-10-04 (600 games a pass, converged in 11 passes, Yuzu x2 in the pool)
+## The shipped table (second tune of 2026-10-04), measured on 800 unseen games
 
-Win rate at equal bot skill on the same 600 unseen games, without and with the table (one hero's figure on 300-500
-games has a standard error of about 0.025):
+The table in `BalanceTable.cs` is the second tune of 2026-10-04 (600 games a pass, 11 passes, Yuzu x2 in the pool). It
+ships in 0.2.2 (rebuild), 0.2.3 and 0.2.4. Win rate at equal bot skill on the same 800 unseen games (seed 1001, 150 s a
+game), without and with the table; one hero plays 390-660 of them, so a figure has a standard error of 0.02-0.025:
 
-| hero | role | target | before | power | taken | after | |
+| hero | role | target | no table | damage dealt | damage taken | with the table | |
 |---|---|---|---|---|---|---|---|
-| Yuzu | damage | 0.60 | 0.87 | x2 (pinned) | x1.5 | 0.68 | over by 0.08: her damage is the user's x2; toughness is at its clamp |
-| Tenkai-Oh | tank | 0.60 | 0.58 | x1.129 | 1 | 0.63 | on target (within the noise) |
-| Hayate | damage | 0.60 | 0.61 | x1.132 | 1 | 0.56 | 0.04 under (the others came up around him) |
-| Raijin | damage | 0.60 | 0.30 | x1.6 | x0.5 | 0.42 | under by 0.18 with both scalars at their clamps: his bot, not his numbers |
-| Seiran | damage | 0.467 | 0.42 | x1.6 | x0.921 | 0.49 | in the band |
-| Enra | damage | 0.467 | 0.39 | x1.6 | x0.5 | 0.46 | in the band, at both clamps |
-| Kagemaru | damage | 0.467 | 0.41 | x1.6 | 1 | 0.39 | 0.06 under the band: power reached its clamp on the last passes |
-| Mirei | support | 0.467 | 0.57 | x0.85 | x1.5 | 0.53 | in the band, at both clamps |
-| Kaien | support | 0.467 | 0.47 | x0.876 | 1 | 0.52 | in the band |
-| Hex | support | 0.467 | 0.52 | x0.85 | x1.157 | 0.49 | in the band |
-| Hibiki | support | 0.467 | 0.55 | x0.85 | x1.096 | 0.48 | in the band |
-| Nocturne | support | 0.467 | 0.39 | x1.445 | 1 | 0.47 | in the band |
-| Tomoe | tank | 0.467 | 0.50 | x0.979 | 1 | 0.48 | in the band |
-| Gantetsu | tank | 0.467 | 0.55 | x0.917 | x1.11 | 0.46 | in the band |
-| Gorgoth | tank | 0.467 | 0.37 | x1.583 | 1 | 0.43 | 0.02 under the band |
+| Yuzu | damage | 0.60 | 0.87 | x2 (pinned) | x1.5 | 0.70 | over by 0.10: her damage is the user's x2 |
+| Tenkai-Oh | tank | 0.60 | 0.56 | x1.129 | 1 | 0.61 | on target |
+| Hayate | damage | 0.60 | 0.60 | x1.132 | 1 | 0.58 | on target (within the noise) |
+| Raijin | damage | 0.60 | 0.34 | x1.6 | x0.5 | 0.41 | under by 0.19 with both scalars at their clamps: his bot, not his numbers |
+| Seiran | damage | 45-55 % | 0.42 | x1.6 | x0.921 | 0.47 | in the band |
+| Enra | damage | 45-55 % | 0.40 | x1.6 | x0.5 | 0.45 | in the band, at both clamps |
+| Kagemaru | damage | 45-55 % | 0.40 | x1.6 | 1 | 0.40 | 0.05 under the band, damage at its clamp |
+| Mirei | support | 45-55 % | 0.58 | x0.85 | x1.5 | 0.60 | 0.05 over the band, at both clamps |
+| Kaien | support | 45-55 % | 0.47 | x0.876 | 1 | 0.49 | in the band |
+| Nocturne | support | 45-55 % | 0.44 | x1.445 | 1 | 0.49 | in the band |
+| Hex | support | 45-55 % | 0.48 | x0.85 | x1.157 | 0.47 | in the band |
+| Hibiki | support | 45-55 % | 0.53 | x0.85 | x1.096 | 0.45 | in the band (its lower edge) |
+| Tomoe | tank | 45-55 % | 0.46 | x0.979 | 1 | 0.48 | in the band |
+| Gantetsu | tank | 45-55 % | 0.58 | x0.917 | x1.11 | 0.47 | in the band |
+| Gorgoth | tank | 45-55 % | 0.40 | x1.583 | 1 | 0.44 | 0.01 under the band |
 
-Nine of the eleven band heroes are inside 45-55 % (six after the first tune of the day, which the 0.2.2 rebuild ships);
-Gorgoth is 0.02 under, Kagemaru 0.06. Of the four 60 % heroes Tenkai-Oh and Hayate are within 0.04, Yuzu is above
-(0.68), Raijin far below (0.42).
+Eight of the eleven band heroes are inside 45-55 % (Gorgoth 0.01 under, Kagemaru 0.05 under, Mirei 0.05 over). Of the
+four 60 % heroes Tenkai-Oh and Hayate are on target, Yuzu is above (0.70), Raijin far below (0.41). Without the table
+four of the eleven are in the band and the spread over all fifteen is 0.34-0.87; with it 0.40-0.70.
+(The same table on the 600 games of its own tune read nine of eleven; Mirei's 0.53 there and 0.60 here is the largest
+difference between the two samples.)
 
-Still to do: Raijin's and Enra's bots (they walk into melee range of a whole team and die 28-40 times per 10 minutes,
-and Raijin's ultimate asks for three enemies under open sky): with the bots fixed their x1.6 / x0.5 can come back down.
-Yuzu at x2 needs either more than x1.5 damage taken or less than x2 damage to come down to 0.60 - the user's call.
+### A third tune was run and not shipped (2026-10-04, 800 games a pass, 16 passes)
+
+It let the pinned hero's damage taken go to x2 (the shipped table stops at x1.5) and ran longer. On the same 800 games:
+
+| | shipped (tune 2) | tune 3 | tune 3 with Yuzu's taken back at x1.5 |
+|---|---|---|---|
+| band heroes inside 45-55 % | 8 of 11 | 8 of 11 | 9 of 11 |
+| Yuzu / Hayate / Tenkai-Oh / Raijin (target 0.60) | 0.70 / 0.58 / 0.61 / 0.41 | 0.68 / 0.55 / 0.60 / 0.38 | 0.72 / 0.53 / 0.58 / 0.40 |
+| outside the band | Kagemaru 0.40, Mirei 0.60, Gorgoth 0.44 | Kagemaru 0.41, Mirei 0.56, Tomoe 0.445 | Kagemaru 0.40, Mirei 0.56 |
+| sum of the misses (60 % heroes + band edges) | 0.43 | 0.40 | 0.47 |
+
+The three are the same within the noise (0.02 a hero). Tune 3 pays for its 0.03 with larger multipliers - Yuzu takes
+x2 damage instead of x1.5, Hex x1.35 instead of x1.16, Hibiki x1.27 instead of x1.10 - which a person playing those
+heroes feels in every fight, so the shipped table stays. What the run did show: **doubling the damage Yuzu takes moves
+her win rate by 0.02-0.04** (0.70-0.72 at x1.5, 0.68 at x2). She wins from range before she is reached; only her damage
+(the user's x2) brings her to 0.60. And Raijin does not move with anything: 0.38-0.41 at the clamps in all three.
+
+## What the multipliers mean for a person playing the hero
+
+The table is tuned on bots of equal skill. A bot plays some heroes badly, and the table pays for that with numbers -
+which a person who plays the hero well keeps:
+
+- **Raijin and Enra deal x1.6 and take x0.5.** Their bots walk into melee range of a whole team, die about 28 times per
+  10 minutes each, and Raijin's bot rarely finds three enemies under open sky for his ultimate; even with these numbers
+  their bots win 0.41 and 0.45. A person who picks their fights has a hero that hits 60 % harder and is twice as hard to
+  kill as in the web game: **expect both to be overpowered in players' hands.** The user's decision for 0.2.4
+  (2026-10-04): ship it so, and do not change the bots (`Sim/AI/Bot.cs`) in this release.
+- Kagemaru, Seiran (x1.6), Gorgoth (x1.58) and Nocturne (x1.45) also deal more than in the web game; Seiran takes x0.92.
+- Mirei and Yuzu take x1.5; Hex x1.16, Gantetsu x1.11, Hibiki x1.10. Mirei, Hex and Hibiki deal and heal x0.85.
+- Everything goes back to the web game's numbers with `-zu-balance=0` on the command line.
+
+The numbers-only way is used up: every hero outside its target is at a clamp (Raijin, Enra, Kagemaru, Mirei) or within
+0.01 of the band. The next step is the bots - Raijin's and Enra's approach (range, retreat, when to dive) - after which
+their x1.6 / x0.5 can come back toward 1; and Yuzu's 0.60 needs her damage under x2, which is the user's number.
 
 ## Pinned by the user: Yuzu x2
 
 "put yuzu at 2x" (2026-10-04, after x5 - 0.97 of her games won - and x3 - 0.92): Dawnshot 125 -> 250, Hundred Suns
 landings 100 -> 200 and the swarm 24 -> 48 damage a second (`UnityDivergence.YuzuPower`). The lab never moves her
-damage; it moves her toughness toward her 0.60 target.
+damage; it moves her toughness toward her 0.60 target (x1.5 taken, its clamp - and x2 would not bring her there, see
+the third tune above).
 
 ## The headless tests and the table
 
