@@ -13,6 +13,7 @@ MODEL = os.environ.get("MODEL", "speech")
 STEPS = int(os.environ.get("STEPS", "50"))
 GUIDE = float(os.environ.get("GUIDE", "3.5"))
 LIMIT = int(os.environ.get("LIMIT", "0"))          # a probe: this many files spread over the set (0 = all)
+ONLY = [x for x in os.environ.get("ONLY", "").split(",") if x]   # re-render just these relative paths
 OUT = "/kaggle/working/sr"
 
 
@@ -49,8 +50,15 @@ for i, (src, rel) in enumerate(mine):
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     t0 = time.time()
     try:
-        # AudioSR reads the file itself (any rate) and returns (1, 1, N) at 48 kHz, padded to its window
-        w = audiosr.super_resolution(model, src, seed=42, guidance_scale=guide, ddim_steps=steps, latent_t_per_second=12.8)
+        # AudioSR reads the file itself (any rate) and returns (1, 1, N) at 48 kHz. Some lengths trip a tensor-size
+        # mismatch inside it (64 vs 63 frames): the input goes in padded with silence to whole 2.56 s windows, the
+        # output is trimmed back below
+        a0, sr0 = sf.read(src)
+        win = int(sr0 * 2.56)
+        pad = (-len(a0)) % win
+        tmp = f"/tmp/pad_{shard}.wav"
+        sf.write(tmp, np.concatenate([a0, np.zeros((pad,) + a0.shape[1:])]) if pad else a0, sr0)
+        w = audiosr.super_resolution(model, tmp, seed=42, guidance_scale=guide, ddim_steps=steps, latent_t_per_second=12.8)
         w = np.asarray(w).reshape(-1).astype(np.float32)
         a, sr = sf.read(src)
         n48 = int(round(len(a) * 48000 / sr))
@@ -83,6 +91,7 @@ try:
                 files.append((p, rel))
     files = sorted({rel: (p, rel) for p, rel in files}.values(), key=lambda x: x[1])      # a zip and its unpacked copy: once
     if LIMIT: files = [files[int(i * len(files) / LIMIT)] for i in range(LIMIT)]
+    if ONLY: files = [f for f in files if f[1] in ONLY]
     os.makedirs(OUT, exist_ok=True)
     json.dump(files, open("/tmp/files.json", "w"))
     open("/tmp/worker.py", "w").write(WORKER)

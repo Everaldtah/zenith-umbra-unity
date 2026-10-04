@@ -62,7 +62,8 @@ def main():
     if remastered:
         for p in remastered:
             rel = os.path.relpath(p, os.path.join(TOOLS, "out", "master", "vo")).replace(os.sep, "/")
-            pairs.append((rel, os.path.join(BANK, "vo", rel), p))
+            orig = os.path.join(TOOLS, "out", "kaggle_in", "vo", rel)          # the line as it shipped (the bank may hold the remaster now)
+            pairs.append((rel, orig if os.path.exists(orig) else os.path.join(BANK, "vo", rel), p))
     else:
         for p in sorted(glob.glob(os.path.join(TOOLS, "out", "probe", "*.orig.wav"))):
             name = os.path.basename(p)[:-9]
@@ -103,6 +104,7 @@ def main():
     for name in ("audit", "audit_after"):
         p = os.path.join(TOOLS, "out", f"{name}.json")
         if os.path.exists(p): data["audit"][name] = summary(json.load(open(p)))
+    data["stressBytes"] = sum(os.path.getsize(os.path.join(OUT, p)) for p in data["stress"])
     json.dump(data, open(os.path.join(OUT, "data.json"), "w"), separators=(",", ":"))
     size = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(OUT) for f in fs)
     print(f"lab: {len(data['stress'])} stress clips, {len(data['voices'])} voice pairs, {len(data['sfx'])} sfx -> {OUT} ({size / 1e6:.1f} MB)")

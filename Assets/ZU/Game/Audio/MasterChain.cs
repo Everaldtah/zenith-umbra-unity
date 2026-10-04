@@ -28,12 +28,18 @@ namespace ZU.Game.Audio
         /// <summary>gain after the glue (the master volume rides on AudioListener.volume, before this chain)</summary>
         public float MakeupDb = 0f;
 
-        /// <summary>mix presets (Settings > Sound > mix): default, headphones and speakers share the default dynamics; night
-        /// narrows the range (Overwatch's "Night Mode": quiet sounds up, blasts down)</summary>
-        public void SetPreset(string mix)
+        /// <summary>Settings > Sound > Dynamic Range (ZuSettings.sound.range): "home" = home theater, the widest range (a
+        /// light glue: blasts stay big against quiet moments, for good speakers or headphones in a quiet room); "normal" = the
+        /// default; "night" = Overwatch's Night Mode (quiet sounds up, blasts down: low volume, or a noisy room). Older
+        /// callers pass the mix preset name: anything that isn't "home" or "night" is normal.</summary>
+        public void SetPreset(string range)
         {
-            if (mix == "night") { GlueThreshDb = -30f; GlueRatio = 4f; GlueKneeDb = 10f; MakeupDb = 6f; }
-            else { GlueThreshDb = -16f; GlueRatio = 2f; GlueKneeDb = 8f; MakeupDb = 0f; }
+            switch (range)
+            {
+                case "home": GlueThreshDb = -10f; GlueRatio = 1.5f; GlueKneeDb = 10f; MakeupDb = 0f; break;
+                case "night": GlueThreshDb = -30f; GlueRatio = 4f; GlueKneeDb = 10f; MakeupDb = 6f; break;
+                default: GlueThreshDb = -16f; GlueRatio = 2f; GlueKneeDb = 8f; MakeupDb = 0f; break;
+            }
         }
 
         // ------------------------------------------------------------------------------------------------ state

@@ -22,9 +22,10 @@ BANK = os.path.join(ROOT, "Assets", "ZU", "Resources", "ZUAudio")
 
 def want(rel):
     vo = rel.startswith("vo/")
+    bed = rel.startswith("sfx/amb_")          # map beds + positional ambience: long, compressed in memory, loaded on first use
     return {
-        "loadType": "0", "sampleRateSetting": "0", "compressionFormat": "1", "quality": "1", "conversionMode": "0",
-        "preloadAudioData": "0" if vo else "1", "forceToMono": "0", "normalize": "0", "loadInBackground": "1" if vo else "0",
+        "loadType": "1" if bed else "0", "sampleRateSetting": "0", "compressionFormat": "1", "quality": "1", "conversionMode": "0",
+        "preloadAudioData": "0" if vo or bed else "1", "forceToMono": "0", "normalize": "0", "loadInBackground": "1" if vo or bed else "0",
     }
 
 

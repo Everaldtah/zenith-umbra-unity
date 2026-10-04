@@ -24,18 +24,22 @@ def publish(phase, **extra):
 
 
 WORKER = r'''
-import os, sys, json, time, traceback
+import os, sys, json, math, time, traceback
 import numpy as np, torch, soundfile as sf
 from scipy.signal import resample_poly
 from stable_audio_3 import StableAudioModel
 shard, n, model_name, steps, out, jobs = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3], int(sys.argv[4]), sys.argv[5], json.load(open(sys.argv[6]))
 mine = jobs[shard::n]
-model = StableAudioModel.from_pretrained(model_name, device="cuda")
+# full precision: in fp16 (the default; a T4 has no bf16) some prompts overflow and the render comes out as flat full-scale
+# noise (the 2026-10-04 probe: chaingun / impact_glass / yuzuult_land)
+model = StableAudioModel.from_pretrained(model_name, device="cuda", model_half=os.environ.get("HALF", "0") == "1")
 done = 0
 for j in mine:
     d = os.path.join(out, j["id"]); os.makedirs(d, exist_ok=True)
-    if len([f for f in os.listdir(d) if f.endswith(".raw.wav")]) >= j["takes"]: continue
-    dur = max(1.0, float(j["secs"]) + (0.6 if not j.get("loop") else 1.0))
+    if len([f for f in os.listdir(d) if ".raw." in f]) >= j["takes"]: continue
+    # whole or half seconds only: other lengths (1.05, 1.2, 1.8 s...) render as flat noise (2026-10-04 diagnostic); and as
+    # short as the sound allows - the model fills the length it's given (a 1.5 s "footstep" is several steps)
+    dur = max(1.0, math.ceil((float(j["secs"]) + (0.4 if not j.get("loop") else 1.0)) * 2) / 2)
     try:
         left, k = j["takes"], 0
         while left > 0:
@@ -44,7 +48,13 @@ for j in mine:
             a = audio.detach().float().cpu().numpy()          # (batch, channels, samples) at 44.1 kHz
             for b in range(a.shape[0]):
                 x = resample_poly(a[b].T, 160, 147, axis=0)   # 44.1 -> 48 kHz
-                sf.write(os.path.join(d, f"{k + b}.raw.wav"), x.astype(np.float32), 48000, subtype="FLOAT")
+                # a failed render is flat noise near full scale for its whole length: its loudest 100 ms block is barely
+                # louder than its quietest (a real one-shot decays); keep it out of the pick
+                blk = [float(np.sqrt(np.mean(x[i:i + 4800] ** 2))) for i in range(0, max(1, len(x) - 4800), 4800)] or [0.0]
+                bad = max(blk) > 0.4 and min(blk) > 0.5 * max(blk) and not j.get("loop")
+                name = f"{k + b}.{'BROKEN' if bad else 'raw'}.flac"
+                if bad: print("BROKEN", j["id"], k + b, flush=True)
+                sf.write(os.path.join(d, name), np.clip(x, -1, 1).astype(np.float32), 48000, format="FLAC", subtype="PCM_24")
             left -= bs; k += bs
         done += 1
     except Exception as e:
@@ -82,6 +92,7 @@ try:
                 k = line.split()[2]
                 if k.split("/")[0].endswith("0") or k.split("/")[0] == "1": publish("progress", gpu=g, at=k, mins=round((time.time() - t0) / 60, 1))
             elif line.startswith("JOBERROR"): publish("job-error", gpu=g, line=line[:300])
+            elif line.startswith("BROKEN"): publish("broken-take", gpu=g, line=line.strip()[:120])
         p.wait()
         if p.returncode: publish("worker-error", gpu=g, code=p.returncode, tail="".join(tail)[-1500:])
 
@@ -95,7 +106,7 @@ try:
     cp = ClapProcessor.from_pretrained("laion/clap-htsat-unfused")
     made = 0
     for j in JOBS:
-        takes = sorted(glob.glob(f"{OUT}/{j['id']}/*.raw.wav"))
+        takes = sorted(glob.glob(f"{OUT}/{j['id']}/*.raw.flac"))
         if not takes: continue
         text = j["prompt"].split(", close-mic")[0].split(", stereo field")[0]
         for p in takes:
@@ -104,7 +115,7 @@ try:
             with torch.no_grad():
                 o = clap(**{k: v.to("cuda") for k, v in inp.items()})
             s = float(torch.nn.functional.cosine_similarity(o.text_embeds, o.audio_embeds)[0])
-            os.replace(p, p.replace(".raw.wav", f"_{s:.3f}.wav")); made += 1
+            os.replace(p, p.replace(".raw.flac", f"_{s:.3f}.flac")); made += 1
     publish("done", takes=made, ids=len(JOBS), mins=round((time.time() - t0) / 60, 1))
 except Exception:
     publish("crash", tb=traceback.format_exc()[-1500:])

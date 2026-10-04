@@ -16,7 +16,7 @@ For each id in sounds.py:
   5. install: Assets/ZU/Resources/ZUAudio/sfx/<id>/<i>.wav (16-bit 48 kHz) replacing the old clips, full AudioImporter
      metas (normalize off, preload), and sfxbank.json's count / category
 """
-import argparse, glob, json, os, re, shutil, sys, uuid
+import argparse, glob, json, os, re, shutil, subprocess, sys, uuid
 
 import numpy as np
 import soundfile as sf
@@ -53,13 +53,59 @@ def attack_ratio(a):
     return float(head.max() / (np.sqrt((body ** 2).mean()) + 1e-9))
 
 
+def events(a):
+    """distinct hits in a take: peaks of the 10 ms envelope within 12 dB of the loudest, each at least 80 ms after the last
+    and with an 8 dB dip between them (a one-shot generator asked for 1 s may fill it with a burst)"""
+    m = np.abs(a).max(1)
+    blk = int(SR * 0.01)
+    env = np.array([m[i:i + blk].max() for i in range(0, len(m), blk)]) + 1e-9
+    db = 20 * np.log10(env / env.max())
+    n, last, low = 0, -99, 0.0
+    for i, v in enumerate(db):
+        low = min(low, v)
+        if v > -12 and i - last >= 8 and (n == 0 or low < v - 8):
+            n += 1; last = i; low = v
+        elif i - last < 8:
+            low = v if v < low else low
+    return n
+
+
+def flat_noise(a):
+    """the signature of a failed render: near full scale and never decaying (a real sound, an explosion included, has an
+    envelope: its quietest 100 ms is far below its loudest)"""
+    m = a.mean(1)
+    blk = [float(np.sqrt(np.mean(m[i:i + 4800] ** 2))) for i in range(0, max(1, len(m) - 4800), 4800)] or [0.0]
+    return max(blk) > 0.4 and min(blk) > 0.5 * max(blk)
+
+
+# how much limiting a category's sound may take on its way to its loudness target: a gunshot is dense by design (a few dB
+# of limiting is how shooters get their weight), a bow string, a chime or a footstep loses its life if the peak is shaved
+# one-shots are levelled by the RMS of their active part (dBFS; the web bank's audio_finish.py targets, which the mix's bus
+# and category gains were tuned against): a 400 ms momentary-loudness window under-reads anything shorter than itself
+RMS_TARGET = {"weapon": -15, "impact": -17, "ability": -16, "move": -21, "step": -22, "feedback": -17}
+
+
+def active_rms_db(a):
+    m = a.mean(1)
+    blk = int(SR * 0.01)
+    e = np.array([np.sqrt(np.mean(m[i:i + blk] ** 2)) for i in range(0, max(1, len(m) - blk), blk)]) + 1e-12
+    act = e[e > e.max() * 0.1]                                   # within 20 dB of the loudest 10 ms
+    return float(20 * np.log10(np.sqrt(np.mean(act ** 2))))
+
+
+LIMIT_DB = {"weapon": 4.0, "impact": 3.0, "ability": 2.5, "feedback": 1.5, "step": 2.0, "move": 1.5, "loop": 1.0, "amb": 0.5}
+
+
 def score(path, spec, clap):
     a = M.load48(path)
     bw = meter.bandwidth(a, SR)["top"]
     s = clap * 10                                        # CLAP cosine ~0.2-0.6 -> 2-6
     s += min(bw, 20000) / 20000 * 2                      # full band up to +2
-    if spec["cat"] in TRANSIENT: s += min(attack_ratio(a), 6) / 6 * 2
+    if spec["cat"] in TRANSIENT:
+        s += min(attack_ratio(a), 6) / 6 * 2
+        s -= 2.5 * max(0, events(a) - 1)                 # a burst where one hit was asked for
     if (np.abs(a) >= 0.999).sum() > 3: s -= 3            # a clipped render
+    if flat_noise(a): s -= 50                              # a failed render (flat full-scale noise): never ship it
     act = np.flatnonzero(np.abs(a).max(1) > np.abs(a).max() * 0.01)
     used = (act[-1] - act[0]) / SR if len(act) else 0
     if not spec["loop"] and used < spec["secs"] * 0.25: s -= 1.5      # a near-empty render
@@ -112,7 +158,8 @@ def compose(body, spec, seed):
     return out
 
 
-def make_loop(a, xf=0.5):
+def make_loop(a, xf=None):
+    xf = xf or (3.0 if len(a) > SR * 20 else 0.5)      # beds get a long, inaudible seam
     n = int(SR * min(xf, len(a) / SR / 4))
     if n < 16: return a
     head, tail = a[:n], a[-n:]
@@ -123,10 +170,22 @@ def make_loop(a, xf=0.5):
 
 def finish(a, spec):
     cat = spec["cat"]
+    if cat in TRANSIENT and not spec["loop"]:
+        # one hit: keep the sound's own length (+60% for the tail) from its onset, fade the rest away
+        o = onset(a); keep = o + int(SR * spec["secs"] * 1.6)
+        if keep < len(a):
+            fo = int(SR * 0.04); a = a[:keep + fo].copy()
+            a[-fo:] *= np.linspace(1, 0, fo)[:, None]
     a = M.highpass(a, M.HPF.get(cat, 30))
     if not spec["loop"]: a = M.edges(a, fout_ms=8)
     target = M.TARGET_M.get(cat, -16)
-    a, _ = M.level_to_integrated(a, target) if spec["loop"] else M.level_to(a, target)
+    if spec["loop"]: a, _ = M.level_to_integrated(a, target)
+    elif cat in RMS_TARGET: a = a * 10 ** ((RMS_TARGET[cat] - active_rms_db(a)) / 20)
+    else: a, _ = M.level_to(a, target)
+    # cap the limiting: if reaching the target would shave more than the category allows off the peak, the clip sits
+    # that much under its target instead (the mix's bus gains place it; its transient stays intact)
+    over = meter.true_peak(a) - (-1.0) - LIMIT_DB.get(cat, 1.5)
+    if over > 0: a = a * 10 ** (-over / 20)
     a, red = M.tp_limit(a)
     if spec["loop"]: a = make_loop(a)
     return a, red
@@ -140,17 +199,17 @@ AudioImporter:
   serializedVersion: 8
   defaultSettings:
     serializedVersion: 2
-    loadType: 0
+    loadType: {load}
     sampleRateSetting: 0
     sampleRateOverride: 44100
     compressionFormat: 1
     quality: 1
     conversionMode: 0
-    preloadAudioData: 1
+    preloadAudioData: {preload}
   platformSettingOverrides: {{}}
   forceToMono: 0
   normalize: 0
-  loadInBackground: 0
+  loadInBackground: {bg}
   ambisonic: 0
   3D: 1
   userData:
@@ -161,17 +220,30 @@ AudioImporter:
 
 def install(sid, clips, spec):
     d = os.path.join(BANK, sid)
+    keep = os.path.join(OUT, "..", "design_old", sid)                    # the clips that shipped before (Sound Lab A/B)
+    if os.path.isdir(d) and not os.path.isdir(keep):
+        os.makedirs(keep)
+        for f in glob.glob(os.path.join(d, "*.ogg")) + glob.glob(os.path.join(d, "*.wav")): shutil.copy(f, keep)
     if os.path.isdir(d):
         for f in glob.glob(os.path.join(d, "*")):
             if re.search(r"\.(ogg|wav)(\.meta)?$", f): os.remove(f)
     else:
         os.makedirs(d)
         open(d + ".meta", "w", newline="\n").write(f"fileFormatVersion: 2\nguid: {uuid.uuid4().hex}\nfolderAsset: yes\nDefaultImporter:\n  externalObjects: {{}}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n")
+    long = spec["cat"] == "amb" or any(len(a) > SR * 10 for a in clips)
     for i, a in enumerate(clips):
-        p = os.path.join(d, f"{i}.wav")
-        dith = (np.random.default_rng(i).random(a.shape) - np.random.default_rng(i + 99).random(a.shape)) / 32768
-        sf.write(p, np.clip(a + dith, -1, 1 - 1 / 32768), SR, subtype="PCM_16")
-        open(p + ".meta", "w", newline="\n").write(META.format(guid=uuid.uuid4().hex))
+        if long:
+            # beds and long loops: Vorbis (a 60 s stereo bed is 11.5 MB as WAV), compressed in memory, loaded on first use
+            p = os.path.join(d, f"{i}.ogg"); tmp = p[:-4] + ".tmp.wav"
+            sf.write(tmp, np.clip(a, -1, 1).astype(np.float32), SR, subtype="FLOAT")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", tmp, "-c:a", "libvorbis", "-q:a", "8", p], check=True)
+            os.remove(tmp)
+        else:
+            p = os.path.join(d, f"{i}.wav")
+            dith = (np.random.default_rng(i).random(a.shape) - np.random.default_rng(i + 99).random(a.shape)) / 32768
+            sf.write(p, np.clip(a + dith, -1, 1 - 1 / 32768), SR, subtype="PCM_16")
+        open(p + ".meta", "w", newline="\n").write(META.format(guid=uuid.uuid4().hex, load=1 if long else 0,
+                                                                preload=0 if long else 1, bg=1 if long else 0))
     bank = json.load(open(DATA, encoding="utf-8"))
     bank["sfx"][sid] = {"n": len(clips), "cat": spec["cat"]}
     json.dump(bank, open(DATA, "w", encoding="utf-8", newline="\n"), separators=(",", ":"))
@@ -196,11 +268,11 @@ def main():
     report = []
     for sid, spec in SOUNDS.items():
         if only and sid not in only: continue
-        files = glob.glob(os.path.join(a.takes, sid, "*.wav"))
+        files = [f for f in glob.glob(os.path.join(a.takes, sid, "*.*")) if f.endswith((".wav", ".flac")) and ".BROKEN." not in f and ".raw." not in f]
         if not files: continue
         takes = []
         for f in files:
-            m = re.search(r"_(-?[\d.]+)\.wav$", f)
+            m = re.search(r"_(-?[\d.]+)\.(wav|flac)$", f)
             sc, au = score(f, spec, float(m.group(1)) if m else 0.3)
             takes.append((sc, f, au))
         chosen = pick(takes, spec)
