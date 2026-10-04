@@ -11,11 +11,15 @@ namespace ZU.Game.UI.Toolkit
 {
     public static class SettingsApply
     {
+        /// <summary>the launch states its own window (Unity's -screen-fullscreen switch: the QA runs, a launcher): the saved
+        /// Display Mode must not take the whole screen back (it did - every scripted run covered the desktop)</summary>
+        static readonly bool cliWindow = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-screen-fullscreen") >= 0;
+
         public static void Apply(ZuSettings s)
         {
             var v = s.video;
             // display and frame pacing ("DISPLAY BASED" = the display's refresh, through vsync)
-            if (!Application.isEditor)
+            if (!Application.isEditor && !cliWindow)
                 Screen.fullScreenMode = v.displayMode == "fullscreen" ? FullScreenMode.ExclusiveFullScreen : v.displayMode == "windowed" ? FullScreenMode.Windowed : FullScreenMode.FullScreenWindow;
             // the engine owns the cap, URP renderScale (settings x dynamic) and the upscaler (ZU.Engine.Perf, docs/ENGINE.md)
             Perf.SetCap((int)v.fpsCap);                                   // 0 = display based; a cap dividing the refresh locks to every k-th vblank
