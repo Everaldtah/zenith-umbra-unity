@@ -256,7 +256,10 @@ namespace ZU.Game.Anim
                     if (it != null && it.kind != HeldKind.Arrow)
                     {
                         float Lr = l1 + l2, busy = Mathf.Min(1, Mathf.Max(atk, Mathf.Max(cast, s.charging ? 1 : 0)) * 1.6f);
-                        var local = it.kind == HeldKind.Blade ? new Vector3(side * 0.3f, -0.76f, -0.3f) : new Vector3(side * 0.36f, -0.8f, 0.06f);
+                        // TS-PARITY (deliberate divergence): the TS "samurai's run" carries a blade low and 0.3 arm lengths BEHIND
+                        // the hip (0.3, -0.76, -0.3) - it read as "hands dangling behind" on Raijin, Hayate and Enra (the user's
+                        // complaint; evera-a0's run study), so the blade hand rides at the hip line
+                        var local = it.kind == HeldKind.Blade ? new Vector3(side * 0.34f, -0.78f, -0.02f) : new Vector3(side * 0.36f, -0.8f, 0.06f);
                         var hand = shoulder + Dc * (local * Lr);
                         hand.z += armSwing * side * 0.05f * Lr;
                         float w = moveBlend * (1 - busy);
