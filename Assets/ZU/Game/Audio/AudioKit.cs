@@ -393,6 +393,18 @@ namespace ZU.Game.Audio
         static int warm;
         static List<string> warmIds;
         static float nextLog = 30;
+        static System.Reflection.FieldInfo rangeField; static bool rangeLooked;
+        /// <summary>Settings > Sound > Dynamic Range (ZuSettings.sound.range: home | normal | night; evera-7a's ui-audit d077d49).
+        /// Read by reflection so this compiles before that settings field is merged; a save from before the split that
+        /// still says mix "night" counts as night.</summary>
+        static string RangeSetting()
+        {
+            var m = Mix;
+            if (m == null) return "normal";
+            if (!rangeLooked) { rangeLooked = true; rangeField = m.GetType().GetField("range"); }
+            var r = rangeField?.GetValue(m) as string;
+            return !string.IsNullOrEmpty(r) ? r : m.mix == "night" ? "night" : "normal";
+        }
         /// <summary>the buses, ducks, fades and loop gains applied to every voice (AudioKitDriver, every frame)</summary>
         internal static void Tick(float dt)
         {
@@ -413,8 +425,9 @@ namespace ZU.Game.Audio
                 var m = MasterBus.Live.Chain;
                 if (m.Frames > 0) Debug.Log($"[ZU] audio: voices {Voices}, {m.Readout()}");
             }
-            var mix = Mix?.mix ?? "default";
-            if (mix != preset && MasterBus.Live != null) { preset = mix; MasterBus.Live.Chain.SetPreset(mix); }
+            // Settings > Sound > Dynamic Range drives the master chain's glue (Mix Preset only picks the panning)
+            var range = RangeSetting();
+            if (range != preset && MasterBus.Live != null) { preset = range; MasterBus.Live.Chain.SetPreset(range); }
             // warm the sound bank a few ids a frame (a clip's first Resources.Load on the main thread mid-fight is a hitch,
             // and a hitch starves the audio thread)
             if (sfx != null && warmIds == null) { warmIds = new List<string>(); foreach (var kv in sfx) warmIds.Add(kv.Key); }
