@@ -17,7 +17,7 @@ namespace ZU.Game.UI.Toolkit
         static readonly Dictionary<string, string> ASIDE = new Dictionary<string, string>
         {
             ["video"] = "Graphics Quality fills in every detail option below it. Render scale and dynamic render scale trade sharpness for frame rate; performance stats (F8) show what the GPU is doing.",
-            ["sound"] = "Every volume has its own mix bus. The mix preset changes how sounds are placed around you: HEADPHONES renders true 3D (HRTF), SPEAKERS pans them, NIGHT MODE squeezes the loud and the quiet together.",
+            ["sound"] = "Every volume has its own mix bus. The mix preset changes how sounds are placed around you: HEADPHONES renders true 3D (HRTF), SPEAKERS pans them. Dynamic range sets how far apart the loud and the quiet are: HOME THEATER the most, NIGHT the least.",
             ["gameplay"] = "HUD options apply to every mode. Counter callouts show when a hero lands their rival counter.",
             ["access"] = "Subtitles show hero and announcer voice lines. The color blind filter corrects the whole picture; the UI colors recolor enemy and friendly markers.",
         };
@@ -228,8 +228,10 @@ namespace ZU.Game.UI.Toolkit
             Slider("Interface Volume", () => o.ui, x => o.ui = x, 0, 1, 0.01, Pct);
             Slider("Hit Marker Volume", () => o.hitmarker, x => o.hitmarker = x, 0, 1, 0.01, Pct);
             Head("MIX");
-            Select("Mix Preset", () => o.mix, x => o.mix = x, new[] { ("default", "DEFAULT"), ("headphones", "HEADPHONES (3D)"), ("speakers", "SPEAKERS"), ("night", "NIGHT MODE") },
-                "Headphones: full HRTF 3D positioning. Speakers: plain panning. Night: a narrow dynamic range for low volume.");
+            Select("Mix Preset", () => o.mix, x => o.mix = x, new[] { ("default", "DEFAULT"), ("headphones", "HEADPHONES (3D)"), ("speakers", "SPEAKERS") },
+                "Headphones: full HRTF 3D positioning. Speakers: plain panning.");
+            Select("Dynamic Range", () => o.range, x => o.range = x, new[] { ("home", "HOME THEATER"), ("normal", "NORMAL"), ("night", "NIGHT") },
+                "Home Theater: the full range, for good speakers or headphones at volume. Normal: a little squeezed. Night: loud and quiet squeezed together, for low volume.");
             Select("Play Menu Music", () => o.menuMusic, x => o.menuMusic = x, ON_OFF);
             Select("Sound in Background", () => o.background, x => o.background = x, ON_OFF, "Keep playing sound when the game window is not focused.");
             Select("Audio Latency", () => o.latency, x => o.latency = x, new[] { ("interactive", "LOWEST"), ("balanced", "BALANCED"), ("playback", "SMOOTHEST") }, "Smoother trades delay for fewer crackles on busy systems (applies after a restart).");

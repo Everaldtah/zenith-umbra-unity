@@ -102,7 +102,8 @@ namespace ZU.Game.UI.Toolkit
         public sealed class SoundSettings
         {
             public double master = 0.7, sfx = 1, music = 0.6, voice = 1, announcer = 1, ambience = 0.8, ui = 0.8, hitmarker = 1;
-            public string mix = "default";                   // default | headphones | speakers | night
+            public string mix = "default";                   // default | headphones (Steam Audio HRTF) | speakers
+            public string range = "normal";                  // Dynamic Range: home (full) | normal | night (narrow) - Unity only
             public bool menuMusic = true, background;
             public string latency = "interactive";
         }
@@ -196,6 +197,8 @@ namespace ZU.Game.UI.Toolkit
                 if (File.Exists(FilePath))
                 {
                     var saved = JObject.Parse(File.ReadAllText(FilePath));
+                    // night mode moved from the mix preset to its own Dynamic Range setting: an older save keeps it
+                    if (saved["sound"] is JObject ss && ss["range"] == null && (string)ss["mix"] == "night") { ss["range"] = "night"; ss["mix"] = "default"; }
                     // the saved preset decides the defaults the save is merged over
                     if (saved["preset"] is JValue pv && pv.Value is string ps && QUALITY_TABLE.ContainsKey(ps)) def = JObject.FromObject(Defaults(ps));
                     // a save from before rev 2 holds Outer World off only because that was the old default: drop it once so the
