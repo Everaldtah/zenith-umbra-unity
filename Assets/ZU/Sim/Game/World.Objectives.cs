@@ -146,7 +146,7 @@ namespace ZU.Sim
                     if (C.wins[w] >= ROUNDS_TO_WIN) { End(w); return; }
                     C.phase = "intermission"; C.phaseEnd = t + 7;
                     // everyone back to spawn for the next round (ult charge is kept)
-                    After(3, () => { foreach (var a in actors.ToList()) if (!a.isRobot) { double u = a.ult; Respawn(a, true); a.ult = u; } });
+                    After(3, () => { foreach (var a in actors.ToList()) if (!a.isRobot) { double u = a.ult; RoundRespawn(a); a.ult = u; } });
                 }
             }
             if (t > timeLimit) End(C.wins["zenith"] != C.wins["umbra"] ? (C.wins["zenith"] > C.wins["umbra"] ? "zenith" : "umbra") : P.progress["zenith"] >= P.progress["umbra"] ? "zenith" : "umbra");

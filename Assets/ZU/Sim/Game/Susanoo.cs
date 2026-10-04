@@ -193,6 +193,8 @@ namespace ZU.Sim
             {
                 if (!s.alive || !s.IsSummon || s.def.id != "susanoo" || s.owner == null) continue;
                 if (!s.owner.alive) { DismissSusanoo(w, s.owner); continue; }
+                // (a giant that is alive without its timeline was not summoned: retire it rather than read keys it has not got)
+                if (!s.sv.ContainsKey("bladeAt")) { s.alive = false; s.respawnAt = 0; continue; }
                 // the giant stays planted over its anchor through the thunder, whatever shoves come its way
                 if (t < s.sv["bladeAt"]) { s.pos.x = s.sv["gx"]; s.pos.z = s.sv["gz"]; s.vel.x = s.vel.z = 0; }
                 if (t < s.sv["bladeAt"] && t >= s.sv["nextStrike"] && s.sv["strikes"] < JsMath.Round(SUSANOO_THUNDER / STRIKE_EVERY))

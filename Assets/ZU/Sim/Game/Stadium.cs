@@ -238,7 +238,7 @@ namespace ZU.Sim
             round++;
             phase = "armory"; phaseEnd = t + ARMORY_SECS;
             w.projs = new List<Proj>(); w.zones = new List<Zone>(); w.timers = new List<Timer>();
-            foreach (var a in w.actors) { double ult = a.ult; w.Respawn(a, true); a.cd = new Dictionary<string, double>(); a.ult = ult; }
+            foreach (var a in w.actors) { double ult = a.ult; w.RoundRespawn(a); a.cd = new Dictionary<string, double>(); a.ult = ult; }
             w.Sfx("victory");
         }
 

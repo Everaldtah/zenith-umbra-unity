@@ -138,6 +138,18 @@ namespace ZU.Sim
             return a;
         }
 
+        /// <summary>back to spawn for a new round. A summon (Raijin's Susanoo, Enra's effigy, a puppet) is not a player: it is
+        /// retired here, and only its own ultimate brings it back.
+        /// UNITY-DIVERGENCE: the TS respawns the pooled summon too - alive, with an empty sv, where every `t &lt; sv.x` is just
+        /// false. In C# the same read throws KeyNotFoundException in the summon's tick on every step, so World.Step never
+        /// finished again: from the second round on the match stood still (the installed 0.2.2 logged 4646 of them in one
+        /// session).</summary>
+        public void RoundRespawn(Actor a)
+        {
+            if (a.IsSummon) { a.alive = false; a.respawnAt = 0; a.forced = null; a.deathAt = -99; return; }
+            Respawn(a, true);
+        }
+
         public void Respawn(Actor a, bool first = false)
         {
             if (!first && !a.IsSummon && a.sv.ContainsKey("puppetsCast")) Puppets.DropPuppets(this, a);
