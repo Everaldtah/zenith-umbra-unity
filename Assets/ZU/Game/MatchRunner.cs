@@ -169,12 +169,15 @@ namespace ZU.Game
         void Dispatch()
         {
             // the sim's events (sfx / fx / damage / kills / messages) - effects and audio take them from here
-            foreach (var e in World.events) EventSink.Handle(this, e);
+            // (while the kill cam replays the past, the present's effects and sounds stay out of it)
+            foreach (var e in World.events) { if (Fx.KillCam.Hold(this, e)) continue; EventSink.Handle(this, e); }
             World.events.Clear();
         }
 
         void SyncViews()
         {
+            // the kill cam (AbilityFx/KillCam.cs): while it replays, the views draw the heroes and projectiles as they were
+            var kc = Fx.KillCam.Replay(this);
             foreach (var a in World.actors)
             {
                 // the World swaps hero defs (Tenkai-Oh's pilot ejecting / calling the mech back): rebuild that actor's view
@@ -186,7 +189,7 @@ namespace ZU.Game
                 // model-less summons (Hex's puppets) are drawn as one swarm (AbilityFx PuppetSwarm), not one view each
                 if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;
                 if (!views.TryGetValue(a.id, out var v)) { views[a.id] = v = ActorViews.Create(a, transform); viewDef[a.id] = a.def.id; }
-                v.Sync(this, a);
+                if (kc != null && kc.Past(a) is Actor past) v.Sync(kc, past); else v.Sync(this, a);
             }
             // heroes taken out of the world (the Hero Range / Spar Arena swapping their target): their bodies go too
             if (Match.range != null && views.Count > 0)
@@ -195,8 +198,11 @@ namespace ZU.Game
                 foreach (var id in views.Keys) if (!World.actors.Exists(x => x.id == id)) stale.Add(id);
                 foreach (var id in stale) { if (views[id] is Component c && c != null) Destroy(c.gameObject); views.Remove(id); viewDef.Remove(id); poses.Remove(id); }
             }
-            projViews.Sync(World, Alpha);
+            var liveProjs = kc?.SwapProjs(World);
+            projViews.Sync(World, kc != null ? 1 : Alpha);
+            if (liveProjs != null) World.projs = liveProjs;
             cam.Sync(this);
+            kc?.Place(cam.transform);
             if (fp != null) fp.Sync(this);          // the local player's arms (first person only; needs the camera placed)
         }
     }
