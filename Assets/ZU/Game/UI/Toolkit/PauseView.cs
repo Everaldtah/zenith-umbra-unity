@@ -53,8 +53,9 @@ namespace ZU.Game.UI.Toolkit
         {
             screen?.RemoveFromHierarchy();
             screen = U.Div(cls, host, pick: true);
-            // backdrop-filter: blur(6px) over the frozen frame
-            if (Filters.Enabled) screen.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(6) });
+            // backdrop-filter: blur(6px) over the frozen frame. With the gamma panel (its own texture) the scene itself is
+            // blurred (UiBackdrop) for as long as this screen is up; a screen-overlay panel uses UI Toolkit's own filter
+            if (!UiBackdrop.Attach(screen, 6f) && Filters.Enabled) screen.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(6) });
             return screen;
         }
 
