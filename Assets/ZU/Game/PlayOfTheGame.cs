@@ -190,7 +190,7 @@ namespace ZU.Game
             {
                 px = new Texture2D(1, 1); px.SetPixel(0, 0, Color.white); px.Apply();
                 orbitron = Resources.Load<Font>("ZUUI/Fonts/Orbitron-800"); rajdhani = Resources.Load<Font>("ZUUI/Fonts/Rajdhani-700");
-                big = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Bold, wordWrap = false };
+                big = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Clip };
                 heroName = new GUIStyle(big); sub = new GUIStyle(big); small = new GUIStyle(big);
                 if (orbitron != null) { big.font = orbitron; heroName.font = orbitron; }
                 if (rajdhani != null) { sub.font = rajdhani; small.font = rajdhani; }
@@ -247,7 +247,7 @@ namespace ZU.Game
                 return;
             }
             // the replay: a banner top left, the clip's progress along the bottom
-            float bw = 640 * u, bh = 150 * u;
+            float bw = 940 * u, bh = 150 * u;
             Box(new Rect(40 * u, 40 * u, bw, bh), new Color(0.02f, 0.03f, 0.06f, 0.72f));
             Box(new Rect(40 * u, 40 * u, 6 * u, bh), gold);
             small.normal.textColor = gold;

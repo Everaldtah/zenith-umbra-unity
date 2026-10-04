@@ -251,20 +251,20 @@ namespace ZU.Game
                 if (label == null)
                 {
                     px = new Texture2D(1, 1); px.SetPixel(0, 0, Color.white); px.Apply();
-                    label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Bold };
+                    label = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Clip };
                     var f = Resources.Load<Font>("ZUUI/Fonts/Rajdhani-700"); if (f != null) label.font = f;
                 }
                 label.fontSize = Mathf.RoundToInt(24 * u);
                 var gold = new Color(1f, 0.84f, 0.42f);
                 void Box(Rect rc, Color c) { var o = GUI.color; GUI.color = c; GUI.DrawTexture(rc, px); GUI.color = o; }
-                Box(new Rect(40 * u, 40 * u, 700 * u, 104 * u), new Color(0.02f, 0.03f, 0.06f, 0.72f));
+                Box(new Rect(40 * u, 40 * u, 980 * u, 104 * u), new Color(0.02f, 0.03f, 0.06f, 0.72f));
                 Box(new Rect(40 * u, 40 * u, 6 * u, 104 * u), gold);
                 label.normal.textColor = gold;
-                GUI.Label(new Rect(64 * u, 46 * u, 660 * u, 32 * u), (clip.potg ? "PLAY OF THE GAME" : "HIGHLIGHT") + "  ·  " + (clip.heroName ?? "").ToUpperInvariant(), label);
+                GUI.Label(new Rect(64 * u, 46 * u, 940 * u, 32 * u), (clip.potg ? "PLAY OF THE GAME" : "HIGHLIGHT") + "  ·  " + (clip.heroName ?? "").ToUpperInvariant(), label);
                 label.normal.textColor = new Color(0.9f, 0.92f, 0.97f);
-                GUI.Label(new Rect(64 * u, 78 * u, 660 * u, 32 * u), $"{clip.category}  ·  {clip.summary}", label);
+                GUI.Label(new Rect(64 * u, 78 * u, 940 * u, 32 * u), $"{clip.category}  ·  {clip.summary}", label);
                 label.normal.textColor = new Color(gold.r, gold.g, gold.b, 0.9f);
-                GUI.Label(new Rect(64 * u, 108 * u, 660 * u, 32 * u), Exporting ? $"SAVING VIDEO  {Mathf.RoundToInt(ExportProgress * 100)} %   ·   ESC cancel" : "ESC  back", label);
+                GUI.Label(new Rect(64 * u, 108 * u, 940 * u, 32 * u), Exporting ? $"SAVING VIDEO  {Mathf.RoundToInt(ExportProgress * 100)} %   ·   ESC cancel" : "ESC  back", label);
                 float prog = clip.Seconds > 0 ? Mathf.Clamp01((float)(KillCam.ClipTime / clip.Seconds)) : 0;
                 Box(new Rect(0, H - 6 * u, W, 6 * u), new Color(0, 0, 0, 0.5f));
                 Box(new Rect(0, H - 6 * u, W * prog, 6 * u), gold);
