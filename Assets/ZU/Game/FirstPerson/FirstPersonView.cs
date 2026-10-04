@@ -31,6 +31,10 @@ namespace ZU.Game.FirstPerson
         RigPose rig; Animator anim; HeldRig held; Fingers fingers; FpStyle style;
         /// <summary>the hero's dedicated first-person forearms + hands (FpArms), when published</summary>
         FpArms arms;
+        /// <summary>the hero's skin on the viewmodel arms (the world view's look, no smear: the camera rides the motion)</summary>
+        Looks.HeroLook look;
+        /// <summary>off: the viewmodel arms keep their plain materials (no skin recolour) - read at the next viewmodel build</summary>
+        public static bool SkinArms = true;
         public string heroId { get; private set; }
         public bool active { get; private set; }
         /// <summary>the current action source: 'clip:fp_fire' or 'proc:fire' (captures / tests)</summary>
@@ -116,7 +120,7 @@ namespace ZU.Game.FirstPerson
         bool Build(Actor me)
         {
             if (model != null) { Destroy(model); model = null; }
-            arms = null;
+            arms = null; look = null;
             var lib = HeroLibrary.Get(); var e = lib != null ? lib.Find(me.def.id) : null;
             if (e == null) return false;
             heroId = me.def.id; style = FpStyle.For(heroId);
@@ -165,6 +169,10 @@ namespace ZU.Game.FirstPerson
                 foreach (var s in use) s.sharedMesh = ArmsMesh.For(heroId, s, style.keep, style.drape, style.squeeze, out _, true);
                 if (arms.fingers != null) fingers = arms.fingers;
             }
+            // the skin: URP Lit materials on the arms (the hero's own and the dedicated ones) become ZU/Hero copies
+            var lookRends = new List<Renderer>(use);
+            if (arms != null) lookRends.AddRange(arms.renderers);
+            look = SkinArms ? new Looks.HeroLook(model.transform, lookRends, me, bindPose: false) { noSmear = true } : null;
             if (!string.IsNullOrEmpty(style.gauntlets)) LoadGauntlets();
             archerOn = WantArcher;
             if (archerOn) ArcherBuild();
@@ -270,6 +278,17 @@ namespace ZU.Game.FirstPerson
             if (rb < 1.3) { procFrame = true; return; }
             // the archers are keyed on gameplay (FirstPersonView.Archer.cs), not clipped
             if (Archer) { procFrame = true; return; }
+            // captures: a clip hero held at a moment of an event's clip
+            if (FpFreeze.HasValue && clipLen.Count > 0)
+            {
+                var (what, ft) = FpFreeze.Value;
+                string ev = FreezeClip(what);
+                if (HasClip(ev) && Play(ev, false, 1, Mathf.Clamp01(ft / Mathf.Max(0.01f, clipLen[ev]))))
+                {
+                    clipFrame = true; oneShot = null; source = "clip:" + ev + "@" + ft.ToString("F2");
+                    return;
+                }
+            }
             // ---- 1. authored clips
             if (clipLen.Count > 0)
             {
@@ -353,6 +372,7 @@ namespace ZU.Game.FirstPerson
             else if (held != null) { if (held.prop != null) held.PlacePropAtRest(); held.Place(); }
             // the dedicated forearms + hands follow the posed rig (clip or IK)
             arms?.Drive();
+            if (look != null) { look.Update(a, t); look.Apply(); }
             held?.UpdateState(a, t, true);
             // the props' live details as the world view has them (Tenkai-Oh's thruster flame, Hayate's nodachi glow, Hibiki's woofer)
             held?.UpdateDetails(a, t);

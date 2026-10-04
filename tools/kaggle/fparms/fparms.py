@@ -52,7 +52,7 @@ try:
             results[ident] = {"ok": False, "stage": "fit", "error": log[-500:]}; publish("fit-failed", id=ident, error=log[-300:]); continue
         fit = json.load(open(fitj))
         mirror = "--mirror" if (hero, "L" if S == "R" else "R") not in arms else ""
-        code, log = sh(f"{blender} -b --factory-startup -P {ZU}/tools/blender/fp_arm_bind.py -- {glb} {fitj} {d} {ident} {mirror} --tris {TRIS}")
+        code, log = sh(f"{blender} -b --factory-startup -P {ZU}/tools/blender/fp_arm_bind.py -- {glb} {fitj} {d} {ident} {mirror} --tris {TRIS} --preview")
         oks = [l for l in log.splitlines() if l.startswith("OK ") or l.startswith("FAIL ")]
         results[ident] = {"ok": any(l.startswith("OK ") for l in oks), "fingers": fit.get("fingers"), "lines": oks}
         open(f"{d}/{ident}_blender.log", "w").write(log[-20000:])

@@ -107,6 +107,15 @@ namespace ZU.EditorTools
                     var asset = AssetDatabase.LoadAssetAtPath<GameObject>(p);
                     var inst = (GameObject)Object.Instantiate(asset, root.transform);
                     inst.name = Path.GetFileNameWithoutExtension(p);
+                    // the body's material recipe (HeroImport.MakeMaterial: URP Lit, the hero's metal cap and self-light), so the
+                    // skin look converts it - and the keyword set always the bodies' (_METALLICSPECGLOSSMAP + _NORMALMAP +
+                    // _EMISSION): a different set would be stripped from the player (ZULooks/Keep), arms pink in a build
+                    // a mirrored side ships no maps of its own: it shares the other side's
+                    string tex = p.Substring(0, p.Length - 4) + "_tex";
+                    if (!AssetDatabase.IsValidFolder(tex)) tex = tex.Substring(0, tex.Length - 5) + (tex[tex.Length - 5] == 'L' ? "R" : "L") + "_tex";
+                    var mat = HeroImport.MakeMaterial(tex, p.Substring(0, p.Length - 4) + ".mat", 2048, 0.25f, hero == "mirei" ? 0.04f : 0.16f);
+                    KeepBodyKeywords(mat);
+                    foreach (var r in inst.GetComponentsInChildren<Renderer>(true)) r.sharedMaterials = Enumerable.Repeat(mat, r.sharedMaterials.Length).ToArray();
                 }
                 PrefabUtility.SaveAsPrefabAsset(root, $"{Out}/arms_{hero}.prefab");
                 Object.DestroyImmediate(root);
@@ -114,6 +123,41 @@ namespace ZU.EditorTools
             }
             AssetDatabase.SaveAssets();
             return "arms: " + string.Join(" | ", report);
+        }
+
+        /// <summary>a Tripo arm without a metal-roughness or normal map still gets the body keyword set: flat stand-in maps</summary>
+        static void KeepBodyKeywords(Material mat)
+        {
+            if (!mat.IsKeywordEnabled("_METALLICSPECGLOSSMAP"))
+            {
+                mat.SetTexture("_MetallicGlossMap", Flat($"{ArmsDir}/flat_mask.png", new Color(0, 0, 0, 0.35f), false));
+                mat.EnableKeyword("_METALLICSPECGLOSSMAP"); mat.SetFloat("_Smoothness", 1); mat.SetFloat("_Metallic", 1);
+            }
+            if (!mat.IsKeywordEnabled("_NORMALMAP"))
+            {
+                mat.SetTexture("_BumpMap", Flat($"{ArmsDir}/flat_normal.png", new Color(0.5f, 0.5f, 1, 1), true));
+                mat.EnableKeyword("_NORMALMAP"); mat.SetFloat("_BumpScale", 1);
+            }
+            if (!mat.IsKeywordEnabled("_EMISSION"))
+            {
+                mat.EnableKeyword("_EMISSION"); mat.SetTexture("_EmissionMap", mat.GetTexture("_BaseMap")); mat.SetColor("_EmissionColor", Color.white * 0.16f);
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            }
+            EditorUtility.SetDirty(mat);
+        }
+
+        static Texture2D Flat(string path, Color c, bool normal)
+        {
+            if (!File.Exists(path))
+            {
+                var t = new Texture2D(4, 4, TextureFormat.RGBA32, false, true);
+                var px = new Color[16]; for (int i = 0; i < 16; i++) px[i] = c; t.SetPixels(px); t.Apply();
+                File.WriteAllBytes(path, t.EncodeToPNG()); Object.DestroyImmediate(t);
+                AssetDatabase.ImportAsset(path);
+                var ti = (TextureImporter)AssetImporter.GetAtPath(path);
+                ti.sRGBTexture = false; if (normal) ti.textureType = TextureImporterType.NormalMap; ti.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         /// <summary>the base controller: a state per event name holding an empty placeholder clip of that name (the

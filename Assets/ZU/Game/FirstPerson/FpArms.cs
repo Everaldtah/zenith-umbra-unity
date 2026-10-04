@@ -32,9 +32,16 @@ namespace ZU.Game.FirstPerson
             renderers = go.GetComponentsInChildren<Renderer>(true);
         }
 
-        /// <summary>the hero's dedicated arms (null when none is published, or the rigs can't be matched)</summary>
+        /// <summary>off: every hero goes back to the arms-only cut of its own mesh (the viewmodel before the dedicated arms);
+        /// takes effect on the next viewmodel build (a hero swap or a new match)</summary>
+        public static bool Enabled = false;      // OFF until the placement is right (first Editor look 2026-10-04: oversized / end-on forearms)
+        /// <summary>heroes kept on the arms-only cut of their own mesh even when they have dedicated arms</summary>
+        public static readonly HashSet<string> Off = new HashSet<string>();
+
+        /// <summary>the hero's dedicated arms (null when none is published, switched off, or the rigs can't be matched)</summary>
         public static FpArms Load(string heroId, Transform model, RigPose rig, int layer)
         {
+            if (!Enabled || Off.Contains(heroId)) return null;
             var pf = Resources.Load<GameObject>("ZUFp/arms_" + heroId);
             if (pf == null) return null;
             var go = Object.Instantiate(pf, model);
