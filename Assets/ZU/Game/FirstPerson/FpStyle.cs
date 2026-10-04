@@ -44,7 +44,7 @@ namespace ZU.Game.FirstPerson
             { "raijin", With(S(Grip.Katana, 0.21f, -0.21f, 0.44f, -0.17f, -0.24f, 0.42f, 0), s => { s.clip = 0.14f; s.keep = 0.97f; }) },
             // the bow flat and two-handed in the bottom-right quadrant, the crossbow hunter's hold (FirstPersonView.Archer.cs
             // keys every moment; these are its rest targets, which place the rig)
-            { "yuzu", With(S(Grip.Bow, 0.15f, -0.17f, 0.18f, 0.14f, -0.19f, 0.45f, 0), s => { s.clip = 0.12f; s.gunScale = 0.8f; }) },
+            { "yuzu", With(S(Grip.Bow, 0.15f, -0.18f, 0.3f, 0.14f, -0.19f, 0.45f, 0), s => { s.clip = 0.12f; s.gunScale = 0.8f; }) },
             // the wide kimono sleeves are squeezed into slim tubes for the viewmodel (they'd fill the screen), hands well forward
             { "kaien", With(S(Grip.Caster, 0.21f, -0.2f, 0.44f, -0.21f, -0.17f, 0.46f, 0.03f), s => { s.keep = 0.97f; s.squeeze = 0.12f; }) },
             { "mirei", S(Grip.Caster, 0.22f, -0.2f, 0.42f, -0.19f, -0.24f, 0.4f, 0.02f) },

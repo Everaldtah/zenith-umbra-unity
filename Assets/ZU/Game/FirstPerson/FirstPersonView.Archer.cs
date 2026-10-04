@@ -76,13 +76,13 @@ namespace ZU.Game.FirstPerson
         // ---------------------------------------------------------------- Yuzu (the crossbow hunter's hold)
         // the bow flat (roll ~97 deg: the right limb a little low), the right limb turned toward the lens; the arrow on the
         // right of the fist, running up toward the reticle; the string hand low right under the weapon
-        static readonly float[] Y_IDLE = A(0, 0.14f, -0.19f, 0.45f, 1.69f, 0.3f, 0.03f, 0.15f, -0.17f, 0.18f, 1, -0.8f, -0.3f, 1);
+        static readonly float[] Y_IDLE = A(0, 0.14f, -0.19f, 0.45f, 1.69f, 0.3f, 0.03f, 0.15f, -0.18f, 0.3f, 1, -0.8f, -0.3f, 1);
         static readonly float[] Y_FULL = A(0.3f, 0.14f, -0.183f, 0.45f, 1.69f, 0.3f, 0.04f, 0.17f, -0.15f, -0.03f, 1, -0.2f, -1, 1);
-        static readonly float[][] Y_DRAW = { Y_IDLE, A(0.05f, 0.14f, -0.193f, 0.45f, 1.69f, 0.3f, 0.025f, 0.15f, -0.172f, 0.17f, 1, -0.8f, -0.3f, 1), Y_FULL, At(0.9f, Y_FULL) };
+        static readonly float[][] Y_DRAW = { Y_IDLE, A(0.05f, 0.14f, -0.193f, 0.45f, 1.69f, 0.3f, 0.025f, 0.15f, -0.182f, 0.29f, 1, -0.8f, -0.3f, 1), Y_FULL, At(0.9f, Y_FULL) };
         /// <summary>Hawk Eye (Take Aim): the bow down and right, the arrow brought onto the line of sight, the lower limb out of frame</summary>
-        static readonly float[] Y_AIM = A(0, 0.15f, -0.245f, 0.36f, 1.75f, 0.25f, 0.06f, 0.16f, -0.2f, 0.1f, 1, -0.8f, -0.3f, 1);
+        static readonly float[] Y_AIM = A(0, 0.15f, -0.245f, 0.36f, 1.75f, 0.25f, 0.06f, 0.16f, -0.21f, 0.22f, 1, -0.8f, -0.3f, 1);
         static readonly float[] Y_AIM_FULL = A(0.3f, 0.15f, -0.24f, 0.36f, 1.75f, 0.25f, 0.065f, 0.17f, -0.17f, -0.06f, 1, -0.2f, -1, 1);
-        static readonly float[][] Y_AIM_DRAW = { Y_AIM, A(0.05f, 0.15f, -0.247f, 0.36f, 1.75f, 0.25f, 0.058f, 0.16f, -0.202f, 0.09f, 1, -0.8f, -0.3f, 1), Y_AIM_FULL, At(0.9f, Y_AIM_FULL) };
+        static readonly float[][] Y_AIM_DRAW = { Y_AIM, A(0.05f, 0.15f, -0.247f, 0.36f, 1.75f, 0.25f, 0.058f, 0.16f, -0.212f, 0.21f, 1, -0.8f, -0.3f, 1), Y_AIM_FULL, At(0.9f, Y_AIM_FULL) };
         /// <summary>the loose from the hip: the kick up and back, then the re-nock - the bow tipped up on the right while the
         /// string hand goes down to the hip quiver and lays the next arrow on - settled by 0.5 s</summary>
         static readonly float[][] Y_LOOSE =
@@ -92,7 +92,7 @@ namespace ZU.Game.FirstPerson
             A(0.15f, 0.14f, -0.19f, 0.45f, 1.66f, 0.3f, 0.04f, 0.24f, -0.3f, 0.1f, 1, -1, 0, 0),
             A(0.24f, 0.15f, -0.17f, 0.44f, 1.35f, 0.28f, 0.3f, 0.22f, -0.27f, 0.16f, 1, -1, 0, 0),
             A(0.32f, 0.15f, -0.168f, 0.44f, 1.33f, 0.28f, 0.3f, 0.18f, -0.17f, 0.24f, 1, -0.8f, -0.2f, 0),
-            A(0.4f, 0.145f, -0.175f, 0.445f, 1.4f, 0.29f, 0.26f, 0.15f, -0.17f, 0.18f, 1, -0.8f, -0.3f, 1),
+            A(0.4f, 0.145f, -0.175f, 0.445f, 1.4f, 0.29f, 0.26f, 0.15f, -0.18f, 0.3f, 1, -0.8f, -0.3f, 1),
             At(0.5f, Y_IDLE),
         };
         /// <summary>the loose in Hawk Eye: a sharper kick, and the re-nock keeps the arrow near the line of sight</summary>
@@ -103,7 +103,7 @@ namespace ZU.Game.FirstPerson
             A(0.15f, 0.15f, -0.245f, 0.36f, 1.74f, 0.25f, 0.07f, 0.24f, -0.32f, 0.04f, 1, -1, 0, 0),
             A(0.24f, 0.15f, -0.235f, 0.36f, 1.6f, 0.25f, 0.14f, 0.22f, -0.29f, 0.1f, 1, -1, 0, 0),
             A(0.32f, 0.15f, -0.235f, 0.36f, 1.6f, 0.25f, 0.14f, 0.18f, -0.22f, 0.16f, 1, -0.8f, -0.2f, 0),
-            A(0.4f, 0.15f, -0.24f, 0.36f, 1.68f, 0.25f, 0.1f, 0.16f, -0.2f, 0.1f, 1, -0.8f, -0.3f, 1),
+            A(0.4f, 0.15f, -0.24f, 0.36f, 1.68f, 0.25f, 0.1f, 0.16f, -0.21f, 0.22f, 1, -0.8f, -0.3f, 1),
             At(0.5f, Y_AIM),
         };
         static readonly float[][] Y_MELEE =
@@ -117,8 +117,8 @@ namespace ZU.Game.FirstPerson
         /// <summary>Sunhop (the updraft): pressed down by the launch, then floating a little high through the glide</summary>
         static readonly float[][] Y_HOP =
         {
-            Y_IDLE, A(0.1f, 0.14f, -0.235f, 0.44f, 1.72f, 0.3f, -0.08f, 0.15f, -0.21f, 0.17f, 1, -0.8f, -0.3f, 1),
-            A(0.4f, 0.14f, -0.172f, 0.46f, 1.66f, 0.3f, 0.06f, 0.15f, -0.153f, 0.19f, 1, -0.8f, -0.3f, 1), At(1.3f, Y_IDLE), At(1.6f, Y_IDLE),
+            Y_IDLE, A(0.1f, 0.14f, -0.235f, 0.44f, 1.72f, 0.3f, -0.08f, 0.15f, -0.22f, 0.29f, 1, -0.8f, -0.3f, 1),
+            A(0.4f, 0.14f, -0.172f, 0.46f, 1.66f, 0.3f, 0.06f, 0.15f, -0.163f, 0.31f, 1, -0.8f, -0.3f, 1), At(1.3f, Y_IDLE), At(1.6f, Y_IDLE),
         };
         /// <summary>Hundred Suns Barrage: the bow swung up at the sky, loosed, and brought back down</summary>
         static readonly float[][] Y_ULT =
