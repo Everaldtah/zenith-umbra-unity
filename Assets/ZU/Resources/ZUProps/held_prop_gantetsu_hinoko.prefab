@@ -61,7 +61,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2626090819953618754}
+  - {fileID: 9112959365957029657}
   m_Father: {fileID: 1148484361801572879}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &3204181470003037623
@@ -89,7 +89,7 @@ Transform:
   m_GameObject: {fileID: 3204181470003037623}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.00027795136, y: 0.024212467, z: 0.10581055}
+  m_LocalPosition: {x: -0.0008523613, y: 0.07424962, z: 0.32447717}
   m_LocalScale: {x: 0.3260955, y: 0.3260955, z: 0.3260955}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -127,7 +127,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2626090819953618754}
+  m_Father: {fileID: 9112959365957029657}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &2538792718802070656
 MeshFilter:
@@ -218,7 +218,7 @@ Transform:
   - {fileID: 9046635225219864874}
   m_Father: {fileID: 4664548024240750857}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &5134773485833721901
+--- !u!1 &5343661454394629250
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -226,7 +226,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2626090819953618754}
+  - component: {fileID: 9112959365957029657}
   m_Layer: 0
   m_Name: model
   m_TagString: Untagged
@@ -234,13 +234,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &2626090819953618754
+--- !u!4 &9112959365957029657
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5134773485833721901}
+  m_GameObject: {fileID: 5343661454394629250}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0.000102369355, y: -0.00032688712, z: 0.00012404757}
