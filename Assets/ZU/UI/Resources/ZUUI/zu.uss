@@ -21,7 +21,9 @@
 .zb { -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; font-size: 18px; letter-spacing: 2.2px; color: #eef2ff; padding: 12px 26px; --cut: 10; --fill: rgba(255, 255, 255, 0.06); --stroke: rgba(255, 255, 255, 0.14);
   justify-content: center; align-items: center; transition-property: translate, opacity; transition-duration: 0.15s; }
 .zb:hover { --fill: rgba(255, 255, 255, 0.16); translate: 4px 0; }
-/* (no generic :disabled fade: the web has none - a disabled READY stays gold; .power / .it / .lv.locked keep their own) */
+/* no generic :disabled fade: the web has none - a disabled READY stays gold (.power / .it / .lv.locked keep their own).
+   Unity's default theme fades every disabled element, so it is undone here */
+.zb:disabled { opacity: 1; }
 .zb .zb-label { margin: 0; padding: 0; -unity-text-align: middle-center; white-space: normal; }
 .zb.primary { --fill: #ffb347; --fill2: #ffd76a; --stroke: rgba(0, 0, 0, 0); color: #1a1206; }
 .zb.primary:hover { --fill: #ffbf5f; --fill2: #ffe08a; }
@@ -355,11 +357,14 @@
 .hc .hc-b { position: absolute; left: 6px; bottom: 18px; font-size: 16px; text-shadow: 0 2px 4px #000; letter-spacing: 0; }
 .hc .hc-s { position: absolute; left: 6px; bottom: 4px; font-size: 11px; opacity: 0.8; letter-spacing: 1.1px; }
 .hd { flex-direction: row; }
-.hd .art { width: 38%; min-height: 756px; margin-right: 24px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-size: cover; background-position-y: top; flex-shrink: 0; }
+/* the key art is a 3D render (864 x 1184) on a flat #282b32 backdrop; the panel stretches with the sheet (~390 x 950 px), so
+   CSS's cover cut wide heroes (Tenkai-Oh's hammer and shoulders) - contained on the render's own backdrop colour instead */
+.hd .art { width: 38%; min-height: 756px; margin-right: 24px; border-width: 1px; border-color: rgba(255, 255, 255, 0.14); background-size: contain; background-position-y: center; background-color: #282b32; flex-shrink: 0; }
 .hd .info { flex-grow: 1; flex-shrink: 1; }
 .hd .hd-h2 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 40px; }
 .hd .hd-sub { -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 18px; color: #c9d2ff; letter-spacing: 3.6px; }
-.meta { flex-direction: row; flex-wrap: wrap; margin: 10px 0; }
+/* the chips keep an 8 px row gap (CSS gap) and the row 10 px below in all: 8 + 2 */
+.meta { flex-direction: row; flex-wrap: wrap; margin: 10px 0 2px 0; }
 .meta .chip { background-color: rgba(255, 255, 255, 0.08); padding: 3px 10px; font-size: 13px; letter-spacing: 1.3px; margin: 0 8px 8px 0; }
 .meta .chip.zenith { color: #5cc8ff; }
 .meta .chip.umbra { color: #ff3b5c; }
@@ -367,13 +372,16 @@
 .pilot { flex-direction: row; align-items: center; background-color: rgba(255, 215, 106, 0.08); border-left-width: 3px; border-color: #ffd76a; padding: 8px; font-size: 15px; margin: 8px 0; }
 .pilot .pilot-img { width: 56px; height: 56px; background-position-y: top; margin-right: 10px; flex-shrink: 0; }
 .pilot .pilot-t { flex-shrink: 1; }
-.hd .ab { flex-direction: row; align-items: flex-start; margin: 8px 0; }
+/* CSS collapses the vertical margins of the hero sheet's blocks (lore p 1em, .ab 8px, .rival 12px) - flex adds them, so
+   9 ability rows ran ~70 px longer and the list overflowed. Margins here are the collapsed gaps */
+.hd .lore { margin: 8px 0 16px 0; }
+.hd .ab { flex-direction: row; align-items: flex-start; margin: 0 0 8px 0; }
 .hd .ab .kbd { margin-right: 12px; }
-.hd .ab-t { flex-shrink: 1; flex-grow: 1; }
+.hd .ab-t { flex-shrink: 1; flex-grow: 1; padding-bottom: 2px; }
 .hd .ab-b { font-size: 17px; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; }
-.hd .ab-p { margin: 2px 0; color: #b8c0d8; font-size: 15px; }
+.hd .ab-p { margin: 2px 0 0 0; color: #b8c0d8; font-size: 15px; }
 .ab-p.ctr, .vab-p.ctr { color: #ffd76a; -unity-font: url("Fonts/Rajdhani-700.ttf"); -unity-font-definition: initial; }
-.rival { margin-top: 12px; color: #c9d2ff; }
+.rival { margin-top: 4px; color: #c9d2ff; }
 
 /* queues, maps, modes */
 .modes { position: absolute; left: 0; top: 0; right: 0; bottom: 0; padding: 30px 40px 0 40px; background-color: #05060a; }
@@ -387,7 +395,8 @@
 .zb.card:hover, .zb.card.sel { translate: 0 -3px; border-color: #ffd76a; }
 .card > * { margin-bottom: 8px; }
 .card .c-b { -unity-font: url("Fonts/Orbitron-900.ttf"); -unity-font-definition: initial; font-size: 22px; letter-spacing: 1.76px; -unity-text-align: upper-center; }
-.card .c-p { opacity: 0.8; -unity-text-align: upper-center; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 16px; letter-spacing: 0; max-width: 260px; }
+/* no max-width: in the web the card grows to its one-line text (RECRUIT's "Relaxed bots: slower aim, slower reactions.") */
+.card .c-p { opacity: 0.8; -unity-text-align: upper-center; -unity-font: url("Fonts/Rajdhani-600.ttf"); -unity-font-definition: initial; font-size: 16px; letter-spacing: 0; }
 .card .rl { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; }
 .card .rec { opacity: 0.7; font-size: 14px; }
 .ri { width: 42px; height: 42px; --fill: #ffd76a; }
@@ -628,6 +637,9 @@
 
 
 /* ---------------- PLAY ONLINE (online.css): lobby, queue, assemble, the in-match network readout */
+/* the lobby is a plain .modes column in the web: its BACK bar sits right under the players list, not at the screen bottom
+   (the map grids' scroll view grows to fill; this one only shrinks when the lobby is taller than the screen) */
+.online > .mgrid-scroll { flex-grow: 0; }
 .online .o-h3 { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 16px; letter-spacing: 2.4px; margin: 18px 0 10px 0; opacity: 0.85; }
 .online .ostat { flex-direction: row; flex-wrap: wrap; align-items: center; background-color: rgba(0, 0, 0, 0.35); border-width: 1px; border-color: rgba(255, 255, 255, 0.14); padding: 10px 16px; }
 .online .ostat > * { margin-right: 18px; }

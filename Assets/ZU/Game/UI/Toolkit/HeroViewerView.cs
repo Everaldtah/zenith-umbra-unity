@@ -157,7 +157,9 @@ namespace ZU.Game.UI.Toolkit
             var rg = new GameObject("Ring"); rg.transform.SetParent(studio.transform, false); rg.transform.localPosition = new Vector3(0, 0.005f, 0);
             var lr = rg.AddComponent<LineRenderer>();
             lr.useWorldSpace = false; lr.loop = true; lr.positionCount = 96; lr.widthMultiplier = 0.06f;
-            for (int i = 0; i < 96; i++) { float a = i / 96f * Mathf.PI * 2; lr.SetPosition(i, new Vector3(Mathf.Cos(a) * 1.63f, 0, Mathf.Sin(a) * 1.63f)); }
+            // points in the local XY plane: the transform's 90 degree turn about X lays them on the floor (and points its Z,
+            // which TransformZ alignment faces, down) - XZ points were turned upright into a wall-high hoop
+            for (int i = 0; i < 96; i++) { float a = i / 96f * Mathf.PI * 2; lr.SetPosition(i, new Vector3(Mathf.Cos(a) * 1.63f, Mathf.Sin(a) * 1.63f, 0)); }
             var sh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             var mat = new Material(sh); var gold = Grad.C("#ffd76a", 0.5f);
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", gold); else mat.color = gold;

@@ -54,8 +54,11 @@ namespace ZU.Game.UI.Toolkit
             screen?.RemoveFromHierarchy();
             screen = U.Div(cls, host, pick: true);
             // backdrop-filter: blur(6px) over the frozen frame. With the gamma panel (its own texture) the scene itself is
-            // blurred (UiBackdrop) for as long as this screen is up; a screen-overlay panel uses UI Toolkit's own filter
-            if (!UiBackdrop.Attach(screen, 6f) && Filters.Enabled) screen.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(6) });
+            // blurred (UiBackdrop) for as long as this screen is up; UI Toolkit's own filter blurs the UI under it (the HUD and
+            // the end-of-match scoreboard with its own VICTORY heading, which CSS blurs too) - on a screen-overlay panel that
+            // filter also covers the scene
+            UiBackdrop.Attach(screen, 6f);
+            if (Filters.Enabled) screen.style.backdropFilter = new StyleList<FilterFunction>(new System.Collections.Generic.List<FilterFunction> { Filters.Blur(6) });
             return screen;
         }
 
