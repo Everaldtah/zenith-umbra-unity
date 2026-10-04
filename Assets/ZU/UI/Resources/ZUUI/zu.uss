@@ -134,7 +134,9 @@
 .board .td.h { flex-grow: 1; flex-shrink: 1; width: auto; min-width: 150px; flex-direction: row; align-items: center; -unity-text-align: middle-left; overflow: hidden; }
 .board .th .td { -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 12px; opacity: 0.7; }
 .board .ti { width: 24px; height: 24px; margin-right: 6px; background-position-y: top; }
-.board .tn { font-size: 15px; white-space: nowrap; }
+/* online the label is "username Hero" (a 20-character name + the hero can outgrow the cell): it shrinks and ends in "...",
+   not a hard cut at the cell edge */
+.board .tn { font-size: 15px; white-space: nowrap; flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .board .u, .board .up { margin-left: auto; -unity-font: url("Fonts/Orbitron-800.ttf"); -unity-font-definition: initial; font-size: 11px; opacity: 0.75; padding-left: 6px; }
 .board .u { color: #ffd76a; opacity: 1; }
 .board .mine { flex-direction: row; align-items: center; margin-top: 12px; padding-top: 12px; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.14); }
