@@ -71,7 +71,14 @@ namespace ZU.Engine
         // capSet: SetCap was called - only then does the engine own vSyncCount / targetFrameRate (until the settings hook lands,
         // SettingsApply still writes them itself, and a re-apply here would overwrite the player's cap with vsync)
         static bool inited, enabled = true, allowAssetWrites, dynOn, capVsync = true, capSet;
+        // dynLive: the dynamic scale can actually reach URP (asset writes allowed and the URP asset exists). Without it the
+        // controller would run OPEN-LOOP - lowering its scale never lowers the load, so it walks to the floor (seen in the
+        // Editor, where AllowAssetWrites is off): then it is held at 1 and not stepped (the first Editor run, Hanabi)
+        static bool dynLive, isEditor;
         static int capFps;
+        // the cap actually in effect (QualitySettings.vSyncCount / Application.targetFrameRate, whoever wrote them), re-read
+        // once a second and after our own writes: the budget follows it, not only a cap set through SetCap
+        static int liveVSync, liveTarget = -1;
         static float baseScale = 1, renderScale = 1, sharp = 0.9f, sharpen;
         static Upscaler upMode = Upscaler.Auto;
         static string upActive = "off";
@@ -89,8 +96,9 @@ namespace ZU.Engine
         public static float FrameDt { get; private set; }
         /// <summary>this frame's unscaled delta (s), quantized (Time.unscaledDeltaTime when the engine is off)</summary>
         public static float UnscaledFrameDt { get; private set; }
-        /// <summary>the dynamic resolution's scale (1 when off or the engine is off)</summary>
-        public static float DynScale => enabled && dynOn ? (float)dynres.Scale : 1;
+        /// <summary>the dynamic resolution's scale (1 when off, the engine is off, or the scale cannot reach URP: asset writes
+        /// off as in the Editor, or no URP asset - then the controller is held, never run open-loop)</summary>
+        public static float DynScale => enabled && dynOn && dynLive ? (float)dynres.Scale : 1;
         /// <summary>the settings render scale (0.5..2)</summary>
         public static float BaseScale => baseScale;
         /// <summary>URP renderScale as applied (= base x dynamic; the asset's own value when asset writes are off)</summary>
@@ -106,8 +114,18 @@ namespace ZU.Engine
         public static double RefreshHz => pacer.RefreshHz;
         /// <summary>the frame cadence is vsync-locked (deltas are quantized)</summary>
         public static bool VSynced => pacer.VSynced;
-        /// <summary>the frame budget (ms) = 1000 / (cap &gt; 0 ? min(cap, refresh) : refresh), the TS updateDynRes</summary>
-        public static double BudgetMs => 1000 / (capFps > 0 ? Math.Min(capFps, pacer.RefreshHz) : pacer.RefreshHz);
+        /// <summary>the frame budget (ms) from the cap actually in effect (re-read once a second, whoever set it): vSyncCount k &gt; 0
+        /// in a player = refresh / k; else targetFrameRate &gt; 0 = 1000 / min(targetFrameRate, refresh) (the TS updateDynRes);
+        /// else the refresh. The Editor ignores vSyncCount, so only its targetFrameRate counts there.</summary>
+        public static double BudgetMs
+        {
+            get
+            {
+                double hz = pacer.RefreshHz;
+                double fps = liveVSync > 0 && !isEditor ? hz / liveVSync : liveTarget > 0 ? Math.Min(liveTarget, hz) : hz;
+                return 1000 / Math.Max(1, fps);
+            }
+        }
         /// <summary>CPU ms of the last frame's own main-thread work (FrameTimer's main thread minus its present wait when
         /// available, else measured from the driver's Update to the end of LateUpdate / render submission)</summary>
         public static double CpuMs { get; private set; }
@@ -139,7 +157,7 @@ namespace ZU.Engine
         public static bool AllowAssetWrites
         {
             get { Init(); return allowAssetWrites; }
-            set { Init(); allowAssetWrites = value; ApplyScale(); }
+            set { Init(); allowAssetWrites = value; SyncDynLive(); ApplyScale(); }
         }
 
         /// <summary>the settings render scale (0.5..2). The engine owns URP renderScale = base x dynamic.</summary>
@@ -162,13 +180,18 @@ namespace ZU.Engine
         }
 
         /// <summary>dynamic resolution on/off and its floor. Off resets the dynamic scale to 1 (the TS applySettings:
-        /// `if (!v.dynamicRes) dynScale = 1; dynres.reset(dynScale)`); on keeps the current scale and restarts the load history.</summary>
-        public static void SetDynamicResolution(bool on, float min = 0.5f)
+        /// `if (!v.dynamicRes) dynScale = 1; dynres.reset(dynScale)`); on keeps the current scale and restarts the load history.
+        /// The default floor is 0.8, not the web's 0.5: that floor suited its lighter three.js renderer, while on the URP PC
+        /// pipeline an RTX 3050 missing the 60 Hz budget with the Ultra preset (base 1.25) would otherwise be walked down to
+        /// render scale 0.625 - visibly blurry. 0.8 keeps Ultra at native or above (1.25 x 0.8 = 1.0) and the 100 % preset
+        /// at &gt;= 80 %, where FSR is close to native. Explicit callers may still ask for 0.25..1.</summary>
+        public static void SetDynamicResolution(bool on, float min = 0.8f)
         {
             Init();
             dynOn = on;
             dynres.Min = Mathf.Clamp(min, 0.25f, 1f);
             dynres.Reset(on ? Math.Max(dynres.Min, dynres.Scale) : 1);
+            SyncDynLive();
             ApplyScale();
         }
 
@@ -203,10 +226,13 @@ namespace ZU.Engine
         {
             if (inited) return;
             inited = true;
-            allowAssetWrites = !Application.isEditor;
+            isEditor = Application.isEditor;
+            allowAssetWrites = !isEditor;
             enabled = !FlagOff("-zu-engine");
             pacer.SetPrior(Screen.currentResolution.refreshRateRatio.value);
             SyncDivisor();
+            SyncBudget();
+            SyncDynLive();
             onEndContext = EndRender;
             RenderPipelineManager.endContextRendering += onEndContext;
             Governor.Init();
@@ -232,7 +258,20 @@ namespace ZU.Engine
         // until SetCap is called the cap is whoever's wrote it last: the pacer's divisor follows the real vSyncCount, so a
         // targetFrameRate cadence (vSyncCount 0) is never measured as the refresh. The Editor ignores vSyncCount (its Game
         // view runs free unless its own VSync toggle is on): never the display's cadence there
-        static void SyncDivisor() { pacer.Divisor = Application.isEditor ? 0 : capSet ? appliedVSync : QualitySettings.vSyncCount; }
+        static void SyncDivisor() { pacer.Divisor = isEditor ? 0 : capSet ? appliedVSync : QualitySettings.vSyncCount; }
+
+        /// <summary>snapshot the cap in effect for BudgetMs (two native reads; once a second and after our own cap writes)</summary>
+        static void SyncBudget() { liveVSync = QualitySettings.vSyncCount; liveTarget = Application.targetFrameRate; }
+
+        /// <summary>can the dynamic scale reach URP? On the false edge the controller is reset to 1 and held (DynScale reads 1,
+        /// nothing drifts); when it becomes true again it resumes from 1, with its normal warm-up (no calls for &gt; 1 s).</summary>
+        static void SyncDynLive()
+        {
+            bool live = allowAssetWrites && Asset != null;
+            if (live == dynLive) return;
+            dynLive = live;
+            if (!live) dynres.Reset(1);
+        }
 
         /// <summary>start of the frame (PerfDriver.Update, order -10000)</summary>
         internal static void Frame()
@@ -259,9 +298,10 @@ namespace ZU.Engine
             }
             timing.Capture();
             CpuMs = timing.CpuMainMs > 0 ? timing.CpuMainMs - Math.Max(0, timing.PresentWaitMs) : fallbackCpuMs;
-            // dynamic render scale: follows the GPU's measured load (DynamicResolution), the budget as the TS updateDynRes
+            // dynamic render scale: follows the GPU's measured load (DynamicResolution), the budget from the cap in effect;
+            // stepped only while the scale can reach URP (dynLive) - never open-loop
             double budget = BudgetMs;
-            if (enabled && dynOn && dynres.Update(tms, timing.GpuMs, CpuMs, frameMs, budget)) ApplyScale();
+            if (enabled && dynOn && dynLive && dynres.Update(tms, timing.GpuMs, CpuMs, frameMs, budget)) ApplyScale();
             Governor.Tick(tms, frameMs, CpuMs, timing, budget);
             // the graph's "on time" is the frame budget - the cap's interval when capped (the TS pushed the refresh interval,
             // which paints every frame of a 60 cap on a 144 Hz display red)
@@ -274,6 +314,8 @@ namespace ZU.Engine
                 pacer.SetPrior(Screen.currentResolution.refreshRateRatio.value);
                 if (!capSet) SyncDivisor();
                 else if (Math.Abs(pacer.RefreshHz - appliedRefresh) > 0.5) ApplyCap();
+                SyncBudget();                              // a cap somebody else wrote (a hand-set targetFrameRate) moves the budget too
+                SyncDynLive();                             // the URP asset may have appeared / a test may have opted into asset writes
             }
         }
 
@@ -298,6 +340,7 @@ namespace ZU.Engine
             if (Application.targetFrameRate != tfr) Application.targetFrameRate = tfr;
             appliedVSync = vs; appliedTarget = tfr; appliedRefresh = pacer.RefreshHz;
             SyncDivisor();
+            SyncBudget();
         }
 
         static void ApplyScale()
