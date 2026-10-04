@@ -156,6 +156,9 @@ namespace ZU.Game
 
             void Update()
             {
+                // (the replay's match has no player: its HUD would be the spectator's, under this banner)
+                var hud = UI.Toolkit.UiRoot.Existing?.HudLayer;
+                if (hud != null && hud.style.display != UnityEngine.UIElements.DisplayStyle.None) hud.style.display = UnityEngine.UIElements.DisplayStyle.None;
                 var kb = UnityEngine.InputSystem.Keyboard.current;
                 if (!ended && kb != null && kb.escapeKey.wasPressedThisFrame) { KillCam.Stop(); ended = true; if (Exporting) LastExportError = "cancelled"; }
                 if (ended && enc == null) Close();
