@@ -177,6 +177,8 @@ namespace ZU.Game.Fx
                     fx.Ring(p, 1.4f, C(e.color, "#bfe8ff"), now, 0.3f, false); fx.Emit(p, N(24), C("#fff4d6"), FxKit.O(4, 0.5f, 0.28f, spread: 0.6f));
                     break;
                 case "swoopburst": fx.Ring(p, 2.2f, C(e.color, "#bfe8ff"), now, 0.35f); fx.Emit(p, N(34), C("#fff4d6"), FxKit.O(6, 0.55f, 0.3f, spread: 0.6f)); fx.Light(p, C(e.color, "#bfe8ff"), 25, now); break;
+                // ultimate charge pack (Training Grounds): a gold ring, sparks rising, a pulse of light
+                case "ultpack": fx.Ring(Up(p, -0.45f), 1.8f, C("#ffd23f"), now, 0.5f); fx.Emit(p, N(30), C("#fff1a8"), FxKit.O(3f, 0.8f, 0.3f, spread: 0.6f, up: 4)); fx.Light(p, C("#ffc83a"), 22, now); break;
                 case "healthpack": fx.Ring(Up(p, -0.45f), (float)(e.r ?? 1) * 1.6f, C("#29f0a0"), now, 0.45f); fx.Emit(p, N(26), C("#7dffb0"), FxKit.O(2.5f, 0.7f, 0.28f, spread: 0.6f, up: 3)); fx.Light(p, C("#29f0a0"), 18, now); break;
                 case "wound": fx.Emit(p, N(10), C("#ff2d55"), FxKit.O(2.5f, 0.5f, 0.16f, grav: 7)); fx.Emit(p, N(4), C("#ffd0d8"), FxKit.O(4, 0.18f, 0.12f)); break;
                 case "warcall":
@@ -369,7 +371,7 @@ namespace ZU.Game.Fx
                     bm.SetActive(true);
                     var from = U(w.Muzzle(a)); var to = U(a.beamTarget.Center);
                     var d = to - from; float l = Mathf.Max(0.01f, d.magnitude), wd = 0.05f + Mathf.Sin(now * 25) * 0.01f;
-                    bm.transform.SetPositionAndRotation(from, Quaternion.LookRotation(d / l)); bm.transform.localScale = new Vector3(wd, wd, l);
+                    bm.transform.SetPositionAndRotation(from, d.sqrMagnitude > 1e-8f ? Quaternion.LookRotation(d / l) : bm.transform.rotation); bm.transform.localScale = new Vector3(wd, wd, l);
                     Tint(bm.GetComponent<MeshRenderer>(), C(a.def.glow) * 1.4f, 0.85f);
                     if (Random.value < 0.5f) fx.Emit(to, 1, C("#9dffb0"), FxKit.O(1, 0.5f, 0.2f, up: 1.5f));
                 }
@@ -381,7 +383,7 @@ namespace ZU.Game.Fx
                     fl.SetActive(true);
                     var from = U(w.Muzzle(a)); var dir = U(a.AimDir());
                     float range = (float)(a.def.primary.range * (a.Has("asura", now) ? 1.5 : 1) * a.scale);
-                    fl.transform.SetPositionAndRotation(from, Quaternion.LookRotation(dir)); fl.transform.localScale = new Vector3(range * 0.27f, range * 0.27f, range);
+                    fl.transform.SetPositionAndRotation(from, dir.sqrMagnitude > 1e-8f ? Quaternion.LookRotation(dir) : fl.transform.rotation); fl.transform.localScale = new Vector3(range * 0.27f, range * 0.27f, range);
                     Tint(fl.GetComponent<MeshRenderer>(), C("#ff6a2a"), 0.07f + Random.value * 0.05f);
                     for (int i = 0; i < 3; i++) fx.Emit(from, 1, Random.value < 0.5f ? C("#ff6a2a") : C("#b026ff"), FxKit.O(range * 1.6f, 0.5f, 0.45f, dir: dir));
                 }

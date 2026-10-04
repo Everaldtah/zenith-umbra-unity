@@ -15,6 +15,7 @@ namespace ZU.Sim
             double t = time;
             if (!tgt.alive || amount <= 0) return 0;
             if (src != null && src.team == tgt.team && src != tgt) return 0;
+            if (gate != null && !gate(src, tgt)) return 0;
             if (tgt.Has("phased", t) || tgt.Has("spawnprot", t) || tgt.Has("reborn", t)) return 0;
             if (tgt.Has("parry", t) && o.kind == "melee" && src != null)
             {
@@ -128,7 +129,7 @@ namespace ZU.Sim
                     }
                 }
             }
-            Emit(new DmgEvent { src = src, tgt = tgt, amt = dealt, crit = o.crit, pos = tgt.Center });
+            Emit(new DmgEvent { src = src, tgt = tgt, amt = dealt, crit = o.crit, pos = tgt.Center, kind = !string.IsNullOrEmpty(o.ability) ? "ability" : o.kind });
             if (tgt.Health <= 0.01 && tgt.hp <= 0.01) Kill(tgt, src);
             return dealt;
         }

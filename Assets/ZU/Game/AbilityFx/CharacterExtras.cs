@@ -146,10 +146,13 @@ namespace ZU.Game.Fx
             }
             if (x.ragdoll == null) return;
             foreach (var (t, p, q) in x.frozen) if (t != null) { t.localPosition = p; t.localRotation = q; }
-            x.ragdoll.Step(dt);
+            // (the clip layer's Animator has no controller and isn't evaluated for the dead: only a controller-driven one
+            // overwrites a sleeping body)
+            x.ragdoll.Step(dt, x.anim != null && x.anim.runtimeAnimatorController != null);
             // sinking into the floor before the respawn: the whole body lowers (TS: the model group, from 2.6 s)
             float sink = Mathf.Max(0, age - 2.6f) * 0.6f;
-            if (sink > 0 && x.hips != null) x.hips.position -= new Vector3(0, sink, 0);
+            // (absolute, from the pelvis: a sleeping body isn't re-posed, so the sink can't accumulate frame on frame)
+            if (sink > 0 && x.hips != null) x.hips.position = x.ragdoll.Center - new Vector3(0, sink, 0);
         }
 
         public void Dispose()

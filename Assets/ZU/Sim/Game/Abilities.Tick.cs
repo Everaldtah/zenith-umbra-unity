@@ -100,6 +100,30 @@ namespace ZU.Sim
                 w.Fx("arrowhit", p, new FxOpts { color = "#ffd27a" });
                 if (left % 4 == 0) w.Sfx("arrowhit", p);
             }
+            // Yuzu's sun swarm (Unity divergence, see Hundredsuns): the giant arrows land one by one, then every enemy in reach
+            // takes a hit each tick while the swarm lasts (sounds and effects are the view's, from the zone's timeline)
+            foreach (var z in w.zones.ToList())
+            {
+                if (z.kind != "sunswarm") continue;
+                z.data ??= new Dictionary<string, object>();
+                double landed = ZoneNum(z, "landed");
+                while (landed < SUNS_N && t - z.born >= SUNS_LAND_AT + landed * SUNS_LAND_STEP)
+                {
+                    var lp = SunsLanding(w, z, (int)landed);
+                    foreach (var x in w.Enemies(z.owner))
+                        if (M.Hypot(x.pos.x - lp.x, x.pos.z - lp.z) < SUNS_LAND_R + x.Radius && Math.Abs(x.pos.y - lp.y) < 3)
+                            w.Damage(z.owner, x, SUNS_LAND_DMG, new DmgOpts { kind = "ability", ability = "hundredsuns" });
+                    landed++; z.data["landed"] = landed;
+                }
+                // (its own count: the generic zone tick above moves every zone's `next` on by 0.25 s)
+                double ticks = ZoneNum(z, "ticks");
+                while (z.born + SUNS_SPLIT + ticks * SUNS_TICK <= t && z.born + SUNS_SPLIT + ticks * SUNS_TICK < z.until)
+                {
+                    ticks++; z.data["ticks"] = ticks;
+                    foreach (var x in w.Enemies(z.owner))
+                        if (M.Hypot(x.pos.x - z.x, x.pos.z - z.z) < z.r) w.Damage(z.owner, x, SUNS_DMG, new DmgOpts { kind = "ability", ability = "hundredsuns" });
+                }
+            }
             // Gantetsu: Tachiai Rush shoves (and cracks barriers), the stomp lands, Taiko Heartbeat feeds the team's lifesteal
             foreach (var a in w.actors.ToList())
             {

@@ -4,8 +4,10 @@
 // translucent figure for the guard), a summoned hologram (lit from within in its colour, rising in, fading out), the
 // shield bubble and Tenkai-Oh's Solar Bulwark.
 // The rim is an extra additive pass (ZU/HeroRim) on each body renderer: an extra material slot re-renders the mesh. The
-// translucent looks swap the body to transparent copies of its own URP Lit materials (the variants are kept in the build by
-// Resources/ZUFx/Keep). The bubble and the barrier hang off the match root, so the body's squash and tilt don't move them.
+// body's own materials are ZU/Hero copies of its URP Lit ones (Looks/HeroLook: the skin recolour, energy lines and smear,
+// written into the same property block as the rim). The translucent looks swap the body to transparent copies of those
+// (the variants are kept in the build by Looks/Resources/ZULooks/Keep). The bubble and the barrier hang off the match
+// root, so the body's squash and tilt don't move them.
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -32,11 +34,15 @@ namespace ZU.Game
         readonly Transform shield, barrier; readonly MeshRenderer shieldR, barrierR;
         readonly Color holoCol; readonly bool holo;
         readonly Transform[] jets; readonly MeshRenderer[] jetR;    // foot thrusters (heroes with jets: Tenkai-Oh)
+        /// <summary>the skin, energy lines and smear in the body shader (TS lookUniforms / applySkin / smear)</summary>
+        public readonly Looks.HeroLook Skin;
 
         public CharacterLook(Transform matchRoot, IEnumerable<Renderer> bodyRenderers, Actor a, Material additive)
         {
             rimMat ??= Resources.Load<Material>("ZUFx/rim") ?? new Material(Shader.Find("ZU/HeroRim"));
             body = bodyRenderers.Where(r => r is SkinnedMeshRenderer || r is MeshRenderer).ToArray();
+            // (before the materials are read below: it swaps the body's Lit materials for ZU/Hero copies)
+            Skin = new Looks.HeroLook(ModelRoot(matchRoot, body), body, a);
             opaque = new Material[body.Length][];
             for (int i = 0; i < body.Length; i++)
             {
@@ -63,6 +69,15 @@ namespace ZU.Game
                 barrier = Part("solar bulwark", matchRoot, barrierMesh, barrierMat, out barrierR);
                 barrier.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>the hero's prefab root (model space): the body's ancestor sitting directly under the match root</summary>
+        static Transform ModelRoot(Transform matchRoot, Renderer[] body)
+        {
+            if (body.Length == 0 || body[0] == null) return null;
+            var t = body[0].transform;
+            while (t.parent != null && t.parent != matchRoot) t = t.parent;
+            return t;
         }
 
         static Transform Part(string name, Transform parent, Mesh mesh, Material m, out MeshRenderer mr)
@@ -154,11 +169,13 @@ namespace ZU.Game
             }
             SetMode(want, alpha);
             Alpha = want == Mode.Opaque ? 1 : alpha;
+            Skin.Update(a, t);
             for (int i = 0; i < body.Length; i++)
             {
                 var r = body[i]; if (r == null) continue;
                 r.GetPropertyBlock(mpb);
                 mpb.SetColor("_RimColor", rimCol); mpb.SetFloat("_Rim", rim * (want == Mode.Stealth ? alpha : 1)); mpb.SetFloat("_Fill", 0);
+                Skin.Write(mpb, i);
                 r.SetPropertyBlock(mpb);
             }
             if (want != Mode.Opaque) foreach (var ms in clear) foreach (var m in ms) if (m != null && m != rimMat) { var c = m.GetColor("_BaseColor"); c.a = alpha; m.SetColor("_BaseColor", c); }

@@ -29,14 +29,14 @@ namespace ZU.Game.UI.Toolkit
             new ActionDef { id = "swoop", label = "Starwing Swoop (Mirei)", group = "HERO", hero = "mirei" },
             new ActionDef { id = "grind", label = "Mag-Grind: hold to wall-ride & climb (Hibiki)", group = "HERO", hero = "hibiki" },
             new ActionDef { id = "view", label = "Toggle First / Third Person", group = "INTERFACE" }, new ActionDef { id = "score", label = "Scoreboard / Stats", group = "INTERFACE" },
-            new ActionDef { id = "swap", label = "Change Hero (Training)", group = "INTERFACE" }, new ActionDef { id = "perf", label = "Cycle Performance Stats", group = "INTERFACE" },
+            new ActionDef { id = "swap", label = "Change Hero (Training)", group = "INTERFACE" }, new ActionDef { id = "range", label = "Hero Range / Spar Console (Training)", group = "INTERFACE" }, new ActionDef { id = "perf", label = "Cycle Performance Stats", group = "INTERFACE" },
         };
 
         public static Dictionary<string, List<string>> DefaultBinds() => new Dictionary<string, List<string>>
         {
             ["forward"] = new List<string> { "KeyW", "ArrowUp" }, ["back"] = new List<string> { "KeyS", "ArrowDown" }, ["left"] = new List<string> { "KeyA", "ArrowLeft" }, ["right"] = new List<string> { "KeyD", "ArrowRight" },
             ["jump"] = new List<string> { "Space" }, ["crouch"] = new List<string> { "ControlLeft" }, ["fire"] = new List<string> { "Mouse0" }, ["alt"] = new List<string> { "Mouse2" }, ["a1"] = new List<string> { "ShiftLeft", "ShiftRight" }, ["a2"] = new List<string> { "KeyE" },
-            ["ult"] = new List<string> { "KeyQ" }, ["reload"] = new List<string> { "KeyR" }, ["melee"] = new List<string> { "KeyC" }, ["swoop"] = new List<string> { "KeyF" }, ["grind"] = new List<string> { "Space" }, ["view"] = new List<string> { "KeyV" }, ["score"] = new List<string> { "Tab" }, ["swap"] = new List<string> { "KeyH" }, ["perf"] = new List<string> { "F8" },
+            ["ult"] = new List<string> { "KeyQ" }, ["reload"] = new List<string> { "KeyR" }, ["melee"] = new List<string> { "KeyC" }, ["swoop"] = new List<string> { "KeyF" }, ["grind"] = new List<string> { "Space" }, ["view"] = new List<string> { "KeyV" }, ["score"] = new List<string> { "Tab" }, ["swap"] = new List<string> { "KeyH" }, ["range"] = new List<string> { "KeyG" }, ["perf"] = new List<string> { "F8" },
         };
         /// <summary>per-hero defaults (Overwatch keeps hero-specific control sets): Hibiki rides walls on the left mouse button</summary>
         public static Dictionary<string, Dictionary<string, List<string>>> HeroDefaultBinds() => new Dictionary<string, Dictionary<string, List<string>>>
@@ -91,10 +91,13 @@ namespace ZU.Game.UI.Toolkit
             public double sharpen;
             public double gamma = 1, contrast = 1, brightness = 1;
             public string perfStats = "simple";              // off | simple | advanced
-            /// <summary>Unity extra: terrain, skyline and landmarks past the arena's walls (the PC game shows only its painted sky)</summary>
-            public bool outerWorld = false;
+            /// <summary>Unity extra: terrain, skyline, landmarks and the Tripo landscapes past the arena's walls (the PC game shows
+            /// only its painted sky); on except on the LOW preset</summary>
+            public bool outerWorld = true;
             /// <summary>Unity extra: a far-only depth of field past the play space (the PC game has none)</summary>
             public bool farDof = false;
+            /// <summary>Unity extra: Tripo grass / rock beds on the floors (GroundDressing): off | low | high</summary>
+            public string groundDetail = "high";
         }
         public sealed class SoundSettings
         {
@@ -138,6 +141,8 @@ namespace ZU.Game.UI.Toolkit
         }
 
         public string preset = "ultra";                      // the desktop edition starts on ULTRA (Settings.detect)
+        /// <summary>the save's revision (Unity only): 2 = Outer World on by default - an older save gets it once (Load)</summary>
+        public int rev = 2;
         public double sens = 1, volume = 0.7, fov = 90;
         public string view = "third";
         public double difficulty = 0.65;
@@ -151,10 +156,10 @@ namespace ZU.Game.UI.Toolkit
         /// <summary>what each graphics preset sets every detail option to</summary>
         public static readonly Dictionary<string, Action<VideoSettings>> QUALITY_TABLE = new Dictionary<string, Action<VideoSettings>>
         {
-            ["low"] = v => { v.textures = "low"; v.texFilter = 1; v.fog = "low"; v.reflections = "off"; v.shadows = "off"; v.model = "low"; v.effects = "low"; v.lighting = "low"; v.aa = "off"; v.refraction = "low"; v.ao = "off"; v.localReflections = false; v.bloom = false; v.renderScale = 75; },
-            ["medium"] = v => { v.textures = "medium"; v.texFilter = 4; v.fog = "medium"; v.reflections = "low"; v.shadows = "low"; v.model = "medium"; v.effects = "medium"; v.lighting = "medium"; v.aa = "fxaa"; v.refraction = "medium"; v.ao = "off"; v.localReflections = false; v.bloom = false; v.renderScale = 100; },
-            ["high"] = v => { v.textures = "high"; v.texFilter = 8; v.fog = "high"; v.reflections = "medium"; v.shadows = "medium"; v.model = "high"; v.effects = "high"; v.lighting = "high"; v.aa = "msaa"; v.refraction = "high"; v.ao = "low"; v.localReflections = true; v.bloom = true; v.renderScale = 100; },
-            ["ultra"] = v => { v.textures = "high"; v.texFilter = 16; v.fog = "high"; v.reflections = "ultra"; v.shadows = "ultra"; v.model = "ultra"; v.effects = "ultra"; v.lighting = "ultra"; v.aa = "msaa+fxaa"; v.refraction = "high"; v.ao = "medium"; v.localReflections = true; v.bloom = true; v.renderScale = 125; },
+            ["low"] = v => { v.textures = "low"; v.texFilter = 1; v.fog = "low"; v.reflections = "off"; v.shadows = "off"; v.model = "low"; v.effects = "low"; v.lighting = "low"; v.aa = "off"; v.refraction = "low"; v.ao = "off"; v.localReflections = false; v.bloom = false; v.renderScale = 75; v.outerWorld = false; },
+            ["medium"] = v => { v.textures = "medium"; v.texFilter = 4; v.fog = "medium"; v.reflections = "low"; v.shadows = "low"; v.model = "medium"; v.effects = "medium"; v.lighting = "medium"; v.aa = "fxaa"; v.refraction = "medium"; v.ao = "off"; v.localReflections = false; v.bloom = false; v.renderScale = 100; v.outerWorld = true; },
+            ["high"] = v => { v.textures = "high"; v.texFilter = 8; v.fog = "high"; v.reflections = "medium"; v.shadows = "medium"; v.model = "high"; v.effects = "high"; v.lighting = "high"; v.aa = "msaa"; v.refraction = "high"; v.ao = "low"; v.localReflections = true; v.bloom = true; v.renderScale = 100; v.outerWorld = true; },
+            ["ultra"] = v => { v.textures = "high"; v.texFilter = 16; v.fog = "high"; v.reflections = "ultra"; v.shadows = "ultra"; v.model = "ultra"; v.effects = "ultra"; v.lighting = "ultra"; v.aa = "msaa+fxaa"; v.refraction = "high"; v.ao = "medium"; v.localReflections = true; v.bloom = true; v.renderScale = 125; v.outerWorld = true; },
         };
 
         public static ZuSettings Defaults(string preset = "ultra")
@@ -193,6 +198,9 @@ namespace ZU.Game.UI.Toolkit
                     var saved = JObject.Parse(File.ReadAllText(FilePath));
                     // the saved preset decides the defaults the save is merged over
                     if (saved["preset"] is JValue pv && pv.Value is string ps && QUALITY_TABLE.ContainsKey(ps)) def = JObject.FromObject(Defaults(ps));
+                    // a save from before rev 2 holds Outer World off only because that was the old default: drop it once so the
+                    // new default (the preset's) applies
+                    if ((saved["rev"]?.Type == JTokenType.Integer ? (int)saved["rev"] : 1) < 2 && saved["video"] is JObject sv) sv.Remove("outerWorld");
                     Merge(def, saved);
                 }
             }

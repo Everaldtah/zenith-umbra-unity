@@ -311,8 +311,19 @@ namespace ZU.Game.Fx
                     if (!any) { p.bounds = new Bounds(c, Vector3.zero); any = true; } else p.bounds.Encapsulate(c);
                 }
             }
-            foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true)) Take(mf.sharedMesh, mf.transform, mf.GetComponent<Renderer>()?.sharedMaterials);
-            foreach (var sm in prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true)) Take(sm.sharedMesh, sm.transform, sm.sharedMaterials);
+            // a prop with LODs (the Tripo imports: <id>_LOD0/1/2 under a LODGroup) is drawn from its first LOD only - every
+            // level at once is the same arrow three times over, z-fighting
+            HashSet<Renderer> only = null;
+            var lod = prefab.GetComponentInChildren<LODGroup>(true);
+            if (lod != null) { var lods = lod.GetLODs(); if (lods.Length > 0) { only = new HashSet<Renderer>(); foreach (var r in lods[0].renderers) if (r != null) only.Add(r); } }
+            foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
+            {
+                var r = mf.GetComponent<Renderer>();
+                if (only != null && only.Count > 0 && !only.Contains(r)) continue;
+                Take(mf.sharedMesh, mf.transform, r?.sharedMaterials);
+            }
+            foreach (var sm in prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                if (only == null || only.Count == 0 || only.Contains(sm)) Take(sm.sharedMesh, sm.transform, sm.sharedMaterials);
             if (p.parts.Count == 0) return null;
             p.firstMat = p.parts[0].source;
             foreach (var part in p.parts) { p.map = AbilityKit.MapOf(part.source); if (p.map != null) { p.firstMat = part.source; break; } }

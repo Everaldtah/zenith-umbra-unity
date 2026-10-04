@@ -172,7 +172,8 @@ namespace ZU.EditorTools
             {
                 // the grip: a quarter of the way along from the back, the receiver sitting just above the fist
                 var b = new Bounds(); bool first = true;
-                foreach (var p in pts) { var w = wrap.TransformPoint(inner.TransformPoint(p - mean)); if (first) { b = new Bounds(w, Vector3.zero); first = false; } else b.Encapsulate(w); }
+                // (inner.TransformPoint already goes through the wrap: applying the wrap again scaled the grip offset by ~0.4)
+                foreach (var p in pts) { var w = inner.TransformPoint(p - mean); if (first) { b = new Bounds(w, Vector3.zero); first = false; } else b.Encapsulate(w); }
                 var off = new Vector3(-(b.min.x + b.max.x) / 2, -(b.min.y + (b.max.y - b.min.y) * 0.3f), -(b.min.z + (b.max.z - b.min.z) * 0.22f));
                 wrap.localPosition = off;
             }

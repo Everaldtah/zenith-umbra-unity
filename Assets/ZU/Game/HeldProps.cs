@@ -24,6 +24,9 @@ namespace ZU.Game
         public string id, alt; public HeldKind kind; public float size; public float pitch; public bool flip;
         /// <summary>the fitted prop's centre, relative to the fist (x model height)</summary>
         public Vector3 at;
+        /// <summary>the TS gun group's own scale over the fitted size (Gantetsu's chainguns are concept-sized: x1.25, "half as
+        /// long as he is tall") - the barrels, the muzzle flash and the grip offset all scale with it</summary>
+        public float group = 1;
         public Color color, glow;
         public HeldItem(string id, HeldKind kind, float size, string color, string glow, float pitch = 0, string alt = null, bool flip = false)
         { this.id = id; this.kind = kind; this.size = size; this.color = Conv.Hex(color); this.glow = Conv.Hex(glow); this.pitch = pitch; this.alt = alt; this.flip = flip; }
@@ -57,10 +60,11 @@ namespace ZU.Game
                 prop = new HeldItem("prop_tomoe_axe", HeldKind.Axe, 0.6324f, "#f3f1ec", "#5ff2e0") { at = new Vector3(0, -0.02f, 0) }, backProp = true } },
             // Tenkai-Oh's Dawnbreaker: a touch longer than the TS procedural haft (Reinhardt-sized): 0.62 H x 1.08
             { "tenkai", new HeldSpec { prop = new HeldItem("prop_tenkai_hammer", HeldKind.Hammer, 0.6696f, "#eef1f6", "#ffd76a") } },
-            // Gantetsu's rotary chainguns (Hinoko left, Hanabi right): the second generation when the build has it, 0.46 H long,
-            // the grip a quarter of the way along from the back (baked into the held_ prefab)
-            { "gantetsu", new HeldSpec { L = new HeldItem("prop_gantetsu_hinoko_v2", HeldKind.Gun, 0.46f, "#1a1a1a", "#4fe3c1", 0, "prop_gantetsu_hinoko"),
-                R = new HeldItem("prop_gantetsu_hanabi_v2", HeldKind.Gun, 0.46f, "#1a1a1a", "#ffb347", 0, "prop_gantetsu_hanabi") } },
+            // Gantetsu's rotary chainguns (Hinoko left, Hanabi right): the second generation when the build has it, fitted 0.46 H
+            // long in a group scaled 1.25 (TS attachGuns), the grip a quarter of the way along from the back (baked into the
+            // held_ prefab); the barrel cluster spins on its own axis (Looks/Editor BarrelBake: split_held_<id>)
+            { "gantetsu", new HeldSpec { L = new HeldItem("prop_gantetsu_hinoko_v2", HeldKind.Gun, 0.46f, "#1a1a1a", "#4fe3c1", 0, "prop_gantetsu_hinoko") { group = 1.25f },
+                R = new HeldItem("prop_gantetsu_hanabi_v2", HeldKind.Gun, 0.46f, "#1a1a1a", "#ffb347", 0, "prop_gantetsu_hanabi") { group = 1.25f } } },
             // Haruto's Sunspark sidearm (Hammer.ts buildBlaster, procedural): barrel along the forearm, 6% of the height past the
             // wrist, a little below it, at 1.5x
             { "haruto", new HeldSpec { R = new HeldItem("blaster", HeldKind.Gun, 1.5f, "#eef1f6", "#ffd76a") { at = new Vector3(0, -0.017f, 0.06f) } } },
@@ -98,6 +102,9 @@ namespace ZU.Game
         {
             public HeldItem item; public Transform node, body, swap; public Renderer[] rends, swapRends;
             public bool upright, arrow, card, hidden;
+            /// <summary>a gun's spinning barrel cluster (Gantetsu) and its muzzle flash (Gantetsu's star, Tomoe's crown disc):
+            /// ChaingunProp.spin / .flash; the flash isn't among `rends` (it shows on its own rounds, not with the gun)</summary>
+            public Transform spin, flash; public MeshRenderer flashR; public float spinA, flashSize; public Color flashCol;
         }
         public readonly Slot[] slots = new Slot[2];       // [left hand, right hand]
         /// <summary>the two-handed prop on the hammer frame (pommel at the origin, haft +Y) and its haft length (m)</summary>
@@ -151,6 +158,15 @@ namespace ZU.Game
             return pf != null ? Instantiate(pf) : null;
         }
 
+        /// <summary>the held gun cut in two (Looks/Editor BarrelBake, TS upgradeChaingun): the receiver, and the barrel cluster in a
+        /// "spin" node on its own axis, plus a "muzzle" marker - for whichever of id / alt Load would use; null when not baked</summary>
+        public static GameObject LoadSplit(string id, string alt)
+        {
+            string use = Resources.Load<GameObject>("ZUProps/held_" + id) != null ? id : alt;
+            var pf = use != null ? Resources.Load<GameObject>("ZULooks/split_held_" + use) : null;
+            return pf != null ? Instantiate(pf) : null;
+        }
+
         /// <summary>a slot's hierarchy: node (the gun frame) -> body (the blade pitch) -> the fitted prop scaled to size x H</summary>
         Slot Make(HeldItem it, float H, string name)
         {
@@ -159,7 +175,8 @@ namespace ZU.Game
             if (it == null) return s;
             s.body = new GameObject("body").transform; s.body.SetParent(s.node, false);
             float len = it.size * H;
-            GameObject m = it.id == "blaster" ? ProcProps.Blaster(H, it) : it.id == "sonicamp" ? ProcProps.SonicAmp(H, out amp) : it.kind == HeldKind.Arrow ? ProcProps.Arrow(len, H, it) : Load(it.id, it.alt);
+            GameObject m = it.id == "blaster" ? ProcProps.Blaster(H, it) : it.id == "sonicamp" ? ProcProps.SonicAmp(H, out amp) : it.kind == HeldKind.Arrow ? ProcProps.Arrow(len, H, it)
+                : (heroId == "gantetsu" ? LoadSplit(it.id, it.alt) : null) ?? Load(it.id, it.alt);
             if (m == null) m = it.kind == HeldKind.Card ? ProcProps.Card(len, H, it) : ProcProps.Blade(len, H, it);   // (no prop published yet: a procedural stand-in)
             var fit = m.transform; fit.SetParent(s.body, false);
             bool proc = fit.name.StartsWith("proc_");
@@ -190,7 +207,8 @@ namespace ZU.Game
                     s.upright = true; break;
                 case HeldKind.Arrow: s.arrow = true; break;
                 case HeldKind.Gun:
-                    if (!proc) { fit.localScale = Vector3.one * len; fit.localPosition = it.at * H; }
+                    if (!proc) { fit.localScale = Vector3.one * len * it.group; fit.localPosition = it.at * H * it.group; }
+                    s.spin = fit.Find("spin");
                     break;
                 case HeldKind.Hammer: case HeldKind.Axe:
                     // the haft up +Y from the pommel at the origin, the head's striking face on +X
@@ -199,14 +217,64 @@ namespace ZU.Game
             }
             s.rends = s.body.GetComponentsInChildren<Renderer>(true);
             foreach (var r in s.rends) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            if (it.kind == HeldKind.Gun) MakeFlash(s, it, H, fit);
             return s;
+        }
+
+        /// <summary>the muzzle flashes CharacterView.updateGuns flickers (after `rends`: a flash shows on its own rounds). Gantetsu
+        /// (Hammer.ts buildChaingun): a crisp four-petal star, its points 0.11 H out and its waist 0.03 H, warm gold, on the
+        /// barrel cluster's axis 0.03 H past the muzzle - all in the 1.25 group. Tomoe (TomoeProps.buildScattergun): a pale
+        /// turquoise disc of radius 0.07 H at the flared crown, (0, 0.047 H, 0.36 H) x 0.72.</summary>
+        void MakeFlash(Slot s, HeldItem it, float H, Transform fit)
+        {
+            Mesh mesh; Vector3 at;
+            if (heroId == "gantetsu")
+            {
+                var mz = fit.Find("muzzle");
+                if (mz != null) at = s.node.InverseTransformPoint(mz.position);
+                else
+                {
+                    // not baked: the fitted gun's front face, on its middle
+                    var b = new Bounds(); bool any = false;
+                    foreach (var mf in fit.GetComponentsInChildren<MeshFilter>(true))
+                    {
+                        if (mf.sharedMesh == null) continue;
+                        var mb = mf.sharedMesh.bounds;
+                        for (int i = 0; i < 8; i++)
+                        {
+                            var c = s.node.InverseTransformPoint(mf.transform.TransformPoint(mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1))));
+                            if (!any) { b = new Bounds(c, Vector3.zero); any = true; } else b.Encapsulate(c);
+                        }
+                    }
+                    at = any ? new Vector3(b.center.x, b.center.y, b.max.z) : new Vector3(0, 0, it.size * H * it.group);
+                }
+                at += Vector3.forward * (0.03f * H * it.group);
+                mesh = ProcProps.StarMesh; s.flashSize = 0.11f * H * it.group;
+                var c0 = Conv.Hex("#ffd27a"); c0.a = 0.95f; s.flashCol = c0;
+            }
+            else if (heroId == "tomoe")
+            {
+                at = new Vector3(0, (0.035f + 0.012f) * H, 0.36f * H) * 0.72f;
+                mesh = ProcProps.DiscMesh; s.flashSize = 0.07f * H;
+                var c0 = Conv.Hex("#dffffb"); c0.a = 0.9f; s.flashCol = c0;
+            }
+            else return;
+            var add = Fx.MatchFx.Current?.Additive ?? Resources.Load<Material>("ZUFx/additive");
+            if (add == null) return;
+            var g = new GameObject("muzzle flash"); s.flash = g.transform; s.flash.SetParent(s.node, false);
+            s.flash.localPosition = at;
+            g.AddComponent<MeshFilter>().sharedMesh = mesh;
+            s.flashR = g.AddComponent<MeshRenderer>(); s.flashR.sharedMaterial = add;
+            s.flashR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; s.flashR.receiveShadows = false;
+            g.SetActive(false);
         }
 
         /// <summary>every prop renderer (the owner hides them with the hero, or moves them to the viewmodel layer)</summary>
         public IEnumerable<Renderer> Renderers()
         {
-            foreach (var s in slots) if (s != null) { if (s.rends != null) foreach (var r in s.rends) yield return r; if (s.swapRends != null) foreach (var r in s.swapRends) yield return r; }
+            foreach (var s in slots) if (s != null) { if (s.rends != null) foreach (var r in s.rends) yield return r; if (s.swapRends != null) foreach (var r in s.swapRends) yield return r; if (s.flashR != null) yield return s.flashR; }
             if (propRends != null) foreach (var r in propRends) yield return r;
+            if (flameR != null) yield return flameR;          // (made after propRends; UpdateDetails shows it)
             if (backRends != null) foreach (var r in backRends) yield return r;
             foreach (var b in bracers) if (b != null) foreach (var r in b.GetComponentsInChildren<Renderer>(true)) yield return r;
             if (skates != null) foreach (var s in skates) foreach (var r in s.root.GetComponentsInChildren<Renderer>(true)) yield return r;
@@ -237,8 +305,43 @@ namespace ZU.Game
             if (prop != null) { propShown = show && (heroId != "tomoe" || axe); Show(propRends, propShown && propPlaced); }
             if (back != null) Show(backRends, show && !axe);
             foreach (var b in bracers) if (b != null) foreach (var r in b.GetComponentsInChildren<Renderer>(true)) r.enabled = show;
+            Guns(a, t);
         }
         static void Show(Renderer[] rs, bool on) { if (rs == null) return; foreach (var r in rs) if (r != null) r.enabled = on; }
+
+        double gunT = -1;
+        /// <summary>CharacterView.updateGuns for the gunners (here so the first-person viewmodel gets it too, after the visibility
+        /// above): Gantetsu's barrels spin with each gun's spin-up and each muzzle flashes on its own rounds; Tomoe's crown
+        /// muzzle flashes on each primary blast. (TS: the cores glow hotter while firing - on the procedural guns' ember vents
+        /// and shroud face, which upgradeChaingun removes once the Tripo guns load, so nothing glows on them in the TS either.)</summary>
+        void Guns(Actor a, double t)
+        {
+            float dt = gunT < 0 ? 0 : Mathf.Clamp((float)(t - gunT), 0, 0.1f); gunT = t;
+            if (heroId == "gantetsu")
+                for (int i = 0; i < 2; i++)
+                {
+                    var s = slots[i]; if (s?.item == null) continue;
+                    float spin = (float)a.Sv(i == 0 ? "spin1" : "spin2", 0); double age = t - (i == 0 ? a.anim.fireL : a.anim.fireR);
+                    s.spinA += dt * spin * 38 * (i == 0 ? 1 : -1);
+                    if (s.spin != null) s.spin.localRotation = Quaternion.AngleAxis(-s.spinA * Mathf.Rad2Deg, Vector3.forward);    // (TS rotation.z; mirrored)
+                    Flash(s, age < 0.045 && a.alive, 0.7f + Random.value * 0.6f);
+                }
+            else if (heroId == "tomoe" && slots[1] != null)
+                Flash(slots[1], t - a.anim.attackAt < 0.06 && a.anim.attackKind == "primary" && a.alive, 0.8f + Random.value * 0.5f);
+        }
+
+        /// <summary>a muzzle flash for this frame: on with its gun, a fresh size and a random turn about the barrel</summary>
+        void Flash(Slot s, bool on, float k)
+        {
+            if (s.flash == null) return;
+            on &= !s.hidden && shown;
+            if (s.flash.gameObject.activeSelf != on) s.flash.gameObject.SetActive(on);
+            if (!on) return;
+            s.flash.localRotation = Quaternion.AngleAxis(-Random.value * 180, Vector3.forward);
+            s.flash.localScale = Vector3.one * (s.flashSize * k);
+            mpb ??= new MaterialPropertyBlock();
+            s.flashR.GetPropertyBlock(mpb); mpb.SetColor("_BaseColor", s.flashCol); s.flashR.SetPropertyBlock(mpb);
+        }
 
         // ---------------------------------------------------------------------------------------------- weapon details
         Transform flame; MeshRenderer flameR; float flameLen, flameR0; Vector3 nozzle;
@@ -474,6 +577,23 @@ namespace ZU.Game
             return g;
         }
         static readonly Quaternion AlongZ = Quaternion.Euler(90, 0, 0);     // a cylinder (Y axis) laid along +Z
+
+        static Mesh star, disc;
+        /// <summary>Gantetsu's muzzle flash (Hammer.ts buildChaingun's star Shape): eight points round the barrel axis in the XY
+        /// plane, alternately at radius 1 (on the axes) and 0.03 / 0.11 (between them), filled; white vertex colours (FX shaders
+        /// multiply by them)</summary>
+        public static Mesh StarMesh => star ??= Fan("muzzle star", 8, k => k % 2 == 1 ? 0.03f / 0.11f : 1);
+        /// <summary>Tomoe's crown flash (TomoeProps: CircleGeometry(0.07 L, 12)): a unit disc in the XY plane</summary>
+        public static Mesh DiscMesh => disc ??= Fan("muzzle disc", 12, k => 1);
+
+        static Mesh Fan(string name, int n, System.Func<int, float> radius)
+        {
+            var v = new List<Vector3> { Vector3.zero }; var c = new List<Color> { Color.white }; var tri = new List<int>();
+            for (int k = 0; k < n; k++) { float a = k * Mathf.PI * 2 / n, r = radius(k); v.Add(new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0)); c.Add(Color.white); }
+            for (int k = 0; k < n; k++) tri.AddRange(new[] { 0, 1 + k, 1 + (k + 1) % n });
+            var m = new Mesh { name = name }; m.SetVertices(v); m.SetColors(c); m.SetTriangles(tri, 0); m.RecalculateNormals(); m.RecalculateBounds();
+            return m;
+        }
 
         /// <summary>an arrow along +Z from its nock at the origin: a lacquered shaft, a steel head with a glowing edge, three vanes</summary>
         public static GameObject Arrow(float len, float L, HeldItem it)

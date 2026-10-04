@@ -2,9 +2,14 @@
 // turns each Assets/ZU/Art/Props/<id>/<id>.fbx (tools/blender/glb2fbx.py) into Resources/ZUProps/<id>.prefab - a URP
 // material from its baked maps and the model normalised the way the TS MapScene places it: 1 m tall, standing on y = 0,
 // centred on the origin. LevelView then sets its height to the map data's `s`.
+// A prop whose FBX has <id>_LOD0/_LOD1/_LOD2 meshes (glb2fbx 'prop' mode) gets one LODGroup on the prefab root (the engine's
+// prop convention, tuned at lodBias 1): LOD1 below 25 % of the screen, LOD2 below 10 %, culled below 2 % - except landmarks
+// (placed taller than LandmarkS m anywhere in maps.json), whose LOD2 stays to the horizon. No fade, one shared material.
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Unity.Pipeline.Commands;
 using UnityEditor;
 using UnityEngine;
@@ -20,16 +25,34 @@ namespace ZU.EditorTools
         {
             if (!AssetDatabase.IsValidFolder(Src)) return "no " + Src;
             Directory.CreateDirectory(Out);
-            var report = new List<string>(); int ok = 0;
+            var sizes = MapSizes();
+            var report = new List<string>(); var lodded = new List<string>(); int ok = 0;
             foreach (var dir in Directory.GetDirectories(Src).Select(d => d.Replace('\\', '/')))
             {
                 string pid = Path.GetFileName(dir);
                 if (!string.IsNullOrEmpty(id) && pid != id) continue;
-                var r = One(dir, pid);
+                var r = One(dir, pid, sizes.TryGetValue(pid, out var s) ? s : 0f, lodded);
                 if (r == null) ok++; else report.Add(pid + ": " + r);
             }
             AssetDatabase.SaveAssets();
-            return $"{ok} prop prefab(s) in {Out}" + (report.Count > 0 ? "; problems: " + string.Join("; ", report) : "");
+            return $"{ok} prop prefab(s) in {Out}" + (lodded.Count > 0 ? "; LODs: " + string.Join(", ", lodded) : "")
+                + (report.Count > 0 ? "; problems: " + string.Join("; ", report) : "");
+        }
+
+        /// <summary>map props placed taller than this (metres) are landmarks, seen from across the map: their LOD2 is never culled</summary>
+        const float LandmarkS = 6f;
+
+        /// <summary>the tallest `s` each prop id is placed at in any map (maps.json prop entries are flat objects)</summary>
+        static Dictionary<string, float> MapSizes()
+        {
+            var sizes = new Dictionary<string, float>();
+            var text = File.ReadAllText("Assets/ZU/Resources/ZUData/maps.json");
+            foreach (Match m in Regex.Matches(text, "\"id\"\\s*:\\s*\"(prop_[^\"]+)\"[^{}]*?\"s\"\\s*:\\s*([0-9.]+)"))
+            {
+                float s = float.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
+                if (!sizes.TryGetValue(m.Groups[1].Value, out var was) || s > was) sizes[m.Groups[1].Value] = s;
+            }
+            return sizes;
         }
 
         /// <summary>props that really are metal keep their metal map; on everything else (wood, paint, cloth, stone) Tripo's
@@ -37,7 +60,7 @@ namespace ZU.EditorTools
         static bool IsMetal(string pid) => new[] { "loco", "car", "orrery", "telescope", "dish", "crane", "gaspump", "payload", "katana", "blade",
             "axe", "shotgun", "hammer", "shuriken", "nodachi", "sword", "bracer", "fist", "chain", "vending", "crucible", "press" }.Any(k => pid.Contains(k));
 
-        static string One(string dir, string pid)
+        static string One(string dir, string pid, float mapS, List<string> lodded)
         {
             var model = AssetDatabase.LoadAssetAtPath<GameObject>($"{dir}/{pid}.fbx");
             if (model == null) return "no " + pid + ".fbx";
@@ -62,6 +85,18 @@ namespace ZU.EditorTools
                 float k = 1f / b.size.y;
                 inst.transform.localScale *= k;
                 inst.transform.localPosition = new Vector3(-b.center.x * k, -b.min.y * k, -b.center.z * k);
+                // LODs: the importer puts its own LODGroup (default transitions) on the model for _LODn meshes - replace it
+                var lv = Enumerable.Range(0, 3).Select(i => rs.Where(r => r.name.EndsWith("_LOD" + i)).ToArray()).ToArray();
+                if (lv.All(l => l.Length > 0))
+                {
+                    foreach (var g in inst.GetComponentsInChildren<LODGroup>(true)) Object.DestroyImmediate(g);
+                    bool landmark = mapS > LandmarkS;
+                    var lods = root.AddComponent<LODGroup>();
+                    lods.fadeMode = LODFadeMode.None;
+                    lods.SetLODs(new[] { new LOD(0.25f, lv[0]), new LOD(0.10f, lv[1]), new LOD(landmark ? 0f : 0.02f, lv[2]) });
+                    lods.RecalculateBounds();
+                    lodded.Add(pid + (landmark ? " (landmark)" : ""));
+                }
                 PrefabUtility.SaveAsPrefabAsset(root, $"{Out}/{pid}.prefab");
                 return null;
             }

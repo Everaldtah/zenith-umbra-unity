@@ -32,7 +32,7 @@ namespace ZU.Game.Fx
             ["sealstorm"] = new Plan { secs = 16, wide = 0.4f, tough = 3 },  // Divine Seal Storm: bursts on every enemy within 18 m for 15 s
             ["judgment"] = new Plan { secs = 7, fight = 2.2f },
             ["susanoo"] = new Plan { secs = 11, wide = 0.6f, tough = 2.5f },
-            ["hundredsuns"] = new Plan { secs = 4.5f },
+            ["hundredsuns"] = new Plan { secs = 17, tough = 3 },   // (Unity rework) five giant arrows, then a 15 s swarm over 30 m
             ["singularity"] = new Plan { secs = 4.5f, flat = true },
             ["requiem"] = new Plan { secs = 4.5f },
             ["theater"] = new Plan { secs = 17, wide = 1, tough = 2.5f },
@@ -68,7 +68,9 @@ namespace ZU.Game.Fx
 
         public static UltShowcase Attach(MatchRunner r)
         {
-            if (pending == null || r.World == null || r.World.actors.Count == 0) return null;
+            // (not while MatchSettings is still pending: the running match - the previous showcase when a hero is picked -
+            // would take the showcase, then be torn down by the scene load, and the new match would come up without it)
+            if (pending == null || MatchSettings.Pending || r.World == null || r.World.actors.Count == 0) return null;
             pending = null;
             var s = r.gameObject.AddComponent<UltShowcase>();
             s.Stage(r);

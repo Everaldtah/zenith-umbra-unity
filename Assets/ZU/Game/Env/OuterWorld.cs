@@ -28,6 +28,22 @@ namespace ZU.Game.Env
             public bool lit;                              // lit windows (dusk / night)
             public string[] trees = new string[0];
             public int treeCount = 220;
+            /// <summary>the Tripo building style (TripoEnv): the outer-world style, or the map's own for the maps on the
+            /// default theme (amatsu japan, kurogane, hangar industry, cathedral / rift gothic)</summary>
+            public string bstyle;
+            internal Transform tripo;                     // where the skyline's Tripo buildings go (null: procedural only)
+        }
+
+        static string BuildingStyle(MapDef map, Theme th)
+        {
+            switch (map.id)
+            {
+                case "amatsu": return "japan";
+                case "kurogane": return "kurogane";
+                case "hangar": return "industry";
+                case "cathedral": case "rift": return "gothic";
+                default: return th.style.ToString().ToLowerInvariant();
+            }
         }
 
         public static Theme For(MapDef map)
@@ -64,17 +80,53 @@ namespace ZU.Game.Env
             float HeightAt(float x, float z) => Height(th, X, Z, x, z);
 
             // (the PC game's own harbour water and cloud sea, MapScene.ts, stay when the rest of the outer world is off)
-            if (th.sea) Water(map, root, water, mat);
+            if (th.sea) Water(map, root, water, full);
             if (th.clouds) Clouds(map, root);
             if (!full) return;
             if (!th.clouds && !th.space) Terrain(map, th, root, mat, HeightAt, X, Z);
 
             var bins = new MeshBins();
+            // Tripo building models stand in for the procedural ones wherever the style has one of the archetype
+            th.bstyle = BuildingStyle(map, th);
+            th.tripo = new GameObject("Tripo Buildings").transform; th.tripo.SetParent(root, false);
             Skyline(th, rng, bins, X, Z, HeightAt, water);
-            Landmarks(map, th, rng, bins, X, Z, HeightAt);
+            // the Tripo landscape set pieces for the map's style stand in for the procedural landmarks when there are any
+            if (!Vistas(map, th, rng, root, X, Z, HeightAt, water)) Landmarks(map, th, rng, bins, X, Z, HeightAt);
             bins.Emit(root, mat, prefix: "outer ");
             Trees(th, rng, root, X, Z, HeightAt, water);
             Showpieces(map, th, rng, root, X, Z, HeightAt);
+        }
+
+        // ------------------------------------------------------------------------------------------------ Tripo vistas
+        /// <summary>the style's Tripo set pieces (TripoEnv, kind vista) on the ring 120 - 600 m out: seeded angles spread round
+        /// the arena, each on the terrain at its foot (sunk a little), turned to face the arena, sized from its height_m
+        /// (a little larger the further out); never in the sea. False when the style has none (the landmarks stay).</summary>
+        static bool Vistas(MapDef map, Theme th, System.Random rng, Transform root, float X, float Z, System.Func<float, float, float> heightAt, float water)
+        {
+            var list = TripoEnv.Vistas(th.style.ToString(), map.id);
+            if (list.Count == 0) return false;
+            var parent = new GameObject("Vistas").transform; parent.SetParent(root, false);
+            int n = Mathf.Clamp(list.Count * 2, 4, 10);
+            float inner = Mathf.Max(X, Z) + 120, outer = 600;
+            float phase = (float)(rng.NextDouble() * Mathf.PI * 2);
+            for (int i = 0; i < n; i++)
+            {
+                var piece = list[i % list.Count];
+                // spread round the ring with a seeded wobble; try a few spots to stay out of the sea
+                for (int tries = 0; tries < 6; tries++)
+                {
+                    float a = phase + (i + (float)rng.NextDouble() * 0.6f - 0.3f) * Mathf.PI * 2 / n;
+                    float r = Mathf.Lerp(inner, outer, (float)rng.NextDouble());
+                    float x = Mathf.Cos(a) * r, z = Mathf.Sin(a) * r;
+                    float y = heightAt(x, z);
+                    if (!float.IsNaN(water) && y < water + 2) continue;
+                    float h = piece.height_m * (0.85f + (float)rng.NextDouble() * 0.3f) * (1 + (r - inner) / Mathf.Max(1, outer - inner) * 0.5f);
+                    float yaw = Mathf.Atan2(-x, -z) * Mathf.Rad2Deg + ((float)rng.NextDouble() - 0.5f) * 50;
+                    TripoEnv.Place(piece, parent, new Vector3(x, y - h * 0.05f, z), yaw, h);
+                    break;
+                }
+            }
+            return true;
         }
 
         // ------------------------------------------------------------------------------------------------ terrain
@@ -233,78 +285,40 @@ namespace ZU.Game.Env
         }
 
         // ------------------------------------------------------------------------------------------------ water / clouds
-        static void Water(MapDef map, Transform root, float level, System.Func<string, Material> mat)
+        /// <summary>the PC game's harbour water (MapScene.ts): ZU/Harbour - the painted, rolling sea, its roll tinted by the
+        /// map's colour - on a 700 m plane at the map's water level; with the full outer world it reaches the world's edge</summary>
+        static void Water(MapDef map, Transform root, float level, bool full)
         {
             if (float.IsNaN(level)) level = -0.7f;
-            // the TS harbour palette (deep #1d3f73, shallow #3f86b8), pulled toward the map's fog so the sea sits in its light
-            var fog = map.fog != null && map.fog.Length == 3 ? Conv.Hex(map.fog[0] as string, Color.gray) : Color.gray;
-            var wm = new Material(mat("water")) { name = "zu_sea" };
-            if (wm.HasProperty("_DeepColor")) wm.SetColor("_DeepColor", Color.Lerp(Conv.Hex("#1d3f73"), fog, 0.35f));
-            if (wm.HasProperty("_ShallowColor")) wm.SetColor("_ShallowColor", Color.Lerp(Conv.Hex("#3f86b8"), fog, 0.25f));
-            if (!wm.HasProperty("_DeepColor")) wm.SetColor("_BaseColor", Color.Lerp(Conv.Hex("#1d3f73"), fog, 0.35f));
-            var go = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            go.name = "Sea"; go.transform.SetParent(root, false);
-            Object.Destroy(go.GetComponent<Collider>());
-            go.transform.localPosition = new Vector3(0, level, 0);
-            go.transform.localScale = new Vector3(Extent * 0.2f, 1, Extent * 0.2f);
-            var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = wm; r.shadowCastingMode = ShadowCastingMode.Off;
+            var src = Resources.Load<Material>("ZUEnv/zu_harbour");
+            if (src == null) { Debug.LogWarning("[ZU] ZUEnv/zu_harbour missing"); return; }
+            var m = new Material(src) { name = "zu_sea" };
+            m.SetColor("_Glow", Conv.Hex(map.tint, new Color(1f, 0.6f, 0.24f)));
+            Sheet("Sea", root, level, full ? Extent * 2 : 700, m);
         }
 
+        /// <summary>the PC game's cloud sea under the floating maps (MapScene.ts): ZU/CloudSea - drifting cloud between the
+        /// fog colour and white (violet on the Rift), fading out by 450 m - on a 900 m plane at y -22</summary>
         static void Clouds(MapDef map, Transform root)
         {
-            var fog = map.fog != null && map.fog.Length == 3 ? Conv.Hex(map.fog[0] as string, Color.white) : Color.white;
-            var tex = CloudTexture();
-            float[] ys = { -22, -34, -52 }; float[] alpha = { 0.92f, 0.75f, 0.6f };
-            for (int i = 0; i < ys.Length; i++)
-            {
-                var go = GameObject.CreatePrimitive(PrimitiveType.Plane);
-                go.name = "Cloud sea " + i; go.transform.SetParent(root, false);
-                Object.Destroy(go.GetComponent<Collider>());
-                go.transform.localPosition = new Vector3(0, ys[i], 0);
-                go.transform.localScale = new Vector3(Extent * 0.2f, 1, Extent * 0.2f);
-                var m = Unlit(tex, Color.Lerp(Color.white, fog, 0.35f + i * 0.2f), alpha[i]);
-                m.SetTextureScale("_BaseMap", new Vector2(6 + i * 2, 6 + i * 2));
-                var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = m; r.shadowCastingMode = ShadowCastingMode.Off;
-                go.AddComponent<Scroll>().speed = new Vector2(0.004f + i * 0.002f, 0.0025f - i * 0.001f);
-            }
+            var src = Resources.Load<Material>("ZUEnv/zu_cloudsea");
+            if (src == null) { Debug.LogWarning("[ZU] ZUEnv/zu_cloudsea missing"); return; }
+            var m = new Material(src) { name = "zu_clouds" };
+            m.SetColor("_C1", map.fog != null && map.fog.Length == 3 ? Conv.Hex(map.fog[0] as string, Color.white) : Color.white);
+            m.SetColor("_C2", map.id == "rift" ? Conv.Hex("#3a1a66") : Color.white);
+            Sheet("Cloud sea", root, -22, 900, m);
         }
 
-        static Material Unlit(Texture tex, Color c, float a)
+        /// <summary>a flat, square, unshadowed sheet `size` m across at height y, centred on the map</summary>
+        static void Sheet(string name, Transform root, float y, float size, Material m)
         {
-            var m = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { name = "zu_clouds" };
-            m.SetTexture("_BaseMap", tex); m.SetColor("_BaseColor", new Color(c.r, c.g, c.b, a));
-            m.SetFloat("_Surface", 1); m.SetFloat("_Blend", 0);
-            m.SetOverrideTag("RenderType", "Transparent");
-            m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            m.SetFloat("_ZWrite", 0); m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            m.renderQueue = (int)RenderQueue.Transparent;
-            return m;
-        }
-
-        static Texture2D clouds;
-        static Texture2D CloudTexture()
-        {
-            if (clouds != null) return clouds;
-            int n = 512; clouds = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "zu_clouds", wrapMode = TextureWrapMode.Repeat };
-            var px = new Color32[n * n];
-            for (int j = 0; j < n; j++)
-                for (int i = 0; i < n; i++)
-                {
-                    float u = (float)i / n, v = (float)j / n, s = 0, a = 0.5f; int f = 3;
-                    for (int o = 0; o < 6; o++) { s += a * TilePerlin(u, v, f, o + 3); a *= 0.5f; f *= 2; }
-                    float cov = Mathf.SmoothStep(0.38f, 0.72f, s);
-                    float shade = Mathf.Lerp(0.78f, 1f, Mathf.SmoothStep(0.45f, 0.85f, s));
-                    px[j * n + i] = new Color(shade, shade, shade * 1.02f, cov);
-                }
-            clouds.SetPixels32(px); clouds.Apply(true);
-            return clouds;
-        }
-
-        sealed class Scroll : MonoBehaviour
-        {
-            public Vector2 speed; Material m; Vector2 off;
-            void Start() { m = GetComponent<MeshRenderer>().material; }
-            void Update() { off += speed * Time.deltaTime; m.SetTextureOffset("_BaseMap", off); }
+            var go = GameObject.CreatePrimitive(PrimitiveType.Plane);   // 10 m square
+            go.name = name; go.transform.SetParent(root, false);
+            Object.Destroy(go.GetComponent<Collider>());
+            go.transform.localPosition = new Vector3(0, y, 0);
+            go.transform.localScale = new Vector3(size / 10, 1, size / 10);
+            var r = go.GetComponent<MeshRenderer>(); r.sharedMaterial = m;
+            r.shadowCastingMode = ShadowCastingMode.Off; r.receiveShadows = false;
         }
 
         // ------------------------------------------------------------------------------------------------ skyline
@@ -380,28 +394,56 @@ namespace ZU.Game.Env
             var p = Vector3.zero;
             float w = size, d = size * (0.62f + (float)rng.NextDouble() * 0.25f);
             double pick = rng.NextDouble();
+            // a Tripo model of the archetype in the plot (b.Xf places it; `at` = local offset), else false: the procedural one
+            bool T(string arch, float wantH, float pw, float pd, float hMax, Vector3 at = default)
+            {
+                if (th.tripo == null) return false;
+                var piece = TripoEnv.Building(th.bstyle, arch, wantH, rng);
+                if (piece == null) return false;
+                TripoEnv.FitInside(piece, th.tripo, b.Xf.MultiplyPoint3x4(at), b.Xf.rotation.eulerAngles.y, pw, pd, hMax);
+                return true;
+            }
             switch (th.style)
             {
                 case Style.Japan:
-                    if (rng.NextDouble() < 0.035 && floors >= 3) { Buildings.Pagoda(b, p, size * 0.55f, 3 + rng.Next(3)); break; }
+                    if (rng.NextDouble() < 0.035 && floors >= 3)
+                    {
+                        int tiers = 3 + rng.Next(3);
+                        if (!T("pagoda", tiers * 5.5f, size * 0.8f, size * 0.8f, 40)) Buildings.Pagoda(b, p, size * 0.55f, tiers);
+                        break;
+                    }
                     string wall = pick < 0.36 ? "wall" : pick < 0.66 ? "plaster" : "planks";
                     string roof = rng.NextDouble() < 0.5 ? "roof" : "tiles";
-                    Buildings.Townhouse(b, rng, p, w, d, floors, th.lit, wall, roof);
+                    if (!T(floors <= 1 ? "storefront" : "townhouse", floors * 3.2f + 1.5f, w, d, floors * 3.2f + 4))
+                        Buildings.Townhouse(b, rng, p, w, d, floors, th.lit, wall, roof);
                     break;
                 case Style.West:
-                    if (pick < 0.08) Buildings.WaterTower(b, p, 2.2f + (float)rng.NextDouble());
-                    else Buildings.Storefront(b, rng, p, w * 0.8f, d, 1);
+                    if (pick < 0.08) { if (!T("watertower", 12, w * 0.5f, w * 0.5f, 14)) Buildings.WaterTower(b, p, 2.2f + (float)rng.NextDouble()); }
+                    else if (!T("storefront", 7, w * 0.8f, d, 10)) Buildings.Storefront(b, rng, p, w * 0.8f, d, 1);
                     break;
                 case Style.Industry:
-                    Buildings.Hall(b, rng, p, w * 1.4f, d * 1.2f, 6 + floors * 3.5f);
-                    if (pick < 0.05) Buildings.Chimney(b, p + new Vector3(w * 0.5f, 0, -d * 0.4f), 25 + floors * 9 + (float)rng.NextDouble() * 15, 1.4f + (float)rng.NextDouble());
-                    else if (pick < 0.16) Buildings.Tank(b, p + new Vector3(-w * 0.95f, 0, 0), 3.5f + (float)rng.NextDouble() * 3, 8 + (float)rng.NextDouble() * 8);
+                    if (!T("hall", 6 + floors * 3.5f, w * 1.4f, d * 1.2f, 9 + floors * 3.5f)) Buildings.Hall(b, rng, p, w * 1.4f, d * 1.2f, 6 + floors * 3.5f);
+                    if (pick < 0.05)
+                    {
+                        float ch = 25 + floors * 9 + (float)rng.NextDouble() * 15, cr = 1.4f + (float)rng.NextDouble();
+                        var at = p + new Vector3(w * 0.5f, 0, -d * 0.4f);
+                        if (!T("chimney", ch, cr * 3, cr * 3, ch, at)) Buildings.Chimney(b, at, ch, cr);
+                    }
+                    else if (pick < 0.16)
+                    {
+                        float tr = 3.5f + (float)rng.NextDouble() * 3, tht = 8 + (float)rng.NextDouble() * 8;
+                        var at = p + new Vector3(-w * 0.95f, 0, 0);
+                        if (!T("tank", tht, tr * 2, tr * 2, tht, at)) Buildings.Tank(b, at, tr, tht);
+                    }
                     break;
                 case Style.Observatory:
-                    if (pick < 0.55) Buildings.Townhouse(b, rng, p, w * 0.8f, d * 0.8f, Mathf.Min(floors, 2), false, pick < 0.3 ? "plaster" : "planks", "tiles");
+                    if (pick < 0.55 && !T("townhouse", 8, w * 0.8f, d * 0.8f, 10))
+                        Buildings.Townhouse(b, rng, p, w * 0.8f, d * 0.8f, Mathf.Min(floors, 2), false, pick < 0.3 ? "plaster" : "planks", "tiles");
                     break;
                 default:
-                    Buildings.Block(b, rng, p, w * 1.3f, d * 1.3f, Mathf.Max(2, floors));
+                    // the maps on the default theme in their own building style (kurogane towers, gothic houses, academy blocks)
+                    string arch = th.bstyle == "academy" || (th.bstyle == "kurogane" && pick < 0.4) ? "block" : "townhouse";
+                    if (!T(arch, Mathf.Max(2, floors) * 3.3f, w * 1.3f, d * 1.3f, 40)) Buildings.Block(b, rng, p, w * 1.3f, d * 1.3f, Mathf.Max(2, floors));
                     break;
             }
         }
@@ -410,37 +452,47 @@ namespace ZU.Game.Env
         static void Landmarks(MapDef map, Theme th, System.Random rng, MeshBins b, float X, float Z, System.Func<float, float, float> heightAt)
         {
             Vector3 OnGround(float x, float z) => new Vector3(x, heightAt(x, z) - 0.3f, z);
+            // a Tripo model of the archetype in place of the procedural landmark, turned to face the arena (false: none)
+            bool T(string arch, Vector3 at, float wantH, float w, float hMax)
+            {
+                var piece = th.tripo == null ? null : TripoEnv.Building(th.bstyle, arch, wantH, rng);
+                if (piece == null) return false;
+                TripoEnv.FitInside(piece, th.tripo, at, Mathf.Atan2(-at.x, -at.z) * Mathf.Rad2Deg, w, w, hMax);
+                return true;
+            }
+            void Pagoda(Vector3 at, float w, int tiers) { if (!T("pagoda", at, tiers * 5.5f, w * 1.4f, tiers * 7)) Buildings.Pagoda(b, at, w, tiers); }
             switch (map.id)
             {
                 case "hanabi":
                     Buildings.Castle(b, OnGround(-260, 210), 22);                       // across the bay, up the hill
-                    Buildings.Pagoda(b, OnGround(240, 230), 9, 5);
-                    Buildings.Pagoda(b, OnGround(-300, -150), 8, 3);
+                    Pagoda(OnGround(240, 230), 9, 5);
+                    Pagoda(OnGround(-300, -150), 8, 3);
                     break;
                 case "kagura":
-                    Buildings.Pagoda(b, OnGround(0, Z + 95), 11, 5);
+                    Pagoda(OnGround(0, Z + 95), 11, 5);
                     Buildings.Castle(b, OnGround(-X - 170, -Z - 160), 20);
                     break;
                 case "lantern":
                     Buildings.Castle(b, OnGround(X + 150, Z + 120), 24);
-                    Buildings.Pagoda(b, OnGround(-X - 90, Z + 70), 9, 5);
+                    Pagoda(OnGround(-X - 90, Z + 70), 9, 5);
                     break;
                 case "starfall":
                     // observatories on the nearer peaks
                     for (int i = 0; i < 5; i++)
                     {
                         float a = (float)(rng.NextDouble() * Mathf.PI * 2), r = 260 + (float)rng.NextDouble() * 260;
-                        Buildings.Observatory(b, OnGround(Mathf.Cos(a) * r, Mathf.Sin(a) * r), 7 + (float)rng.NextDouble() * 6);
+                        float s = 7 + (float)rng.NextDouble() * 6; var at = OnGround(Mathf.Cos(a) * r, Mathf.Sin(a) * r);
+                        if (!T("tower", at, s * 1.5f, s * 1.3f, s * 2)) Buildings.Observatory(b, at, s);
                     }
-                    Buildings.Observatory(b, OnGround(X + 70, 0), 14);
+                    { var at = OnGround(X + 70, 0); if (!T("tower", at, 21, 18, 28)) Buildings.Observatory(b, at, 14); }
                     break;
                 case "foundry":
-                    for (int i = 0; i < 6; i++) Buildings.Chimney(b, OnGround(-X - 60 + i * 14, Z + 75 + (i % 2) * 8), 55 + i * 4, 2.4f);
-                    for (int i = 0; i < 4; i++) Buildings.Tank(b, OnGround(X + 60, -Z - 30 + i * 16), 6, 14);
+                    for (int i = 0; i < 6; i++) { var at = OnGround(-X - 60 + i * 14, Z + 75 + (i % 2) * 8); float h = 55 + i * 4; if (!T("chimney", at, h, 7, h)) Buildings.Chimney(b, at, h, 2.4f); }
+                    for (int i = 0; i < 4; i++) { var at = OnGround(X + 60, -Z - 30 + i * 16); if (!T("tank", at, 14, 12, 14)) Buildings.Tank(b, at, 6, 14); }
                     break;
                 case "gulch":
                 case "mile":
-                    for (int i = 0; i < 3; i++) Buildings.WaterTower(b, OnGround(-X - 30 - i * 40, Z + 40 + i * 12), 3);
+                    for (int i = 0; i < 3; i++) { var at = OnGround(-X - 30 - i * 40, Z + 40 + i * 12); if (!T("watertower", at, 13, 8, 15)) Buildings.WaterTower(b, at, 3); }
                     break;
                 case "cloudstep":
                     Buildings.FloatingIsland(b, rng, new Vector3(0, 30, Z + 120), 24);

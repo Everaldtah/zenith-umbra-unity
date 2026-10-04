@@ -1,0 +1,17 @@
+{
+ "metallicFactor": 0,
+ "roughnessFactor": 0.8999999761581421,
+ "baseColorFactor": [
+  1,
+  1,
+  1,
+  1
+ ],
+ "emissiveFactor": [
+  0,
+  0,
+  0
+ ],
+ "hasMetalRoughTexture": false,
+ "materials": 1
+}

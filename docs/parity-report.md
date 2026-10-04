@@ -31,3 +31,9 @@ TS 26, Unity has 26, missing 0
 A Unity file names its TS source in its header ("port of X.ts"); a file nobody names is unported or only partly ported. Not applicable (Unity does it): Assets.ts (Resources + prefabs), Rig.ts (the humanoid Avatar bone map), Retarget.ts (Mecanim humanoid retargeting).
 
 TS 41, Unity has 41, missing 0
+
+## Intentional Unity divergences
+
+Not gaps: the Unity edition differs here on purpose.
+
+- **Yuzu - Hundred Suns**: the user's rework, 2026-10-03: five giant sword-arrows land in a ring, then a 1000-arrow swarm hunts every enemy within 30 m for 15 s (Sim Abilities.Hundredsuns + the sunswarm tick, AbilityFx/SunSwarm.cs, ult charge 2400 in Sim/Data/UnityDivergence.cs); the web keeps the TS 3 s arrow rain

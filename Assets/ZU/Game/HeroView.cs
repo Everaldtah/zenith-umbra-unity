@@ -8,6 +8,7 @@
 // AbilityFx (-50: ragdolls, eyelids) -> HeroView.LateUpdate (0: weapons, fingers) -> ZuDynamics (500: hair, cloth).
 using UnityEngine;
 using ZU.Dynamics;
+using ZU.Engine;
 using ZU.Game.Anim;
 using ZU.Sim;
 
@@ -51,6 +52,7 @@ namespace ZU.Game
         ZuDynamics dyn;
         HeldRig held; Fingers fingers;      // the weapon in the hands, the hands closed on it
         ProcAnimator proc; AnimState state; // the procedural layer (TS Animator.ts) and what it reads
+        AnimBudget.Slot budget;             // animation LOD (ZU.Engine.AnimBudget, TS engine.anim): this view's update phase
         Anim.ClipLayer clips;               // the clip layer (TS ClipLayer.ts): a PlayableGraph on the Animator, in place of the controller
         /// <summary>the hero's clip layer (null: the Mecanim controller drives the Animator) - ProcAnimator updates it and reads its pose</summary>
         public Anim.ClipLayer Clips => clips;
@@ -106,6 +108,7 @@ namespace ZU.Game
                     go.AddComponent<ProcDriver>().view = v;
                 }
             }
+            v.budget = AnimBudget.Shared.NewSlot();
             return v;
         }
 
@@ -178,11 +181,26 @@ namespace ZU.Game
                 }
                 return;
             }
-            bool hammer = held != null && held.prop != null && (a.def.id != "tomoe" || Held.AxeOut(a, syncT));
-            var sp = Conv.S(drawPos);           // where the body is drawn, in the sim's frame
-            state = AnimState.From(a, syncT, Time.deltaTime, hammer, new Vector3((float)sp.x, (float)sp.y, (float)sp.z), transform.lossyScale.y, state);
-            proc.Update(state, anim, clips);
+            // animation LOD (TS Game.ts:731): a small / off-screen hero re-poses at a reduced rate. On a held frame the clip layer,
+            // its inertialization and the procedural pose all stay put (the PlayableGraph is manual and only evaluated inside
+            // proc.Update -> ClipLayer.Update) and only the root below follows the simulation. Never held: the own hero, the Hero
+            // Viewer's turntable, the gallery, bosses, holograms, forced moves, Susanoo, the knocked-down (sim or pose), and a view
+            // without a clip layer (the Mecanim controller re-poses every frame anyway; holding only the procedural layer on top
+            // would pop). The dead never reach here (above). (The TS boss-cam clause has no Unity equivalent yet.)
+            var mr = host as MatchRunner;
+            bool always = a == host?.Player || mr == null || mr.World?.mode == "gallery" || a.isBoss || !string.IsNullOrEmpty(a.def.holo)
+                || a.forced != null || a.def.id == "susanoo" || a.Has("knockdown", syncT) || proc.down > 0 || clips == null;
+            float adt = AnimBudget.Shared.Step(budget, drawPos, (float)a.Height, Time.deltaTime, always);
+            bool updated = adt >= 0;
+            if (updated)
+            {
+                bool hammer = held != null && held.prop != null && (a.def.id != "tomoe" || Held.AxeOut(a, syncT));
+                var sp = Conv.S(drawPos);           // where the body is drawn, in the sim's frame
+                state = AnimState.From(a, syncT, adt, hammer, new Vector3((float)sp.x, (float)sp.y, (float)sp.z), transform.lossyScale.y, state);
+                proc.Update(state, anim, clips);
+            }
             // the performance layer, in the TS frame: tilt about a pivot at the hips, then a knockdown laid along the push
+            // (every frame, from the last procedural values at the current draw position: the body never lags its hitbox)
             float piv = (float)a.Height * 0.55f;
             var q = Quaternion.AngleAxis(proc.tiltPitch * Mathf.Rad2Deg, Vector3.right) * Quaternion.AngleAxis(proc.tiltRoll * Mathf.Rad2Deg, Vector3.forward);
             var jp = q * new Vector3(0, piv, 0);
@@ -204,7 +222,8 @@ namespace ZU.Game
             transform.SetPositionAndRotation(drawPos + yawQ * ProcAnimator.M(pos), yawQ * ProcAnimator.M(q));
             transform.localScale = Vector3.Scale(baseScale, new Vector3(proc.sqXZ, proc.sqY, proc.sqXZ));
             // a heavy strike's impact frame (TS Game onImpact): the striker's own camera kicks, anyone near feels the shake
-            if (proc.impact > 0 && Fx.MatchFx.Current != null)
+            // (proc.impact is a per-update flag: a held frame must not fire it again)
+            if (updated && proc.impact > 0 && Fx.MatchFx.Current != null)
             {
                 var cam = Camera.main; float near = cam != null ? Vector3.Distance(cam.transform.position, transform.position) : 20;
                 Fx.MatchFx.Current.Shake = Mathf.Max(Fx.MatchFx.Current.Shake, host != null && a == host.Player ? 0.3f : 0.18f / (1 + near / 6));

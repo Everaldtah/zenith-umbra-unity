@@ -38,6 +38,7 @@ namespace ZU.Game
         LevelView level;
         readonly Dictionary<int, IActorView> views = new Dictionary<int, IActorView>();
         readonly Dictionary<int, string> viewDef = new Dictionary<int, string>();     // the def each view was built for
+        readonly List<int> stale = new List<int>();
         ProjectileViews projViews;
         PlayerControls controls;
         MatchCamera cam;
@@ -72,9 +73,25 @@ namespace ZU.Game
             Fx.MatchFx.Attach(this);
             Fx.AbilityFx.Register(this);            // (after MatchFx: the seal storm draws its bursts through MatchFx.Current)
             UI.Toolkit.MatchUi.Attach(this);         // the HUD, Armory, pause / results / Options (UI Toolkit)
+            // Training Grounds (desktop edition): the Hero Range lane + Spar Arena dressing and their console / meters (after
+            // MatchUi, which clears the HUD layers); a spar round puts you at your end - the camera turns to face the opponent
+            if (Match.range != null)
+            {
+                Env.TrainingScene.Build(this);
+                UI.Toolkit.RangeView.Attach(this);
+                if (Match.spar != null) Match.spar.onPlace = a => { if (a == Player && !autopilot) controls.Begin(a); };
+            }
             if (Player != null && autopilot) { Player.controller = new Bot(World, Player, Match.nav, botSkill); }
             else if (Player != null) controls.Begin(Player);
             Snapshot(); Snapshot();
+            StartCoroutine(MarkLive());
+        }
+
+        /// <summary>start-up timing: the first frame the match is drawn (QA times its shots from this, not a guessed delay)</summary>
+        System.Collections.IEnumerator MarkLive()
+        {
+            yield return null; yield return new WaitForEndOfFrame();
+            StartupClock.Mark($"match live: {mode} on {mapId} as {(Player != null ? Player.def.id : "spectator")}");
         }
 
         void Update()
@@ -98,7 +115,7 @@ namespace ZU.Game
                 SyncViews();
                 return;
             }
-            acc += Time.deltaTime;
+            acc += ZU.Engine.Perf.FrameDt;          // the engine's vsync-quantized frame delta (x timeScale; Time.deltaTime with -zu-engine=0)
             int steps = 0;
             while (acc >= DT && steps < 16)
             {
@@ -170,6 +187,13 @@ namespace ZU.Game
                 if (a.IsSummon && string.IsNullOrEmpty(a.def.model)) continue;
                 if (!views.TryGetValue(a.id, out var v)) { views[a.id] = v = ActorViews.Create(a, transform); viewDef[a.id] = a.def.id; }
                 v.Sync(this, a);
+            }
+            // heroes taken out of the world (the Hero Range / Spar Arena swapping their target): their bodies go too
+            if (Match.range != null && views.Count > 0)
+            {
+                stale.Clear();
+                foreach (var id in views.Keys) if (!World.actors.Exists(x => x.id == id)) stale.Add(id);
+                foreach (var id in stale) { if (views[id] is Component c && c != null) Destroy(c.gameObject); views.Remove(id); viewDef.Remove(id); poses.Remove(id); }
             }
             projViews.Sync(World, Alpha);
             cam.Sync(this);

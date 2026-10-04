@@ -29,6 +29,8 @@ namespace ZU.Game.UI.Toolkit
             var w = r.World; if (w == null) return;
             bool over = !string.IsNullOrEmpty(w.winner);
             if (!PauseMenu.Paused) { if (shown != "") Close(); return; }
+            // the Training Grounds console (RangeView) stands in for the pause screen while it is open
+            if (RangeView.Current?.Open ?? false) { if (shown != "") Close(); return; }
             if (shown == "options") { options?.Update(); return; }
             if (shown == "swap")
             {
@@ -64,8 +66,9 @@ namespace ZU.Game.UI.Toolkit
             var b = U.Div("btns", s);
             U.Btn("RESUME", "primary", PauseMenu.Resume, b);
             if (r.World?.mode == "training") U.Btn("SWITCH HERO", null, () => Swap(r), b);
+            if (RangeView.Current != null) U.Btn("HERO RANGE · SPAR ARENA", null, () => RangeView.Current?.Show(), b);
             U.Btn("SETTINGS", null, () => Settings(r), b);
-            U.Btn("QUIT TO MENU", null, () => { MatchUi.Current?.RecordCareer("none"); ToMenu("title"); }, b);
+            U.Btn("QUIT TO MENU", null, () => { MatchUi.Current?.RecordCareer("none"); ToMenu(LeaveOnline() ? "online" : "title"); }, b);
             U.Txt("Click the game to capture the mouse · Esc pauses", "tips", s);
         }
 
@@ -77,7 +80,7 @@ namespace ZU.Game.UI.Toolkit
         }
 
         /// <summary>Esc while a screen over the pause is open goes back to the pause (or cancels a rebind)</summary>
-        public bool TakeEsc() => shown == "options" || shown == "swap";
+        public bool TakeEsc() => shown == "options" || shown == "swap" || (RangeView.Current?.Open ?? false);
 
         /// <summary>the Training Grounds' hero select over the paused match (Menu.ts heroSelect(swap)): SWITCH swaps the
         /// hero in place and resumes</summary>
@@ -92,6 +95,16 @@ namespace ZU.Game.UI.Toolkit
                 if (r.SwapHero(id)) MatchSettings.Hero = id;
                 PauseMenu.Resume();
             }, () => { swapMenu?.Close(); swapMenu = null; Pause(r); });
+        }
+
+        /// <summary>TS Menu.abandon: an online match left early leaves its session (quietly - the host's link drops and its
+        /// AI takes the hero; a host leaving ends the match for its clients) and goes back to the online lobby when still online</summary>
+        static bool LeaveOnline()
+        {
+            var s = ZU.Net.NetMatch.Current?.Session as ZU.Net.OnlineSession;
+            if (s == null) return false;
+            s.Leave(true);
+            return s.Online;
         }
 
         static void ToMenu(string where)

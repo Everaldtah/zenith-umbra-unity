@@ -34,6 +34,7 @@ namespace ZU.Net
         public CoopSession(string name, string platform = "desktop", string nodeUrl = null)
         {
             lobby = new NodeLobby(name, platform, nodeUrl);
+            if (Zenith.Party != null) lobby.me.party = Zenith.Party;      // Zenith.net launcher party: party members find each other's squad
             lobby.OnPlayers = p => OnPlayers?.Invoke(p);
             lobby.OnStatus = n => OnStatus?.Invoke(n);
             lobby.OnMessage = m => Handle(m);

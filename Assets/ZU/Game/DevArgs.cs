@@ -1,7 +1,9 @@
 // QA / dev start-up flags: the player jumps past the menu straight into a match.
 //   "Zenith Umbra Unity.exe" --zu-map hanabi --zu-hero tenkai --zu-mode quickplay [--zu-third] [--zu-autopilot] [--zu-skill 0.6]
 //   --zu-level c1_shipyard (with --zu-mode campaign)
+//   --zu-mode ultviewer --zu-hero hayate      (the Ult Viewer: the hero's ult on the gallery bench, as the menu opens it)
 // Modes are MatchRunner's (quickplay, competitive, skirmish, practice, aitest, training, spectate, stadium, campaign...).
+// Each match marks "[ZU] t=... match live: ..." in the log on the first frame it draws (StartupClock).
 // Read once per run; going back to the menu afterwards behaves normally.
 using System;
 using ZU.Game.UI;
@@ -24,6 +26,12 @@ namespace ZU.Game
             if (map == null && mode == null) return false;
             string hero = Arg(a, "--zu-hero") ?? "raijin";
             float skill = float.TryParse(Arg(a, "--zu-skill"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 0.6f;
+            if (mode == "ultviewer")
+            {
+                StartupClock.Mark($"dev args: ult viewer for {hero}");
+                Fx.UltShowcase.Open(hero);
+                return true;
+            }
             var level = Arg(a, "--zu-level");
             if (level != null) MatchSettings.Level = level;
             StartupClock.Mark($"dev args: {mode ?? "quickplay"} on {map ?? level} as {hero}");

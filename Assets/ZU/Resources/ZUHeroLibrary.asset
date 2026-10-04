@@ -15,107 +15,142 @@ MonoBehaviour:
   baseController: {fileID: 9100000, guid: 53bd725bda3b29944bab7a9f948a7b2b, type: 2}
   heroes:
   - id: kaien
-    prefab: {fileID: 4952271329938285546, guid: 532b32d7ca4c49d4598c9f7a2a49bdd8, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 4952271329938285546, guid: 532b32d7ca4c49d4598c9f7a2a49bdd8, type: 3}
     controller: {fileID: 0}
   - id: enra
-    prefab: {fileID: 1651683659102567843, guid: d1a711991dffea54a9cf999de185fa23, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 1651683659102567843, guid: d1a711991dffea54a9cf999de185fa23, type: 3}
     controller: {fileID: 0}
   - id: gantetsu
-    prefab: {fileID: 3611153617037084078, guid: 9264e76c8183686458dd60105899bdc1, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 3611153617037084078, guid: 9264e76c8183686458dd60105899bdc1, type: 3}
     controller: {fileID: 0}
   - id: gorgoth
-    prefab: {fileID: 4667034420566630158, guid: a31e75d27192c5f45a85dad29163c529, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 4667034420566630158, guid: a31e75d27192c5f45a85dad29163c529, type: 3}
     controller: {fileID: 0}
   - id: haruto
-    prefab: {fileID: 2488839701910894167, guid: 9e6e5fbded8392646aa4f85e0d27a514, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 2488839701910894167, guid: 9e6e5fbded8392646aa4f85e0d27a514, type: 3}
     controller: {fileID: 0}
   - id: hayate
-    prefab: {fileID: 1262124867092181570, guid: e280143a0d102e940b9ce397b45d71c6, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 1262124867092181570, guid: e280143a0d102e940b9ce397b45d71c6, type: 3}
     controller: {fileID: 0}
   - id: hex
-    prefab: {fileID: 8968689413354096249, guid: 13eaa04dab229e54cbf563eca68bac33, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 8968689413354096249, guid: 13eaa04dab229e54cbf563eca68bac33, type: 3}
     controller: {fileID: 0}
   - id: hibiki
-    prefab: {fileID: 9075909628513757932, guid: d66eeba9110c29646a5bbba3e0905a37, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 9075909628513757932, guid: d66eeba9110c29646a5bbba3e0905a37, type: 3}
     controller: {fileID: 0}
   - id: kagemaru
-    prefab: {fileID: 1723419060395572853, guid: 0f38ee77b9ecbcd4fa74f634ecec1a37, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 1723419060395572853, guid: 0f38ee77b9ecbcd4fa74f634ecec1a37, type: 3}
     controller: {fileID: 0}
   - id: mirei
-    prefab: {fileID: 3163684052495843851, guid: a29bca3e9ccb191449c0dadfa87a10b0, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 3163684052495843851, guid: a29bca3e9ccb191449c0dadfa87a10b0, type: 3}
     controller: {fileID: 0}
   - id: nocturne
-    prefab: {fileID: 7829461442680061783, guid: 0a00f0a3dd4d1284b971f05152a32d78, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 7829461442680061783, guid: 0a00f0a3dd4d1284b971f05152a32d78, type: 3}
     controller: {fileID: 0}
   - id: raijin
-    prefab: {fileID: 7701995186569310372, guid: d72149bb552e7b745bb5f0361354ca9f, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 7701995186569310372, guid: d72149bb552e7b745bb5f0361354ca9f, type: 3}
     controller: {fileID: 0}
   - id: seiran
-    prefab: {fileID: 5802513839451403804, guid: cf4cdc9d5a41a9a4e81770901bcb419d, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 5802513839451403804, guid: cf4cdc9d5a41a9a4e81770901bcb419d, type: 3}
     controller: {fileID: 0}
   - id: tenkai
-    prefab: {fileID: 1752535483335744798, guid: 77ade9d8ea03d01419243277ba73ea84, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 1752535483335744798, guid: 77ade9d8ea03d01419243277ba73ea84, type: 3}
     controller: {fileID: 0}
   - id: tomoe
-    prefab: {fileID: 2858574863380927081, guid: a488281151d1dfa40b0245231730da05, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 2858574863380927081, guid: a488281151d1dfa40b0245231730da05, type: 3}
     controller: {fileID: 0}
   - id: yuzu
-    prefab: {fileID: 8628907205663678560, guid: 7826a95cc3b2d994dbee6d8145449d80, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 8628907205663678560, guid: 7826a95cc3b2d994dbee6d8145449d80, type: 3}
     controller: {fileID: 0}
   - id: bot_drone
-    prefab: {fileID: 7873673250294004064, guid: 9c19eca3257e18148bd40eb27d5cfb87, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 7873673250294004064, guid: 9c19eca3257e18148bd40eb27d5cfb87, type: 3}
     controller: {fileID: 0}
   - id: hayate_dragon
-    prefab: {fileID: 9187060161514003065, guid: b4cb3b3d20d40224cb79789292cd2537, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 9187060161514003065, guid: b4cb3b3d20d40224cb79789292cd2537, type: 3}
     controller: {fileID: 0}
   - id: minion_lancer
-    prefab: {fileID: 1913155407104148132, guid: 3812aee1700b7254789c5aa55eac6673, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 1913155407104148132, guid: 3812aee1700b7254789c5aa55eac6673, type: 3}
     controller: {fileID: 0}
   - id: enra_susanoo
-    prefab: {fileID: 5330431788588340850, guid: 9bd35496d2f447e4b9ad90a9925efb75, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 5330431788588340850, guid: 9bd35496d2f447e4b9ad90a9925efb75, type: 3}
     controller: {fileID: 0}
   - id: boss_genesis
-    prefab: {fileID: 2192539309635575988, guid: 6f6115a63a02dac48816372bc2a39adc, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 2192539309635575988, guid: 6f6115a63a02dac48816372bc2a39adc, type: 3}
     controller: {fileID: 0}
   - id: boss_ironmaw
-    prefab: {fileID: 4206416990021511966, guid: 05ff1456e9285cd4ea9a57a46c896d0d, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 4206416990021511966, guid: 05ff1456e9285cd4ea9a57a46c896d0d, type: 3}
     controller: {fileID: 0}
   - id: boss_leviathan
-    prefab: {fileID: 496972541161952518, guid: b09fd60cc4b702d41b872585f2bf05f5, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 496972541161952518, guid: b09fd60cc4b702d41b872585f2bf05f5, type: 3}
     controller: {fileID: 0}
   - id: boss_phoenix
-    prefab: {fileID: 6114862382515230489, guid: cf0c2c62361b497429501257478c170c, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 6114862382515230489, guid: cf0c2c62361b497429501257478c170c, type: 3}
     controller: {fileID: 0}
   - id: boss_reaper
-    prefab: {fileID: 2039360860585361752, guid: ceec25e74061a1c48b1bcecb1356ac05, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 2039360860585361752, guid: ceec25e74061a1c48b1bcecb1356ac05, type: 3}
     controller: {fileID: 0}
   - id: bot_dummy
-    prefab: {fileID: 6770175940113049469, guid: c10af6b6a2de6764d8d3e521819f9a02, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 6770175940113049469, guid: c10af6b6a2de6764d8d3e521819f9a02, type: 3}
     controller: {fileID: 0}
   - id: bot_sentry
-    prefab: {fileID: 3373470603664585321, guid: a5da67190626d9c47b4aee1ed36213e2, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 3373470603664585321, guid: a5da67190626d9c47b4aee1ed36213e2, type: 3}
     controller: {fileID: 0}
   - id: raijin_susanoo
-    prefab: {fileID: 5898571292866624728, guid: a601a545991ce4645a21798ae7cd834e, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 5898571292866624728, guid: a601a545991ce4645a21798ae7cd834e, type: 3}
     controller: {fileID: 0}
   - id: seiran_dragon
-    prefab: {fileID: 1308338391811183158, guid: d1eda3f4d542cab4c88b89a64a25cbd0, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 1308338391811183158, guid: d1eda3f4d542cab4c88b89a64a25cbd0, type: 3}
     controller: {fileID: 0}
   - id: hibiki_armor
-    prefab: {fileID: 7182219706862001977, guid: c94c2f35f2951b44ba94825dcf254b83, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 7182219706862001977, guid: c94c2f35f2951b44ba94825dcf254b83, type: 3}
     controller: {fileID: 0}
   - id: minion_bomber
-    prefab: {fileID: 5202506367898692802, guid: 5f3a3df74ee10a746b5e4af1b9971414, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 5202506367898692802, guid: 5f3a3df74ee10a746b5e4af1b9971414, type: 3}
     controller: {fileID: 0}
   - id: minion_sentinel
-    prefab: {fileID: 6788047018978688730, guid: 182af1a1416131e4283ed0e59370814b, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 6788047018978688730, guid: 182af1a1416131e4283ed0e59370814b, type: 3}
     controller: {fileID: 0}
   - id: minion_swarmer
-    prefab: {fileID: 2885086961026822580, guid: 9b141de0689e1ea4b991042df61e2ebb, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 2885086961026822580, guid: 9b141de0689e1ea4b991042df61e2ebb, type: 3}
     controller: {fileID: 0}
   - id: qelvaris
-    prefab: {fileID: 3423128055271716834, guid: 985304fabd0ddab45b8153ccdaf4e072, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 3423128055271716834, guid: 985304fabd0ddab45b8153ccdaf4e072, type: 3}
     controller: {fileID: 0}
   - id: vorn
-    prefab: {fileID: 6803770358556772828, guid: 12fe0dfc036493546b5985505b3e72ac, type: 3}
+    legacyPrefab: {fileID: 0}
+    prefabRef: {fileID: 6803770358556772828, guid: 12fe0dfc036493546b5985505b3e72ac, type: 3}
     controller: {fileID: 0}

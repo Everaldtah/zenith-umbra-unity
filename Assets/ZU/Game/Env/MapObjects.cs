@@ -1,6 +1,7 @@
 // The objects players read a match from (src/render/MapScene.ts): the capture point (a ring in the owner's colour, a
 // disc with the capture progress arc and rings rippling outward, a 40 m beam), the health packs (a pedestal with a
-// floating, turning cross; a ring that refills while one respawns), the jump pads (ring, disc, a bobbing arrow along the
+// floating, turning cross; a ring that refills while one respawns), the ultimate charge packs (Training Grounds, desktop
+// edition: the pedestal in gold with a cube of light spinning on a corner), the jump pads (ring, disc, a bobbing arrow along the
 // launch) and, on Mikoshi Rush maps, the festival float riding the payload position with its lit route. Built with the
 // level, driven every frame from the match's world.
 using System.Collections.Generic;
@@ -22,6 +23,8 @@ namespace ZU.Game.Env
         // packs and pads
         sealed class PackView { public Transform cross, ring; public Material ringMat; public bool big; }
         readonly List<PackView> packs = new List<PackView>();
+        sealed class UltView { public Transform cube, ring; public Material ringMat; }
+        readonly List<UltView> ultPacks = new List<UltView>();
         readonly List<(Transform g, Transform arrow)> pads = new List<(Transform, Transform)>();
         // the float
         Transform floatT; Bounds floatBox; Renderer[] floatRends; V3 lastPush; bool hasPush;
@@ -31,7 +34,7 @@ namespace ZU.Game.Env
             var go = new GameObject("Map Objects"); go.transform.SetParent(parent, false);
             var o = go.AddComponent<MapObjects>();
             o.map = map; o.level = level; o.runner = parent.GetComponentInParent<MatchRunner>();
-            o.Point(); o.Packs(); o.Pads(); o.Float();
+            o.Point(); o.Packs(); o.UltPacks(); o.Pads(); o.Float();
             return o;
         }
 
@@ -122,6 +125,49 @@ namespace ZU.Game.Env
                 var rm = Unlit(A(Conv.Hex("#2fe3b0"), 0.8f));
                 var ring = Part("ring", g, MeshKit.Annulus(0.66f * k, 0.78f * k, 32, 360), rm, new Vector3(0, 0.25f, 0)).transform;
                 packs.Add(new PackView { cross = cross, ring = ring, ringMat = rm, big = big });
+            }
+        }
+
+        // ------------------------------------------------------------------ ultimate charge packs
+        /// <summary>the health pack's pedestal in gold, a cube of light turning on a corner (the world only has them in the
+        /// desktop edition; a preview without a world reads the map's)</summary>
+        void UltPacks()
+        {
+            var w = runner?.World;
+            var list = new List<(double x, double y, double z)>();
+            if (w != null) foreach (var p in w.ultPacks) list.Add((p.x, p.y, p.z));
+            else if (map.ultPacks != null) foreach (var p in map.ultPacks) list.Add((p.x, p.y ?? System.Math.Max(0, Ground(p.x, p.z, 0.3)), p.z));
+            if (list.Count == 0) return;
+            var baseMat = Lit(Conv.Hex("#2b2a33"), 0.55f, 0.6f);
+            var rimMat = Unlit(Conv.Hex("#ffc83a"));
+            var coreMat = Glow(Conv.Hex("#ffb300"), Conv.Hex("#ff8a00") * 1.25f);
+            var edgeMat = Unlit(Conv.Hex("#ffd23f"));
+            var haloMat = Unlit(A(Conv.Hex("#ffc83a"), 0.16f), additive: true);
+            var box = MeshKit.Box();
+            foreach (var (x, y, z) in list)
+            {
+                var g = new GameObject("Ult Charge Pack").transform; g.SetParent(transform, false);
+                g.localPosition = Conv.U(x, y, z);
+                Part("base", g, MeshKit.Cylinder(0.72f, 0.62f, 0.22f, 20), baseMat, Vector3.zero, shadows: true);
+                Part("rim", g, MeshKit.Torus(0.62f, 0.05f, 28, 6), rimMat, new Vector3(0, 0.23f, 0));
+                var cube = new GameObject("cube").transform; cube.SetParent(g, false); cube.localPosition = new Vector3(0, 1.0f, 0);
+                // standing on a corner (the TS tilt: x = atan(1/sqrt 2), z = 45 degrees); the outer node spins
+                var tilt = new GameObject("tilt").transform; tilt.SetParent(cube, false);
+                tilt.localRotation = Quaternion.Euler(Mathf.Atan(Mathf.Sqrt(0.5f)) * Mathf.Rad2Deg, 0, 45);
+                Part("core", tilt, box, coreMat, Vector3.zero).transform.localScale = Vector3.one * 0.42f;
+                // its edges: twelve thin bars on a 0.56 m cube (the TS EdgesGeometry lines)
+                const float E = 0.28f, T = 0.022f;
+                for (int ax = 0; ax < 3; ax++)
+                    foreach (var (s1, s2) in new[] { (-1, -1), (-1, 1), (1, -1), (1, 1) })
+                    {
+                        var pos = ax == 0 ? new Vector3(0, s1 * E, s2 * E) : ax == 1 ? new Vector3(s1 * E, 0, s2 * E) : new Vector3(s1 * E, s2 * E, 0);
+                        var size = ax == 0 ? new Vector3(2 * E + T, T, T) : ax == 1 ? new Vector3(T, 2 * E + T, T) : new Vector3(T, T, 2 * E + T);
+                        Part("edge", tilt, box, edgeMat, pos).transform.localScale = size;
+                    }
+                Part("halo", cube, MeshKit.Sphere(), haloMat, Vector3.zero).transform.localScale = Vector3.one * 1.0f;
+                var rm = Unlit(A(Conv.Hex("#ffc83a"), 0.8f));
+                var ring = Part("ring", g, MeshKit.Annulus(0.66f, 0.78f, 32, 360), rm, new Vector3(0, 0.25f, 0)).transform;
+                ultPacks.Add(new UltView { cube = cube, ring = ring, ringMat = rm });
             }
         }
 
@@ -222,6 +268,18 @@ namespace ZU.Game.Env
                     p.cross.localRotation = Quaternion.Euler(0, -t * 1.4f * Mathf.Rad2Deg, 0);
                     p.ringMat.SetColor("_BaseColor", A(Conv.Hex("#2fe3b0"), ready ? 0.8f : 0.35f));
                     float s = ready ? 1 : Mathf.Max(0.05f, (float)(1 - left / total));
+                    p.ring.localScale = new Vector3(s, 1, s);
+                }
+            if (w != null)
+                for (int i = 0; i < ultPacks.Count && i < w.ultPacks.Count; i++)
+                {
+                    var p = ultPacks[i]; double left = w.ultPacks[i].readyAt - w.time;
+                    bool ready = left <= 0;
+                    p.cube.gameObject.SetActive(ready);
+                    p.cube.localPosition = new Vector3(0, 1.0f + Mathf.Sin(t * 2.1f + i) * 0.09f, 0);
+                    p.cube.localRotation = Quaternion.Euler(0, -t * 1.7f * Mathf.Rad2Deg, 0);
+                    p.ringMat.SetColor("_BaseColor", A(Conv.Hex("#ffc83a"), ready ? 0.8f : 0.35f));
+                    float s = ready ? 1 : Mathf.Max(0.05f, (float)(1 - left / World.ULT_PACK.respawn));
                     p.ring.localScale = new Vector3(s, 1, s);
                 }
             foreach (var (g, arrow) in pads)

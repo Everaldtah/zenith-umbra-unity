@@ -1,0 +1,221 @@
+[
+ {
+  "id": "bld_japan_hall1f",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "hall1f",
+  "w_m": 10,
+  "d_m": 16,
+  "height_m": 6,
+  "footprint_m": 16
+ },
+ {
+  "id": "bld_japan_kura",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "block",
+  "w_m": 12,
+  "d_m": 18,
+  "height_m": 10,
+  "footprint_m": 18
+ },
+ {
+  "id": "bld_japan_machiya2f",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 9,
+  "d_m": 12,
+  "height_m": 8,
+  "footprint_m": 12
+ },
+ {
+  "id": "bld_japan_pagoda",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "pagoda",
+  "w_m": 9,
+  "d_m": 9,
+  "height_m": 30,
+  "footprint_m": 9
+ },
+ {
+  "id": "bld_japan_pavilion",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "pavilion",
+  "w_m": 15,
+  "d_m": 15,
+  "height_m": 7,
+  "footprint_m": 15
+ },
+ {
+  "id": "bld_japan_shop1f",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "storefront",
+  "w_m": 9,
+  "d_m": 13,
+  "height_m": 5.5,
+  "footprint_m": 13
+ },
+ {
+  "id": "bld_japan_temple",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 21,
+  "d_m": 45,
+  "height_m": 11,
+  "footprint_m": 45
+ },
+ {
+  "id": "bld_japan_theatre",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "hall",
+  "w_m": 10,
+  "d_m": 16,
+  "height_m": 13,
+  "footprint_m": 16
+ },
+ {
+  "id": "bld_japan_townhouse3f",
+  "style": "japan",
+  "kind": "building",
+  "archetype": "townhouse",
+  "w_m": 10,
+  "d_m": 12,
+  "height_m": 9,
+  "footprint_m": 12
+ },
+ {
+  "id": "env_west_rock_2",
+  "style": "west",
+  "kind": "rock",
+  "footprint_m": 20,
+  "height_m": 8
+ },
+ {
+  "id": "env_academy_campus",
+  "style": "academy",
+  "kind": "vista",
+  "footprint_m": 250,
+  "height_m": 45,
+  "maps": "training"
+ },
+ {
+  "id": "env_industry_factoryskyline",
+  "style": "industry",
+  "kind": "vista",
+  "footprint_m": 260,
+  "height_m": 55,
+  "maps": "foundry"
+ },
+ {
+  "id": "env_industry_smokestacks",
+  "style": "industry",
+  "kind": "vista",
+  "footprint_m": 100,
+  "height_m": 90,
+  "maps": "foundry"
+ },
+ {
+  "id": "env_japan_castlemountain",
+  "style": "japan",
+  "kind": "vista",
+  "footprint_m": 260,
+  "height_m": 140,
+  "maps": "hanabi, kagura, lantern"
+ },
+ {
+  "id": "env_japan_pagodahill",
+  "style": "japan",
+  "kind": "vista",
+  "footprint_m": 160,
+  "height_m": 80,
+  "maps": "hanabi, kagura, lantern"
+ },
+ {
+  "id": "env_japan_templecliff",
+  "style": "japan",
+  "kind": "vista",
+  "footprint_m": 200,
+  "height_m": 110,
+  "maps": "hanabi, kagura, lantern"
+ },
+ {
+  "id": "env_observatory_mountain",
+  "style": "observatory",
+  "kind": "vista",
+  "footprint_m": 500,
+  "height_m": 260,
+  "maps": "starfall"
+ },
+ {
+  "id": "env_observatory_pineridge",
+  "style": "observatory",
+  "kind": "vista",
+  "footprint_m": 380,
+  "height_m": 110,
+  "maps": "starfall"
+ },
+ {
+  "id": "env_sky_floatingtemples",
+  "style": "sky",
+  "kind": "vista",
+  "footprint_m": 160,
+  "height_m": 70,
+  "maps": "cloudstep, amatsu, campaign"
+ },
+ {
+  "id": "env_west_butte",
+  "style": "west",
+  "kind": "vista",
+  "footprint_m": 120,
+  "height_m": 90,
+  "maps": "mile, gulch"
+ },
+ {
+  "id": "env_west_canyonwall",
+  "style": "west",
+  "kind": "vista",
+  "footprint_m": 300,
+  "height_m": 60,
+  "maps": "gulch"
+ },
+ {
+  "id": "env_west_mesa",
+  "style": "west",
+  "kind": "vista",
+  "footprint_m": 220,
+  "height_m": 70,
+  "maps": "mile, gulch"
+ },
+ {
+  "id": "env_west_rock_1",
+  "style": "west",
+  "kind": "vista",
+  "footprint_m": 40,
+  "height_m": 40,
+  "maps": "mile, gulch"
+ },
+ {
+  "id": "env_west_rock_3",
+  "style": "west",
+  "kind": "vista",
+  "footprint_m": 60,
+  "height_m": 35,
+  "maps": "mile, gulch"
+ },
+ {
+  "id": "wal_japan",
+  "style": "japan",
+  "kind": "wall",
+  "archetype": "wall",
+  "w_m": 6,
+  "d_m": 1,
+  "height_m": 3,
+  "footprint_m": 6
+ }
+]

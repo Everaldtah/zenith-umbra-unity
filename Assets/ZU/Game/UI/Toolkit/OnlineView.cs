@@ -38,7 +38,7 @@ namespace ZU.Game.UI.Toolkit
         {
             if (!wired)
             {
-                NetDriver.PlayerName = PlayerPrefs.GetString("zu-name", "Vanguard");
+                NetDriver.PlayerName = PlayerName;
                 NetDriver.Profile = ProfileCard;
             }
             var s = NetDriver.Session;
@@ -416,18 +416,7 @@ namespace ZU.Game.UI.Toolkit
             var h4 = U.Div("row2", box);
             if (!connected)
             {
-                U.Btn("GO ONLINE", null, () =>
-                {
-                    NetDriver.PlayerName = PlayerPrefs.GetString("zu-name", "Vanguard");
-                    var c = NetDriver.Coop;
-                    coopWired = true;
-                    c.OnPlayers = _ => rerender();
-                    c.OnSquad = _ => rerender();
-                    c.OnStatus = _ => rerender();
-                    c.OnLeft = reason => { notice = reason; rerender(); };
-                    c.OnStart = (lvl, squad) => LaunchCoop(lvl, squad);
-                    rerender();
-                }, h4);
+                U.Btn("GO ONLINE", null, () => { GoOnline(rerender); rerender(); }, h4);
                 U.Txt("Play the campaign with up to 3 friends (the online node links you peer-to-peer).", "st", box);
                 return;
             }
@@ -461,6 +450,44 @@ namespace ZU.Game.UI.Toolkit
                 }
             }
         }
+        static void GoOnline(Action rerender)
+        {
+            if (coopWired) return;
+            NetDriver.PlayerName = PlayerName;
+            var c = NetDriver.Coop;
+            coopWired = true;
+            c.OnPlayers = _ => rerender();
+            c.OnSquad = _ => rerender();
+            c.OnStatus = _ => rerender();
+            c.OnLeft = reason => { notice = reason; rerender(); };
+            c.OnStart = (lvl, squad) => LaunchCoop(lvl, squad);
+        }
+
+        /// <summary>the player's name: the Zenith.net launcher's name#tag when started from it (TS Menu.name), else the saved one</summary>
+        public static string PlayerName => Zenith.User ?? PlayerPrefs.GetString("zu-name", "Vanguard");
+
+        /// <summary>started from a Zenith.net launcher party ("Play together", TS Menu.partyCoop, d2f85ac): straight to Starfall
+        /// co-op online - the party leader hosts a squad, everyone else joins the squad that carries the same party id</summary>
+        public static void PartyCoop(MenuView menu, string hero, string level, Action rerender)
+        {
+            if (Zenith.Party == null) return;
+            host = menu;
+            GoOnline(rerender);
+            var c = NetDriver.Coop;
+            if (Zenith.Host) { c.Host(hero, level); rerender(); return; }
+            string party = Zenith.Party;
+            void TryJoin()
+            {
+                if (!coopWired || c != NetDriver.Coop || c.Role != null) return;
+                var sq = c.Squads().FirstOrDefault(p => p.party == party);
+                if (sq != null) { c.Join(sq.id, hero); rerender(); }
+            }
+            var prev = c.OnPlayers;
+            c.OnPlayers = p => { prev?.Invoke(p); TryJoin(); };
+            TryJoin();
+            rerender();
+        }
+
         public static bool CoopHost => coopWired && NetDriver.Coop.Role == "host";
         public static bool CoopClient => coopWired && NetDriver.Coop.Role == "client";
         public static string CoopLevel => coopWired ? NetDriver.Coop.Level : null;

@@ -25,6 +25,8 @@ namespace ZU.Sim
         public const double FLOAT_SPEED = 1.2;
         public const double PUSH_TIME = 300;
         public static readonly (double hp, double respawn) PACK_SMALL = (75, 10), PACK_BIG = (250, 15);
+        /// <summary>ultimate charge packs (Training Grounds, desktop edition): a player who touches one has their ultimate ready at once</summary>
+        public static readonly (double respawn, double r) ULT_PACK = (8, 1.1);
         public const double SEEK_DMG = 0.7, SEEK_TURN = 9, SEEK_LIFE = 0.9;
         public const double TAIKO_DR = 0.3;
         const double STEP = LevelConst.STEP;
@@ -39,6 +41,12 @@ namespace ZU.Sim
         public List<Proj> projs = new List<Proj>();
         public List<Zone> zones = new List<Zone>();
         public List<SimEvent> events = new List<SimEvent>();
+        /// <summary>listeners that see every event the moment it is emitted, at its own sim time (the Hero Range's meter)</summary>
+        public List<Action<SimEvent>> taps = new List<Action<SimEvent>>();
+        /// <summary>run at the end of every step (Training Grounds: the spar arena's rounds and walls)</summary>
+        public List<Action<double>> tickers = new List<Action<double>>();
+        /// <summary>may veto a hit before anything is applied (the sealed spar box: nothing crosses its walls)</summary>
+        public Func<Actor, Actor, bool> gate;
         public List<Timer> timers = new List<Timer>();
         public Dictionary<int, PrevInput> prevIn = new Dictionary<int, PrevInput>();
         public Dictionary<int, Dictionary<int, double>> attackers = new Dictionary<int, Dictionary<int, double>>();
@@ -53,6 +61,7 @@ namespace ZU.Sim
         public PushState push = new PushState();
         List<V3> pathPts = new List<V3>(); List<double> pathCum = new List<double>();
         public List<HealthPack> packs = new List<HealthPack>();
+        public List<UltPack> ultPacks = new List<UltPack>();
         /// <summary>campaign hooks: enemy/boss definitions and the encounter director</summary>
         public Dictionary<string, HeroDef> extraDefs;
         /// <summary>the match's path finder (summoned armies route around walls with it)</summary>
@@ -83,6 +92,7 @@ namespace ZU.Sim
                 var y = p.y ?? Math.Max(0, this.level.GroundAt(p.x, p.z, 0.3));
                 packs.Add(new HealthPack { x = p.x, y = y, z = p.z, big = p.big, readyAt = 0 });
             }
+            if (this.full) foreach (var p in map.ultPacks ?? new List<Data.Pack>()) ultPacks.Add(new UltPack { x = p.x, y = p.y ?? Math.Max(0, this.level.GroundAt(p.x, p.z, 0.3)), z = p.z, readyAt = 0 });
             if (this.rules == "control") { point.unlockAt = 12; timeLimit = 1500; }
             if (this.rules == "push")
             {
@@ -159,6 +169,7 @@ namespace ZU.Sim
         public void Emit(SimEvent e)
         {
             events.Add(e);
+            foreach (var f0 in taps) f0(e);
             if (e is SfxEvent s) stats.sfx[s.id] = (stats.sfx.TryGetValue(s.id, out var n) ? n : 0) + 1;
             else if (e is FxEvent f) stats.fx[f.kind] = (stats.fx.TryGetValue(f.kind, out var n2) ? n2 : 0) + 1;
             else if (e is CounterEvent) stats.counters++;

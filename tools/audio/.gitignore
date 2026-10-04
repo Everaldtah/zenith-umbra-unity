@@ -1,0 +1,4 @@
+out/
+dsptest/bin/
+dsptest/obj/
+__pycache__/
