@@ -25,7 +25,8 @@ print = functools.partial(print, flush=True)   # progress shows up when run in t
 
 
 def kaggle(*a):
-    return subprocess.run([sys.executable, "-m", "kaggle", *a], capture_output=True, text=True)
+    # utf-8 + replace: the CLI's progress output has bytes cp1252 (the Windows default) can't decode, which killed a run
+    return subprocess.run([sys.executable, "-m", "kaggle", *a], capture_output=True, text=True, encoding="utf-8", errors="replace")
 
 
 def upload(src, slug):

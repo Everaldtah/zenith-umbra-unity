@@ -217,5 +217,23 @@ namespace ZU.Engine
         static void Act(string action, double tms) { LastAction = action; LastActionTime = tms; }
 
         static void OnQuit() { if (applied) Restore(-1); }
+
+        /// <summary>a new run (Perf.ResetRun: play mode without a domain reload). Restores the base lodBias + tierScale 1 if
+        /// still applied, drops the old play's quitting handler and every ms clock (the ladder and the memory actions would
+        /// otherwise wait out the previous play's length), and the old play's PressureChanged subscribers (their objects are
+        /// gone). Init runs again from Perf.Init.</summary>
+        internal static void ResetRun()
+        {
+            if (applied) Restore(-1);
+            if (inited) Application.quitting -= OnQuit;
+            inited = false; enabled = true; applied = false;
+            level = animLevel = 0; lodBase = 1; lodWritten = float.NaN;
+            frameEma = mainEma = renderEma = gpuEma = -1;
+            overSince = underSince = -1; lastStep = double.NegativeInfinity;
+            elevatedSince = -1; lastUnload = lastCritical = double.NegativeInfinity;
+            criticalEveryMs = CRITICAL_EVERY_MS; checkAt = -1; procBefore = lastFreedMB = -1;
+            pressure = MemoryWatch.Pressure.None; PressureChanged = null;
+            Current = Bottleneck.Unknown; LastAction = ""; LastActionTime = -1;
+        }
     }
 }
